@@ -12,9 +12,9 @@ from shutil import rmtree
 from setuptools import find_packages, setup, Command
 
 # Package meta-data.
-NAME = 'mango-agents-library'
+NAME = 'mango-library'
 DESCRIPTION = 'Library for the Modular Python Agent Framework MANGO'
-# URL = 'https://github.com/me/myproject'
+URL = 'https://gitlab.com/mango-agents/mango-library'
 EMAIL = 'mango@offis.de'
 AUTHOR = 'Mango Team'
 REQUIRES_PYTHON = '>=3.7.0'
@@ -22,7 +22,7 @@ VERSION = '0.1'
 
 # What packages are required for this module to be executed?
 REQUIRED = [
-    # 'requests', 'maya', 'records',
+     'numpy', 'mango-agents'
 ]
 
 # What packages are optional?

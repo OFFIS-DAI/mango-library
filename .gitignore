@@ -100,3 +100,7 @@ mango-library/mango-library/share
 
 # PyCharm
 .idea/
+
+# rtd
+docs/build/
+docs/source/_build
