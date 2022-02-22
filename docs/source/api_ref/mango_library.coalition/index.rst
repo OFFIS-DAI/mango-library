@@ -1,5 +1,5 @@
 Modules in mango_library.coalition
-=====================
+==================================
 
 .. toctree::
    :glob:

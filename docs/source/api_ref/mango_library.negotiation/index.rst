@@ -1,5 +1,5 @@
 Modules in mango_library.negotiation
-=====================
+====================================
 
 .. toctree::
    :glob:
