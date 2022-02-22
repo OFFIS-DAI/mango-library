@@ -3,7 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to mango's documentation!
+Welcome to documentation of the mango-library!
 =================================
 
 .. toctree::
@@ -12,6 +12,10 @@ Welcome to mango's documentation!
 
    installation
    getting_started
+   coalitions
+   negotiations
+   cohda
+   api_ref/index
    development
    privacy
    legals
