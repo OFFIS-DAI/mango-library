@@ -41,7 +41,11 @@ extensions = [
     'sphinx.ext.graphviz',
     'sphinx.ext.imgmath',
     'sphinx_rtd_theme',
+    'sphinxcontrib.bibtex',
 ]
+
+# Path to bibtex for references
+bibtex_bibfiles = ['references.bib']
 
 
 # Add any paths that contain templates here, relative to this directory.
