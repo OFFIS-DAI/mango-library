@@ -5,7 +5,6 @@ Negotiations
 A negotiation is a distributed process executed by multiple agents with goal to get a solution for a problem. In multi-agents systems negotiations will happen very frequently so it makes sense to provide a common way of implementing and using them.
 
 
-====================================
 Building upon the negotiations roles
 ====================================
 
