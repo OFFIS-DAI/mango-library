@@ -140,12 +140,12 @@ class CohdaMessage:
         return self._working_memory
 
 class CohdaNegotiationStarterRole(NegotiationStarterRole):
-    """Convienience role for starting a COHDA negotiation with simply providing a target schedule
+    """Convenience role for starting a COHDA negotiation with simply providing a target schedule
     """
 
-    def __init__(self, target_schedule) -> None:
+    def __init__(self, target_schedule, coalition_model_matcher=None, coalition_uuid=None) -> None:
         super().__init__(lambda assignment: CohdaMessage(WorkingMemory(target_schedule, {},
-            SolutionCandidate(assignment.part_id, {}))))
+            SolutionCandidate(assignment.part_id, {}))), coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid)
 
 class COHDA:
     """COHDA-decider

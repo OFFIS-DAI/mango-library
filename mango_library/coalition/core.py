@@ -42,8 +42,8 @@ class CoalitionAssignment:
         self._neighbors = neighbors
         self._topic = topic
         self._part_id = part_id
-        self._controler_agent_id = controller_agent_id
-        self._controler_agent_addr = controller_agent_addr
+        self._controller_agent_id = controller_agent_id
+        self._controller_agent_addr = controller_agent_addr
 
     @property
     def coalition_id(self) -> UUID:
@@ -84,7 +84,7 @@ class CoalitionAssignment:
 
         :return: agent_id
         """
-        return self._controler_agent_id
+        return self._controller_agent_id
 
     @property
     def controller_agent_addr(self) -> Union[str, Tuple[str, int]]:
@@ -92,7 +92,7 @@ class CoalitionAssignment:
 
         :return: adress as tuple
         """
-        return self._controler_agent_addr
+        return self._controller_agent_addr
 
 
 class CoalitionModel:

@@ -139,10 +139,21 @@ class NegotiationStarterRole(ProactiveRole):
     a negotiation within its coalition.
     """
 
-    def __init__(self, message_creator) -> None:
+    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None) -> None:
         super().__init__()
         self._message_creator = message_creator
 
+        if coalition_uuid is not None:
+            # if id is provided create matcher matching this id when the coalition is looked up
+            self._coalition_model_matcher = lambda coal: coal.coalition_id == coalition_uuid
+        elif coalition_model_matcher is not None:
+            # when a matcher itself is provided use this if no uuid has been provided
+            self._coalition_model_matcher = coalition_model_matcher
+        else:
+            # when nothing has been provided just match the first coalition
+            self._coalition_model_matcher = lambda _: True
+
+        
     def setup(self):
         super().setup()
 
@@ -154,17 +165,24 @@ class NegotiationStarterRole(ProactiveRole):
         # check there is an assignment
         return len(coalition_model.assignments.values()) > 0
 
+    def _look_up_assignment(self, all_assignments):
+        for assignment in all_assignments:
+            if self._coalition_model_matcher(assignment):
+                return assignment
+        # default to the first one
+        return list(all_assignments)[0]
+
     async def start(self):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Assume there is a exactly one coalition
-        first_assignment = list(coalition_model.assignments.values())[0]
+        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
         negotiation_uuid = uuid.uuid1()
-        for neighbor in first_assignment.neighbors:
+        for neighbor in matched_assignment.neighbors:
             await self.context.send_message(
-                content=NegotiationMessage(first_assignment.coalition_id, negotiation_uuid, self._message_creator(first_assignment)),
+                content=NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid, self._message_creator(matched_assignment)),
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
                 acl_metadata={'sender_addr': self.context.addr,
