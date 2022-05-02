@@ -18,7 +18,7 @@ from uuid import UUID
 
 from ..coalition.core import CoalitionModel
 from .core import NegotiationModel
-from mango.role.api import SimpleReactiveRole
+from mango.role.api import Role
 
 
 class TerminationMessage:
@@ -53,7 +53,7 @@ class TerminationMessage:
         """
         return self._negotiation_id
 
-class NegotiationTerminationRole(SimpleReactiveRole):
+class NegotiationTerminationRole(Role):
     """Role for negotiation participants. Will add the weight attribute to every
     coalition related message send.
     """
@@ -69,6 +69,10 @@ class NegotiationTerminationRole(SimpleReactiveRole):
         self.context.subscribe_send(self, self.on_send)
         self.context.subscribe_message(self, self.handle_term_msg,
                                             lambda c, _: isinstance(c, TerminationMessage))
+        self.context.subscribe_message(self, self.handle_msg_start,
+                                            lambda c, _: hasattr(c, 'negotiation_id'), priority=float('-inf'))
+        self.context.subscribe_message(self, self.handle_msg_end,
+                                            lambda c, _: hasattr(c, 'negotiation_id'), priority=float('inf'))
 
     def handle_term_msg(self, content: TerminationMessage, _: Dict[str, Any]) -> None:
         """Handle the termination message.
@@ -99,23 +103,28 @@ class NegotiationTerminationRole(SimpleReactiveRole):
             content.message_weight = self._weight_map[content.negotiation_id] / 2
             self._weight_map[content.negotiation_id] /= 2
 
-    def handle_msg(self, content, _: Dict[str, Any]) -> None:
+
+    def handle_msg_start(self, content, _: Dict[str, Any]) -> None:
         """Check whether a coalition related message has been received and manipulate the internal
         weight accordingly
 
         :param content: the incoming message
         :param meta: the meta data
         """
-        if hasattr(content, 'negotiation_id'):
-            if content.negotiation_id in self._weight_map:
-                self._weight_map[content.negotiation_id] += content.message_weight
-            else:
-                self._weight_map[content.negotiation_id] = content.message_weight
+        if content.negotiation_id in self._weight_map:
+            self._weight_map[content.negotiation_id] += content.message_weight
+        else:
+            self._weight_map[content.negotiation_id] = content.message_weight
 
-            negotiation_model = self.context.get_or_create_model(NegotiationModel)
-            if negotiation_model is not None:
-                self._check_weight(negotiation_model, content)
+    def handle_msg_end(self, content, _: Dict[str, Any]) -> None:
+        """Check whether a coalition related message has been received and check the idle condition.
 
+        :param content: the incoming message
+        :param meta: the meta data
+        """
+        negotiation_model = self.context.get_or_create_model(NegotiationModel)
+        if negotiation_model is not None:
+            self._check_weight(negotiation_model, content)
 
     def _check_weight(self, negotiation_model: NegotiationModel, content):
         coalition = self.context.get_or_create_model(CoalitionModel).by_id(content.coalition_id)
