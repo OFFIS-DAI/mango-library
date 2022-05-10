@@ -268,6 +268,8 @@ class COHDA:
         # Return the negative(!) sum of all deviations, because bigger scores
         # mean better plans (e.g., -1 is better then -10).
         # print('objective_function: ')
+        if len(candidate) == 0:
+            return float('-inf')
         cluster_schedule = np.array(list(map(lambda item: item[1], candidate.items())))
         sum_cs = cluster_schedule.sum(axis=0)  # sum for each interval
         diff = np.abs(target_schedule - sum_cs)  # deviation to the target schedeule
