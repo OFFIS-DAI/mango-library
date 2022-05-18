@@ -31,9 +31,7 @@ class CoalitionAssignment:
     f.e. participant id, neighbors, ... .
     """
 
-    def __init__(self,
-                 coalition_id: UUID,
-                 neighbors: List[Tuple[int, Union[str, Tuple[str, int]], str]],
+    def __init__(self, coalition_id: UUID, neighbors: List[Tuple[int, Union[str, Tuple[str, int]], str]],
                  topic: str,
                  part_id: int,
                  controller_agent_id: str,
