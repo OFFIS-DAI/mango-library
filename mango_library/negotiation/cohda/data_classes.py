@@ -3,6 +3,7 @@ Module that holds the data classes necessary for a COHDA negotiation
 """
 
 from typing import Dict, Callable
+
 import numpy as np
 
 
@@ -10,6 +11,7 @@ class SolutionCandidate:
     """
     Model for a solution candidate in COHDA.
     """
+
     def __init__(self, agent_id: int, schedules: Dict[int, np.array]) -> None:
         self._agent_id = agent_id
         self._schedules = schedules
@@ -48,7 +50,7 @@ class SolutionCandidate:
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, SolutionCandidate) and self._agent_id == o.agent_id \
-            and self.schedules == o.schedules
+               and self.schedules == o.schedules
 
 
 class ScheduleSelection:
@@ -85,6 +87,7 @@ class SystemConfig:
     """
     Model for a system configuration in COHDA
     """
+
     def __init__(self, schedule_choices: Dict[int, ScheduleSelection]) -> None:
         self._schedule_choices = schedule_choices
 
@@ -123,6 +126,7 @@ class SystemConfig:
 class WorkingMemory:
     """Working memory of a COHDA agent
     """
+
     def __init__(self, target_params, system_config: SystemConfig,
                  solution_candidate: SolutionCandidate):
         self._target_params = target_params
@@ -171,4 +175,4 @@ class WorkingMemory:
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, WorkingMemory) and self.solution_candidate == o.solution_candidate \
-            and self.system_config == o.system_config and self.target_params == o.target_params
+               and self.system_config == o.system_config and self.target_params == o.target_params
