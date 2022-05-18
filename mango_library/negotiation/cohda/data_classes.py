@@ -10,9 +10,9 @@ class SolutionCandidate:
     """
     Model for a solution candidate in COHDA.
     """
-    def __init__(self, agent_id: int, candidate: Dict[int, np.array]) -> None:
+    def __init__(self, agent_id: int, schedules: Dict[int, np.array]) -> None:
         self._agent_id = agent_id
-        self._candidate = candidate
+        self._schedules = schedules
 
     @property
     def agent_id(self) -> int:
@@ -31,12 +31,12 @@ class SolutionCandidate:
         self._agent_id = new_id
 
     @property
-    def candidate(self) -> Dict[int, np.array]:
+    def schedules(self) -> Dict[int, np.array]:
         """Return the candidate schedule map (part_id -> schedule)
 
         :return: map part_id -> schedule
         """
-        return self._candidate
+        return self._schedules
 
     @property
     def cluster_schedule(self) -> np.array:
@@ -44,11 +44,11 @@ class SolutionCandidate:
         Return the candidate as cluster schedule
         :return: cluster_schedule as np.array
         """
-        return np.array(list(self.candidate.values()))
+        return np.array(list(self.schedules.values()))
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, SolutionCandidate) and self._agent_id == o.agent_id \
-            and self.candidate == o.candidate
+            and self.schedules == o.schedules
 
 
 class ScheduleSelection:

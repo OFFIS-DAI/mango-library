@@ -20,7 +20,7 @@ async def test_coalition_to_cohda_with_termination():
     addrs = []
     for i in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], [1,1,1,1,1], lambda s: True)
+        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationRole(i == 0))
@@ -31,7 +31,7 @@ async def test_coalition_to_cohda_with_termination():
     
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
 
-    agents[0].add_role(CohdaNegotiationStarterRole([110, 110, 110, 110, 110]))
+    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1,])))
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -51,7 +51,7 @@ async def test_coalition_to_cohda_with_termination():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.candidate[1] == [11, 11, 11, 11, 11]        
+    assert next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.schedules[1] == [11, 11, 11, 11, 11]
     assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
 
 async def wait_for_coalition_built(agents):

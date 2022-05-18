@@ -88,11 +88,11 @@ class COHDA:
         own_schedule_selection_wm = memory.system_config.system_config[self._part_id]
         our_solution_cand, objective_our_candidate = self._evaluate_message(content, memory)
         possible_schedules = self._schedule_provider()
-        our_selected_schedule = our_solution_cand.candidate[self._part_id] \
-            if self._part_id in our_solution_cand.candidate else None
+        our_selected_schedule = our_solution_cand.schedules[self._part_id] \
+            if self._part_id in our_solution_cand.schedules else None
         found_new = False
         for schedule in possible_schedules:
-            our_solution_cand.candidate[self._part_id] = schedule
+            our_solution_cand.schedules[self._part_id] = schedule
             objective_tryout_candidate = self._perf_func(our_solution_cand.cluster_schedule,
                                                          memory.target_params)
             if objective_tryout_candidate > objective_our_candidate \
@@ -102,7 +102,7 @@ class COHDA:
                 found_new = True
 
         if not found_new:
-            our_solution_cand.candidate[self._part_id] = our_selected_schedule
+            our_solution_cand.schedules[self._part_id] = our_selected_schedule
 
         if not found_new and our_selected_schedule != own_schedule_selection_wm.schedule:
             our_selected_schedule = own_schedule_selection_wm.schedule
@@ -113,7 +113,7 @@ class COHDA:
                 ScheduleSelection(our_selected_schedule, selection_counter + 1)
             memory.solution_candidate = our_solution_cand
             our_solution_cand.agent_id = self._part_id
-            our_solution_cand.candidate[self._part_id] = our_selected_schedule
+            our_solution_cand.schedules[self._part_id] = our_selected_schedule
             self._counter += 1
         return old_working_memory, memory
 
@@ -146,7 +146,7 @@ class COHDA:
         elif len(given_part_ids.union(known_part_ids)) > len(known_part_ids):
             missing_ids = given_part_ids.difference(known_part_ids)
             for missing_id in missing_ids:
-                our_solution_cand.candidate[missing_id] = msg_solution_cand.candidate[missing_id]
+                our_solution_cand.schedules[missing_id] = msg_solution_cand.schedules[missing_id]
         else:
             objective_message_candidate = self._perf_func(msg_solution_cand.cluster_schedule, memory.target_params)
             if objective_message_candidate > objective_our_candidate:

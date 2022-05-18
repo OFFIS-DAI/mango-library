@@ -21,7 +21,7 @@ def test_cohda_selection_multi():
     cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {})))
     old, new = cohda.decide(cohda_message)
     
-    assert new.solution_candidate.candidate[1] == [1, 1, 1]
+    assert new.solution_candidate.schedules[1] == [1, 1, 1]
     assert new.system_config.system_config[1].counter == 1
 
 
@@ -74,7 +74,7 @@ async def test_optimize_simple_test_case():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.candidate[0] == [11, 11, 11, 11, 11]
+    assert agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules[0] == [11, 11, 11, 11, 11]
 
 @pytest.mark.asyncio
 async def test_optimize_simple_test_case_multi_coal():
@@ -129,7 +129,7 @@ async def test_optimize_simple_test_case_multi_coal():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert agents[0].roles[0]._cohda[coal_id2]._memory.solution_candidate.candidate[0] == [11, 11, 11, 11, 11]
+    assert agents[0].roles[0]._cohda[coal_id2]._memory.solution_candidate.schedules[0] == [11, 11, 11, 11, 11]
 
 
 @pytest.mark.asyncio
@@ -181,7 +181,7 @@ async def test_optimize_hinrichs_test_case():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    cluster_schedule = np.array(list(map(lambda item: item[1], agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.candidate.items())))
+    cluster_schedule = np.array(list(map(lambda item: item[1], agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules.items())))
     assert [543, 529, 520, 512, 510] == cluster_schedule.sum(axis=0).tolist()
 
 async def wait_for_coalition_built(agents):
