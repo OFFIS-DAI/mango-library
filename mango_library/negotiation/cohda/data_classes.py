@@ -80,7 +80,7 @@ class ScheduleSelection:
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, ScheduleSelection) and self.counter == o.counter \
-               and self.schedule == o.schedule
+               and np.array_equal(self.schedule, o.schedule)
 
 
 class SystemConfig:
@@ -110,17 +110,42 @@ class SystemConfig:
         """
         return np.array([selection.schedule for selection in self.schedule_choices.values()])
 
-    def get_perf(self, perf_func: Callable[[np.array], float]):
+    @classmethod
+    def merge(cls, sysconfig_i, sysconfig_j):
         """
-        Calculates the performance of the system config on the basis of the given performance function
-        :param perf_func: Function that calculates teh performance of a cluster schedule as a np.array.
-        :return: the performance as float
+        Merge *sysconf_i* and *sysconf_j* and return the result.
+
+        Returns a merged systemconfig. If the sysconfig_i remains unchanged, the same instance of sysconfig_i is
+        returned, otherwise a new object is created.
         """
 
-        # get cluster schedule
-        cluster_schedule = np.array([selection.schedule for selection in self._system_config.values()])
+        sysconfig_i_schedules: Dict[int, ScheduleSelection] = sysconfig_i.schedule_choices
+        sysconfig_j_schedules: Dict[int, ScheduleSelection] = sysconfig_j.schedule_choices
+        key_set_i = set(sysconfig_i_schedules.keys())
+        key_set_j = set(sysconfig_j_schedules.keys())
 
-        return perf_func(cluster_schedule)
+        new_sysconfig: Dict[int, ScheduleSelection] = {}
+        modified = False
+
+        for i, a in enumerate(sorted(key_set_i | key_set_j)):
+            # An a might be in key_set_i, key_set_j or in both!
+            if a in key_set_i and \
+                    (a not in key_set_j or sysconfig_i_schedules[a].counter >= sysconfig_j_schedules[a].counter):
+                # Use data of sysconfig_i
+                schedule_selection = sysconfig_i_schedules[a]
+            else:
+                # Use data of sysconfig_j
+                schedule_selection = sysconfig_j_schedules[a]
+                modified = True
+
+            new_sysconfig[a] = schedule_selection
+
+        if modified:
+            sysconf = cls(new_sysconfig)
+        else:
+            sysconf = sysconfig_i
+
+        return sysconf
 
 
 class WorkingMemory:
