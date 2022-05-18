@@ -82,10 +82,10 @@ class COHDA:
 
         old_working_memory = copy.deepcopy(memory)
 
-        if self._part_id not in memory.system_config.system_config:
-            memory.system_config.system_config[self._part_id] = ScheduleSelection(None, self._counter)
+        if self._part_id not in memory.system_config.schedule_choices:
+            memory.system_config.schedule_choices[self._part_id] = ScheduleSelection(None, self._counter)
 
-        own_schedule_selection_wm = memory.system_config.system_config[self._part_id]
+        own_schedule_selection_wm = memory.system_config.schedule_choices[self._part_id]
         our_solution_cand, objective_our_candidate = self._evaluate_message(content, memory)
         possible_schedules = self._schedule_provider()
         our_selected_schedule = our_solution_cand.schedules[self._part_id] \
@@ -109,7 +109,7 @@ class COHDA:
             found_new = True
 
         if found_new:
-            memory.system_config.system_config[self._part_id] = \
+            memory.system_config.schedule_choices[self._part_id] = \
                 ScheduleSelection(our_selected_schedule, selection_counter + 1)
             memory.solution_candidate = our_solution_cand
             our_solution_cand.agent_id = self._part_id
@@ -128,16 +128,16 @@ class COHDA:
 
         msg_solution_cand = content.working_memory.solution_candidate
         our_solution_cand = memory.solution_candidate
-        known_part_ids = set(memory.system_config.system_config.keys())
-        given_part_ids = set(content.working_memory.system_config.system_config.keys())
+        known_part_ids = set(memory.system_config.schedule_choices.keys())
+        given_part_ids = set(content.working_memory.system_config.schedule_choices.keys())
 
-        for agent_id, their_selection in content.working_memory.system_config.system_config.items():
-            if agent_id in memory.system_config.system_config.keys():
-                our_selection = memory.system_config.system_config[agent_id]
+        for agent_id, their_selection in content.working_memory.system_config.schedule_choices.items():
+            if agent_id in memory.system_config.schedule_choices.keys():
+                our_selection = memory.system_config.schedule_choices[agent_id]
                 if their_selection.counter > our_selection.counter:
-                    memory.system_config.system_config[agent_id] = their_selection
+                    memory.system_config.schedule_choices[agent_id] = their_selection
             else:
-                memory.system_config.system_config[agent_id] = their_selection
+                memory.system_config.schedule_choices[agent_id] = their_selection
 
         objective_our_candidate = self._perf_func(our_solution_cand.cluster_schedule, memory.target_params)
 

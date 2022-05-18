@@ -22,7 +22,7 @@ def test_cohda_selection_multi():
     old, new = cohda.decide(cohda_message)
     
     assert new.solution_candidate.schedules[1] == [1, 1, 1]
-    assert new.system_config.system_config[1].counter == 1
+    assert new.system_config.schedule_choices[1].counter == 1
 
 
 @pytest.mark.asyncio

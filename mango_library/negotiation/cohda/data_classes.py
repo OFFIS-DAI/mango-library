@@ -85,19 +85,27 @@ class SystemConfig:
     """
     Model for a system configuration in COHDA
     """
-    def __init__(self, system_config: Dict[int, ScheduleSelection]) -> None:
-        self._system_config = system_config
+    def __init__(self, schedule_choices: Dict[int, ScheduleSelection]) -> None:
+        self._schedule_choices = schedule_choices
 
     def __eq__(self, o: object) -> bool:
-        return isinstance(o, SystemConfig) and self._system_config == o._system_config
+        return isinstance(o, SystemConfig) and self._schedule_choices == o._schedule_choices
 
     @property
-    def system_config(self) -> Dict[int, ScheduleSelection]:
-        """Return the system_config schedule map (part_id -> schedule)
+    def schedule_choices(self) -> Dict[int, ScheduleSelection]:
+        """Return the schedule_choices map (part_id -> scheduleSelection)
 
         :return: Dict with part_id -> ScheduleSelection
         """
-        return self._system_config
+        return self._schedule_choices
+
+    @property
+    def cluster_schedule(self) -> np.array:
+        """
+        Return the cluster schedule of the current sysconfig
+        :return: the cluster schedule as np.array
+        """
+        return np.array([selection.schedule for selection in self.schedule_choices.values()])
 
     def get_perf(self, perf_func: Callable[[np.array], float]):
         """
