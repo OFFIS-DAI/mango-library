@@ -2,7 +2,7 @@ from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInit
 import pytest
 from mango.core.container import Container
 from mango.role.core import RoleAgent
-from mango_library.negotiation.cohda import *
+from mango_library.negotiation.cohda.cohda import *
 from mango_library.negotiation.termination import NegotiationTerminationRole
 import asyncio
 

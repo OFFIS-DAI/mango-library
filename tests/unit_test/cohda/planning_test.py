@@ -1,25 +1,29 @@
 
-from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
+from mango_library.coalition.core import CoalitionModel
 import pytest, uuid
 from mango.core.container import Container
 from mango.role.core import RoleAgent
-from mango_library.negotiation.cohda import *
+from mango_library.negotiation.cohda.cohda import *
 import asyncio
 
 def test_cohda_init():
-    cohda = COHDA([1, 1, 1], lambda: [[0, 1, 2], [1, 2, 3]], lambda s: True, 1)
-    cohda_message = CohdaMessage(WorkingMemory([1, 2, 3], {}, SolutionCandidate(1, {})))
+    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3]],
+                  is_local_acceptable=lambda s: True,
+                  part_id=1)
+    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {})))
     old, new = cohda.decide(cohda_message)
     
-    assert new.target_schedule == [1, 2, 3]
+    assert new.target_params == ([1, 2, 3], [1, 1, 1])
 
 def test_cohda_selection_multi():   
-    cohda = COHDA([1, 1, 1], lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]], lambda s: True, 1)
-    cohda_message = CohdaMessage(WorkingMemory([1, 2, 1], {}, SolutionCandidate(1, {})))
+    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
+                  is_local_acceptable=lambda s: True, part_id=1)
+    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {})))
     old, new = cohda.decide(cohda_message)
     
     assert new.solution_candidate.candidate[1] == [1, 1, 1]
-    assert new.system_config[1].counter == 1
+    assert new.system_config.system_config[1].counter == 1
+
 
 @pytest.mark.asyncio
 async def test_optimize_simple_test_case():
@@ -27,18 +31,17 @@ async def test_optimize_simple_test_case():
     
     c = await Container.factory(addr=('127.0.0.2', 5555))
     
-    s_array = [[[1, 1, 1, 1, 1],[4,3,3,3,3],[6,6,6,6,6],[9,8,8,8,8],[11,11,11,11,11]]]
+    s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6,6,6,6,6],[9,8,8,8,8],[11,11,11,11,11]]]
 
     # create agents
     agents = []
     addrs = []
     for _ in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], [1,1,1,1,1], lambda s: True)
+        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
-
 
     part_id = 0
     coal_id = uuid.uuid1()
@@ -50,7 +53,8 @@ async def test_optimize_simple_test_case():
             zip(agents, range(10))))), 'cohda', part_id, 1, 1))
         part_id += 1
 
-    agents[0].add_role(CohdaNegotiationStarterRole([110, 110, 110, 110, 110]))
+    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1])))
+
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -85,7 +89,7 @@ async def test_optimize_simple_test_case_multi_coal():
     addrs = []
     for _ in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], [1,1,1,1,1], lambda s: True)
+        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
@@ -105,7 +109,7 @@ async def test_optimize_simple_test_case_multi_coal():
 
     # as the coalition assignment 0 does not contain the correct participants the correct assignment is exactly chosen when
     # the solution candidate is correct due to the agents schedules and the target
-    agents[0].add_role(CohdaNegotiationStarterRole([110, 110, 110, 110, 110], coalition_uuid=coal_id2))
+    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1]), coalition_uuid=coal_id2))
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -141,7 +145,7 @@ async def test_optimize_hinrichs_test_case():
     addrs = []
     for i in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda i=i: s_array[i], [1,1,1,1,1], lambda s: True)
+        cohda_role = COHDARole(lambda i=i: s_array[i], lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
@@ -157,7 +161,7 @@ async def test_optimize_hinrichs_test_case():
             zip(agents, range(10))))), 'cohda', part_id, 1, 1))
         part_id += 1
 
-    agents[0].add_role(CohdaNegotiationStarterRole([542, 528, 519, 511, 509]))
+    agents[0].add_role(CohdaNegotiationStarterRole(([542, 528, 519, 511, 509], [1, 1, 1, 1, 1])))
 
     for a in agents:
         if a._check_inbox_task.done():
