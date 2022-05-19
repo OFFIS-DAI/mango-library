@@ -11,7 +11,7 @@ def test_cohda_init():
     cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3]],
                   is_local_acceptable=lambda s: True,
                   part_id=1)
-    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {})))
+    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {}, 0)))
     old, new = cohda.decide(cohda_message)
 
     assert new.target_params == ([1, 2, 3], [1, 1, 1])
@@ -20,7 +20,7 @@ def test_cohda_init():
 def test_cohda_selection_multi():
     cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
                   is_local_acceptable=lambda s: True, part_id=1)
-    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {})))
+    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {}, 0)))
     old, new = cohda.decide(cohda_message)
 
     assert new.solution_candidate.schedules[1] == [1, 1, 1]

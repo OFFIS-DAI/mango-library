@@ -13,9 +13,10 @@ def test_sysconf_init():
 
 def test_candidate_init():
     schedules = {1: np.array([1, 2, 3]), 2: np.array([4, 5, 6])}
-    candidate = SolutionCandidate(agent_id=1, schedules=schedules)
+    candidate = SolutionCandidate(agent_id=1, schedules=schedules, perf=2)
     assert candidate.agent_id == 1
     assert candidate.schedules == schedules
+    assert candidate.perf == 2
 
 
 @pytest.mark.parametrize(

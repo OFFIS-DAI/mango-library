@@ -38,7 +38,9 @@ class CohdaNegotiationStarterRole(NegotiationStarterRole):
         super().__init__(
             lambda assignment:
             CohdaMessage(WorkingMemory(target_params=target_params, system_config=SystemConfig({}),
-                                       solution_candidate=SolutionCandidate(assignment.part_id, {}))),
+                                       solution_candidate=SolutionCandidate(
+                                           agent_id=assignment.part_id, schedules={}, perf=float('-inf')
+                                       ))),
             coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid
         )
 
@@ -50,7 +52,7 @@ class COHDA:
     def __init__(self, schedule_provider, is_local_acceptable, part_id, perf_func=None):
         self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
-        self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(part_id, {}))
+        self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(part_id, {}, float('-inf')))
         self._counter = 0
         self._part_id = part_id
         if perf_func is None:
@@ -66,6 +68,24 @@ class COHDA:
             self._perf_func = deviation_to_target_schedule
         else:
             self._perf_func = perf_func
+
+    def _perceive(self, content: CohdaMessage, current_wm: WorkingMemory):
+        """
+
+        :param content:
+        :param current_wm:
+        :return:
+        """
+
+        sysconfig = current_wm.system_config
+        candidate = current_wm.solution_candidate
+
+        new_sysconf = content.working_memory.system_config
+        new_candidate = content.working_memory.solution_candidate
+
+        sysconfig = SystemConfig.merge(sysconfig_i=sysconfig, sysconfig_j=new_sysconf)
+
+
 
     def decide(self, content: CohdaMessage) -> Tuple[WorkingMemory, WorkingMemory]:
         """Execute the COHDA decision process.
