@@ -2,7 +2,7 @@
 Module that holds the data classes necessary for a COHDA negotiation
 """
 
-from typing import Dict, Callable
+from typing import Dict, Callable, Optional
 
 import numpy as np
 
@@ -12,9 +12,14 @@ class SolutionCandidate:
     Model for a solution candidate in COHDA.
     """
 
-    def __init__(self, agent_id: int, schedules: Dict[int, np.array]) -> None:
+    def __init__(self, agent_id: int, schedules: Dict[int, np.array], perf: Optional[float]) -> None:
         self._agent_id = agent_id
         self._schedules = schedules
+        self._perf = perf
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, SolutionCandidate) and self.agent_id == o.agent_id \
+               and self.schedules == o.schedules and self.perf == o.perf
 
     @property
     def agent_id(self) -> int:
@@ -41,6 +46,22 @@ class SolutionCandidate:
         return self._schedules
 
     @property
+    def perf(self) -> float:
+        """
+        Returns the performance value of the candidate
+        :return:
+        """
+        return self._perf
+
+    @perf.setter
+    def perf(self, new_perf: float):
+        """
+        Sets the performance of the candidate
+        :param new_perf: The new performance
+        """
+        self._perf = new_perf
+
+    @property
     def cluster_schedule(self) -> np.array:
         """
         Return the candidate as cluster schedule
@@ -48,9 +69,48 @@ class SolutionCandidate:
         """
         return np.array(list(self.schedules.values()))
 
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, SolutionCandidate) and self._agent_id == o.agent_id \
-               and self.schedules == o.schedules
+    @classmethod
+    def merge(cls, candidate_i, candidate_j, agent_id: int, perf_func: Callable, target_params):
+        """
+        Returns a merged Candidate. If the candidate_i remains unchanged, the same instance of candidate_i is
+        returned, otherwise a new object is created with agent_id as candidate.agent_id
+        :param candidate_i:
+        :param candidate_j:
+        :param agent_id:
+        :param perf_func:
+        :param target_params:
+        :return:
+        """
+        keyset_i = set(candidate_i.idx)
+        keyset_j = set(candidate_j.idx)
+        candidate = candidate_i  # Default candidate is *i*
+
+        if keyset_i < keyset_j:
+            # Use *j* if *K_i* is a true subset of *K_j*
+            candidate = candidate_j
+        elif keyset_i == keyset_j:
+            # Compare the performance if the keyset is equal
+            if candidate_j.perf > candidate_i.perf:
+                # Choose *j* if it performs better
+                candidate = candidate_j
+            elif candidate_j.perf == candidate_i.perf:
+                # If both perform equally well, order them by name
+                if candidate_j.agent < candidate_i.agent:
+                    candidate = candidate_j
+        elif keyset_j - keyset_i:
+            # If *candidate_j* shares some entries with *candidate_i*, update *candidate_i*
+            new_schedules: Dict[int, np.array] = {}
+            for a in sorted(keyset_i | keyset_j):
+                if a in keyset_i:
+                    schedule = candidate_i.schedules[a]
+                else:
+                    schedule = candidate_j.schedules[a]
+                new_schedules[a] = schedule
+
+            candidate = SolutionCandidate(agent_id=agent_id, schedules=new_schedules, perf=None)
+            candidate.perf = perf_func(candidate.cluster_schedule, target_params)
+
+        return candidate
 
 
 class ScheduleSelection:
@@ -61,6 +121,10 @@ class ScheduleSelection:
     def __init__(self, schedule: np.array, counter: int) -> None:
         self._schedule = schedule
         self._counter = counter
+
+    def __eq__(self, o: object) -> bool:
+        return isinstance(o, ScheduleSelection) and self.counter == o.counter \
+               and np.array_equal(self.schedule, o.schedule)
 
     @property
     def counter(self) -> int:
@@ -77,10 +141,6 @@ class ScheduleSelection:
         :return: schedule
         """
         return self._schedule
-
-    def __eq__(self, o: object) -> bool:
-        return isinstance(o, ScheduleSelection) and self.counter == o.counter \
-               and np.array_equal(self.schedule, o.schedule)
 
 
 class SystemConfig:
