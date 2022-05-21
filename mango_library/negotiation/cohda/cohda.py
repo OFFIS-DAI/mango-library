@@ -69,26 +69,60 @@ class COHDA:
         else:
             self._perf_func = perf_func
 
-    def _perceive(self, content: CohdaMessage, current_wm: WorkingMemory):
+    def process_cohda_msg(self, content: CohdaMessage):
         """
 
         :param content:
-        :param current_wm:
         :return:
         """
 
-        sysconfig = current_wm.system_config
-        candidate = current_wm.solution_candidate
+        new_sysconfig, new_candidate = self._perceive(content)
+
+        state_changed = (new_sysconfig is not self._memory.system_config or
+                         new_candidate is not self._memory.solution_candidate)
+
+        if state_changed:
+            sysconf, candidate = self._decide(new_sysconfig, new_candidate)
+
+
+
+    def _perceive(self, content: CohdaMessage) -> (SystemConfig, SolutionCandidate):
+        """
+
+        :param content:
+        :return: a tuple of
+        """
+
+        sysconfig = self._memory.system_config
+        candidate = self._memory.solution_candidate
 
         new_sysconf = content.working_memory.system_config
         new_candidate = content.working_memory.solution_candidate
 
         sysconfig = SystemConfig.merge(sysconfig_i=sysconfig, sysconfig_j=new_sysconf)
+        candidate = SolutionCandidate.merge(candidate_i=candidate, candidate_j=new_candidate, agent_id=self._part_id,
+                                            perf_func=self._perf_func, target_params=self._memory.target_params)
+
+        return sysconfig, candidate
+
+    def _decide(self, sysconfig: SystemConfig, candidate: SolutionCandidate) -> Tuple[SystemConfig, SolutionCandidate]:
+        """
+
+        :param sysconfig:
+        :param candidate:
+        :return:
+        """
+        possible_schedules = self._schedule_provider()
+        current_best_performance = float('-inf')
+        for schedule in possible_schedules:
+            # create new candidate from sysconfig
+            pass
 
 
 
     def decide(self, content: CohdaMessage) -> Tuple[WorkingMemory, WorkingMemory]:
-        """Execute the COHDA decision process.
+        """
+
 
         :param content: the incoming COHDA message
 

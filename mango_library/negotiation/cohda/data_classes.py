@@ -18,8 +18,16 @@ class SolutionCandidate:
         self._perf = perf
 
     def __eq__(self, o: object) -> bool:
-        return isinstance(o, SolutionCandidate) and self.agent_id == o.agent_id \
-               and self.schedules == o.schedules and self.perf == o.perf
+        if not isinstance(o, SolutionCandidate):
+            return False
+        schedules_equal = True
+        if not set(self.schedules.keys()) == set(o.schedules.keys()):
+            schedules_equal = False
+        else:
+            for k, v in self.schedules.items():
+                if not np.array_equal(self.schedules[k], o.schedules[k]):
+                    schedules_equal = False
+        return self.agent_id == o.agent_id and self.perf == o.perf and schedules_equal
 
     @property
     def agent_id(self) -> int:
@@ -81,8 +89,8 @@ class SolutionCandidate:
         :param target_params:
         :return:
         """
-        keyset_i = set(candidate_i.idx)
-        keyset_j = set(candidate_j.idx)
+        keyset_i = set(candidate_i.schedules.keys())
+        keyset_j = set(candidate_j.schedules.keys())
         candidate = candidate_i  # Default candidate is *i*
 
         if keyset_i < keyset_j:
@@ -95,7 +103,7 @@ class SolutionCandidate:
                 candidate = candidate_j
             elif candidate_j.perf == candidate_i.perf:
                 # If both perform equally well, order them by name
-                if candidate_j.agent < candidate_i.agent:
+                if candidate_j.agent_id < candidate_i.agent_id:
                     candidate = candidate_j
         elif keyset_j - keyset_i:
             # If *candidate_j* shares some entries with *candidate_i*, update *candidate_i*
@@ -107,6 +115,7 @@ class SolutionCandidate:
                     schedule = candidate_j.schedules[a]
                 new_schedules[a] = schedule
 
+            # create new SolutionCandidate
             candidate = SolutionCandidate(agent_id=agent_id, schedules=new_schedules, perf=None)
             candidate.perf = perf_func(candidate.cluster_schedule, target_params)
 
