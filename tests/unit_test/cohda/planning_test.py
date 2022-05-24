@@ -75,7 +75,8 @@ async def test_optimize_simple_test_case():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules[0] == [11, 11, 11, 11, 11]
+    assert np.array_equal(agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules[0],
+                          np.array([11, 11, 11, 11, 11]))
 
 
 @pytest.mark.asyncio
@@ -132,7 +133,8 @@ async def test_optimize_simple_test_case_multi_coal():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert agents[0].roles[0]._cohda[coal_id2]._memory.solution_candidate.schedules[0] == [11, 11, 11, 11, 11]
+    assert np.array_equal(agents[0].roles[0]._cohda[coal_id2]._memory.solution_candidate.schedules[0],
+                          [11, 11, 11, 11, 11])
 
 
 @pytest.mark.asyncio
@@ -209,4 +211,4 @@ async def test_optimize_hinrichs_test_case():
 async def wait_for_coalition_built(agents):
     for agent in agents:
         while not agent.inbox.empty():
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
