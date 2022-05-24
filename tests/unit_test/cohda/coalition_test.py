@@ -3,6 +3,7 @@ from mango.core.container import Container
 from mango.role.core import RoleAgent
 from mango_library.coalition.core import *
 
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("num_part", [1, 2, 3, 4, 5])
 async def test_build_coalition(num_part):
@@ -50,7 +51,8 @@ async def test_build_coalition(num_part):
         assert list(assignments.values())[0].controller_agent_addr == c.addr
         assert len(list(assignments.values())[0].neighbors) == num_part-1
 
+
 async def wait_for_coalition_built(agents):
     for agent in agents:
         while len(agent.roles[0].context.get_or_create_model(CoalitionModel).assignments) == 0:
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.1)
