@@ -136,3 +136,8 @@ def test_sysconf_cluster_schedule():
     selections_2 = ScheduleSelection(schedule=np.array([4, 2, 1]), counter=4)
     sysconf = SystemConfig({2: selections_2, 1: selections_1})
     assert np.array_equal(sysconf.cluster_schedule, np.array([[4, 2, 1], [1, 2, 3]]))
+
+
+def test_candidate_cluster_schedule():
+    candidate = SolutionCandidate(agent_id=1, schedules={1: np.array([1, 2]), 2: np.array([2, 3])}, perf=0)
+    assert np.array_equal(candidate.cluster_schedule, np.array([[1, 2], [2, 3]]))
