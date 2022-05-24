@@ -10,10 +10,10 @@ import asyncio
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination():
     # create containers
-    
+
     c = await Container.factory(addr=('127.0.0.2', 5555))
-    
-    s_array = [[[1, 1, 1, 1, 1],[4,3,3,3,3],[6,6,6,6,6],[9,8,8,8,8],[11,11,11,11,11]]]
+
+    s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
 
     # create agents
     agents = []
@@ -28,10 +28,10 @@ async def test_coalition_to_cohda_with_termination():
         addrs.append((c.addr, a._aid))
 
     agents[0].add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
-    
+
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
 
-    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1,])))
+    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -39,7 +39,7 @@ async def test_coalition_to_cohda_with_termination():
                 raise a._check_inbox_task.exception()
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
-    
+
     for a in agents:
         await a.tasks_complete()
 
@@ -51,16 +51,19 @@ async def test_coalition_to_cohda_with_termination():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.schedules[1] == [11, 11, 11, 11, 11]
+    assert np.array_equal(next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.schedules[1],
+                          [11, 11, 11, 11, 11])
     assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
+
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
         while not agent.inbox.empty():
             await asyncio.sleep(5)
 
+
 async def wait_for_term(agents):
-    await asyncio.sleep(1)
+    await asyncio.sleep(0.1)
     for agent in agents:
         while not agent.inbox.empty() or next(iter(agents[0].roles[2]._weight_map.values())) != 1:
-            await asyncio.sleep(5)
+            await asyncio.sleep(0.1)
