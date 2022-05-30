@@ -4,7 +4,9 @@ import uuid
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 from mango_library.negotiation.cohda.cohda import *
+from test_data import test_decide_params, test_perceive_params
 import asyncio
+
 
 
 def test_cohda_init():
@@ -12,19 +14,74 @@ def test_cohda_init():
                   is_local_acceptable=lambda s: True,
                   part_id=1)
     cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {}, 0)))
-    old, new = cohda.decide(cohda_message)
+    cohda.perceive([cohda_message])
 
-    assert new.target_params == ([1, 2, 3], [1, 1, 1])
+    assert cohda._memory.target_params == ([1, 2, 3], [1, 1, 1])
 
 
 def test_cohda_selection_multi():
     cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
                   is_local_acceptable=lambda s: True, part_id=1)
     cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate(1, {}, 0)))
-    old, new = cohda.decide(cohda_message)
+    sysconf, candidate = cohda.perceive([cohda_message])
+    sysconf, candidate = cohda._decide(candidate=candidate, sysconfig=sysconf)
 
-    assert new.solution_candidate.schedules[1] == [1, 1, 1]
-    assert new.system_config.schedule_choices[1].counter == 1
+    assert np.array_equal(candidate.schedules[1], [1, 1, 1])
+    assert sysconf.schedule_choices[1].counter == 2
+
+
+@pytest.mark.parametrize('old_sysconfig, old_candidate, messages, expected_sysconfig, expected_candidate',
+                         test_perceive_params
+                         )
+def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, messages: List[CohdaMessage],
+                  expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
+    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
+                  is_local_acceptable=lambda s: True, part_id=1)
+    cohda._memory.system_config = old_sysconfig
+    cohda._memory.solution_candidate = old_candidate
+    new_sysconfig, new_candidate = cohda.perceive(messages=messages)
+    for part_id in new_sysconfig.schedule_choices:
+        assert np.array_equal(
+            new_sysconfig.schedule_choices[part_id].schedule, expected_sysconfig.schedule_choices[part_id].schedule), \
+            f'part_id: {part_id}, schedules: {new_sysconfig.schedule_choices[part_id].schedule},' \
+            f'{expected_sysconfig.schedule_choices[part_id].schedule}'
+        assert new_sysconfig.schedule_choices[part_id].counter == expected_sysconfig.schedule_choices[part_id].counter
+
+        assert np.array_equal(new_candidate.schedules[part_id], expected_candidate.schedules[part_id])
+    assert new_sysconfig == expected_sysconfig
+    assert new_candidate.agent_id == expected_candidate.agent_id
+    assert new_candidate.perf == expected_candidate.perf
+    assert new_candidate == expected_candidate
+
+
+@pytest.mark.parametrize('old_sysconfig, old_candidate, cohda_object, expected_sysconfig, expected_candidate',
+                         test_decide_params
+                         )
+def test_decide(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, cohda_object: COHDA,
+                expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
+    """
+
+    :param old_sysconfig:
+    :param old_candidate:
+    :param cohda_object:
+    :param expected_sysconfig:
+    :param expected_candidate:
+    :return:
+    """
+    new_sysconfig, new_candidate = cohda_object._decide(sysconfig=old_sysconfig, candidate=old_candidate)
+    for part_id in new_sysconfig.schedule_choices:
+        assert np.array_equal(
+            new_sysconfig.schedule_choices[part_id].schedule, expected_sysconfig.schedule_choices[part_id].schedule), \
+            f'part_id: {part_id}, schedules: {new_sysconfig.schedule_choices[part_id].schedule},' \
+            f'{expected_sysconfig.schedule_choices[part_id].schedule}'
+        assert new_sysconfig.schedule_choices[part_id].counter == expected_sysconfig.schedule_choices[part_id].counter
+
+        assert np.array_equal(new_candidate.schedules[part_id], expected_candidate.schedules[part_id])
+    assert new_sysconfig == expected_sysconfig
+    assert new_candidate.agent_id == expected_candidate.agent_id
+    assert new_candidate.perf == expected_candidate.perf
+    assert new_candidate == expected_candidate
+
 
 
 @pytest.mark.asyncio

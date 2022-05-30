@@ -121,6 +121,19 @@ class SolutionCandidate:
 
         return candidate
 
+    @classmethod
+    def create_from_updated_sysconf(cls, sysconfig, agent_id: int, new_schedule: np.array):
+        """
+
+        :param sysconfig:
+        :param agent_id:
+        :param new_schedule:
+        :return:
+        """
+        schedule_dict = {k: v.schedule for k, v in sysconfig.schedule_choices.items()}
+        schedule_dict[agent_id] = new_schedule
+        return cls(agent_id=agent_id, schedules=schedule_dict, perf=None)
+
 
 class ScheduleSelection:
     """
@@ -250,6 +263,14 @@ class WorkingMemory:
         :return: the believed system state
         """
         return self._system_config
+
+    @system_config.setter
+    def system_config(self, new_sysconfig: SystemConfig):
+        """
+        Sets the new systemconfig of the WorkingMemory
+        :param new_sysconfig: the new SystemConfig object
+        """
+        self._system_config = new_sysconfig
 
     @property
     def solution_candidate(self) -> SolutionCandidate:

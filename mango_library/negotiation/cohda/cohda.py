@@ -1,7 +1,7 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import copy
 import numpy as np
 
@@ -69,41 +69,50 @@ class COHDA:
         else:
             self._perf_func = perf_func
 
-    def process_cohda_msg(self, content: CohdaMessage):
-        """
-
-        :param content:
-        :return:
-        """
-
-        new_sysconfig, new_candidate = self._perceive(content)
-
-        state_changed = (new_sysconfig is not self._memory.system_config or
-                         new_candidate is not self._memory.solution_candidate)
-
-        if state_changed:
-            sysconf, candidate = self._decide(new_sysconfig, new_candidate)
-
-
-
-    def _perceive(self, content: CohdaMessage) -> (SystemConfig, SolutionCandidate):
+    def perceive(self, messages: List[CohdaMessage]) -> Tuple[SystemConfig, SolutionCandidate]:
         """
 
         :param content:
         :return: a tuple of
         """
+        current_sysconfig = None
+        current_candidate = None
+        for message in messages:
+            if self._memory.target_params is None:
+                self._memory.target_params = message.working_memory.target_params
 
-        sysconfig = self._memory.system_config
-        candidate = self._memory.solution_candidate
+            if current_sysconfig is None:
+                if self._part_id not in self._memory.system_config.schedule_choices:
+                    # if you have not yet selected any schedule in the sysconfig, choose any to start with
 
-        new_sysconf = content.working_memory.system_config
-        new_candidate = content.working_memory.solution_candidate
+                    schedule_choices = self._memory.system_config.schedule_choices
+                    schedule_choices[self._part_id] = ScheduleSelection(
+                        np.array(self._schedule_provider()[0]), self._counter + 1)
+                    self._counter += 1
+                    # we need to create a new class of Systemconfig so the COHDARole recognizes the update
+                    current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
+                else:
+                    current_sysconfig = self._memory.system_config
 
-        sysconfig = SystemConfig.merge(sysconfig_i=sysconfig, sysconfig_j=new_sysconf)
-        candidate = SolutionCandidate.merge(candidate_i=candidate, candidate_j=new_candidate, agent_id=self._part_id,
-                                            perf_func=self._perf_func, target_params=self._memory.target_params)
+            if current_candidate is None:
+                if self._part_id not in self._memory.solution_candidate.schedules:
+                    # if you have not yet selected any schedule in the sysconfig, choose any to start with
+                    schedules = self._memory.solution_candidate.schedules
+                    schedules[self._part_id] = self._schedule_provider()[0]
+                    # we need to create a new class of SolutionCandidate so the COHDARole recognizes the update
+                    current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)
+                    current_candidate.perf = self._perf_func(current_candidate.cluster_schedule, self._memory.target_params)
+                else:
+                    current_candidate = self._memory.solution_candidate
 
-        return sysconfig, candidate
+            new_sysconf = message.working_memory.system_config
+            new_candidate = message.working_memory.solution_candidate
+
+            current_sysconfig = SystemConfig.merge(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
+            current_candidate = SolutionCandidate.merge(candidate_i=current_candidate, candidate_j=new_candidate, agent_id=self._part_id,
+                                                perf_func=self._perf_func, target_params=self._memory.target_params)
+
+        return current_sysconfig, current_candidate
 
     def _decide(self, sysconfig: SystemConfig, candidate: SolutionCandidate) -> Tuple[SystemConfig, SolutionCandidate]:
         """
@@ -113,103 +122,42 @@ class COHDA:
         :return:
         """
         possible_schedules = self._schedule_provider()
-        current_best_performance = float('-inf')
+        current_best_candidate = candidate
         for schedule in possible_schedules:
-            # create new candidate from sysconfig
-            pass
+            if self._is_local_acceptable(schedule):
+                # create new candidate from sysconfig
+                new_candidate = SolutionCandidate.create_from_updated_sysconf(
+                    agent_id=self._part_id, sysconfig=sysconfig, new_schedule=np.array(schedule)
+                )
+                new_performance = self._perf_func(new_candidate.cluster_schedule, self._memory.target_params)
+                if new_performance > current_best_candidate.perf:
+                    new_candidate.perf = new_performance
+                    current_best_candidate = new_candidate
 
+        schedule_in_candidate = current_best_candidate.schedules.get(self._part_id, None)
+        schedule_choice_in_sysconfig = sysconfig.schedule_choices.get(self._part_id, None)
 
-
-    def decide(self, content: CohdaMessage) -> Tuple[WorkingMemory, WorkingMemory]:
-        """
-
-
-        :param content: the incoming COHDA message
-
-        :return: old and new working memory
-        """
-        memory = self._memory
-        selection_counter = self._counter
-
-        if memory.target_params is None:
-            memory.target_params = content.working_memory.target_params
-
-        old_working_memory = copy.deepcopy(memory)
-
-        if self._part_id not in memory.system_config.schedule_choices:
-            memory.system_config.schedule_choices[self._part_id] = ScheduleSelection(None, self._counter)
-
-        own_schedule_selection_wm = memory.system_config.schedule_choices[self._part_id]
-        our_solution_cand, objective_our_candidate = self._evaluate_message(content, memory)
-        possible_schedules = self._schedule_provider()
-        our_selected_schedule = our_solution_cand.schedules[self._part_id] \
-            if self._part_id in our_solution_cand.schedules else None
-        found_new = False
-        for schedule in possible_schedules:
-            our_solution_cand.schedules[self._part_id] = schedule
-            objective_tryout_candidate = self._perf_func(our_solution_cand.cluster_schedule,
-                                                         memory.target_params)
-            if objective_tryout_candidate > objective_our_candidate \
-               and self._is_local_acceptable(schedule):
-                our_selected_schedule = schedule
-                objective_our_candidate = objective_tryout_candidate
-                found_new = True
-
-        if not found_new:
-            our_solution_cand.schedules[self._part_id] = our_selected_schedule
-
-        if not found_new and our_selected_schedule != own_schedule_selection_wm.schedule:
-            our_selected_schedule = own_schedule_selection_wm.schedule
-            found_new = True
-
-        if found_new:
-            memory.system_config.schedule_choices[self._part_id] = \
-                ScheduleSelection(our_selected_schedule, selection_counter + 1)
-            memory.solution_candidate = our_solution_cand
-            our_solution_cand.agent_id = self._part_id
-            our_solution_cand.schedules[self._part_id] = our_selected_schedule
+        if schedule_choice_in_sysconfig is None or \
+                not np.array_equal(schedule_in_candidate, schedule_choice_in_sysconfig.schedule):
+            # update Sysconfig if your schedule in the current sysconf is different to the one in the candidate
+            sysconfig.schedule_choices[self._part_id] = ScheduleSelection(
+                schedule=schedule_in_candidate, counter=self._counter + 1)
+            # update counter
             self._counter += 1
-        return old_working_memory, memory
 
-    def _evaluate_message(self, content: CohdaMessage, memory: WorkingMemory):
-        """Evaluate the incoming message and update our candidate accordingly.
+        return sysconfig, current_best_candidate
 
-        :param content: the incoming message
-        :param memory: our memory
+    def _act(self, new_sysconfig, new_candidate) -> Optional[CohdaMessage]:
+        if new_sysconfig != self._memory.system_config or new_candidate != self._memory.solution_candidate:
+            # update memory
+            self._memory.system_config = new_sysconfig
+            self._memory.solution_candidate = new_candidate
 
-        :return: our new solution candidate and its objective
-        """
+            # send message
+            return CohdaMessage(working_memory=self._memory)
 
-        msg_solution_cand = content.working_memory.solution_candidate
-        our_solution_cand = memory.solution_candidate
-        known_part_ids = set(memory.system_config.schedule_choices.keys())
-        given_part_ids = set(content.working_memory.system_config.schedule_choices.keys())
-
-        for agent_id, their_selection in content.working_memory.system_config.schedule_choices.items():
-            if agent_id in memory.system_config.schedule_choices.keys():
-                our_selection = memory.system_config.schedule_choices[agent_id]
-                if their_selection.counter > our_selection.counter:
-                    memory.system_config.schedule_choices[agent_id] = their_selection
-            else:
-                memory.system_config.schedule_choices[agent_id] = their_selection
-
-        objective_our_candidate = self._perf_func(our_solution_cand.cluster_schedule, memory.target_params)
-
-        if known_part_ids.issubset(given_part_ids):
-            our_solution_cand = msg_solution_cand
-        elif len(given_part_ids.union(known_part_ids)) > len(known_part_ids):
-            missing_ids = given_part_ids.difference(known_part_ids)
-            for missing_id in missing_ids:
-                our_solution_cand.schedules[missing_id] = msg_solution_cand.schedules[missing_id]
-        else:
-            objective_message_candidate = self._perf_func(msg_solution_cand.cluster_schedule, memory.target_params)
-            if objective_message_candidate > objective_our_candidate:
-                our_solution_cand = msg_solution_cand
-            elif objective_message_candidate == objective_our_candidate and \
-                    msg_solution_cand.agent_id > our_solution_cand.agent_id:
-                our_solution_cand = msg_solution_cand
-
-        return our_solution_cand, objective_our_candidate
+        # don't send message
+        return None
 
 
 class COHDARole(NegotiationParticipant):
@@ -243,11 +191,22 @@ class COHDARole(NegotiationParticipant):
         if negotiation.coalition_id not in self._cohda:
             self._cohda[negotiation.coalition_id] = self.create_cohda(assignment.part_id)
 
-        (old, new) = self._cohda[negotiation.coalition_id].decide(message)
+        # (old, new) = self._cohda[negotiation.coalition_id].decide(message)
 
-        if old != new:
-            self.send_to_neighbors(assignment, negotiation, CohdaMessage(new))
+        this_cohda: COHDA = self._cohda[negotiation.coalition_id]
+        old_sysconf = this_cohda._memory.system_config
+        old_candidate = this_cohda._memory.solution_candidate
 
-            # set agent as idle
-            if self.context.inbox_length() == 0:
-                negotiation.active = False
+
+        sysconf, candidate = this_cohda.perceive(messages=[message])
+
+        if sysconf is not old_sysconf or candidate is not old_candidate:
+            sysconf, candidate = this_cohda._decide(sysconfig=sysconf, candidate=candidate)
+            message_to_send = this_cohda._act(new_sysconfig=sysconf, new_candidate=candidate)
+
+            if message_to_send is not None:
+                self.send_to_neighbors(assignment, negotiation, message_to_send)
+
+                # set agent as idle
+                if self.context.inbox_length() == 0:
+                    negotiation.active = False
