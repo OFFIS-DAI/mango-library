@@ -3,7 +3,6 @@ Module that holds the data classes necessary for a COHDA negotiation
 """
 
 from typing import Dict, Callable, Optional
-
 import numpy as np
 
 
@@ -124,11 +123,13 @@ class SolutionCandidate:
     @classmethod
     def create_from_updated_sysconf(cls, sysconfig, agent_id: int, new_schedule: np.array):
         """
-
-        :param sysconfig:
-        :param agent_id:
-        :param new_schedule:
-        :return:
+        Creates a Candidate based on the cluster schedule of a SystemConfiguration,
+        which is changed only for *agent_id* towards *new_schedule*
+        :param sysconfig: the systemconfig the candidate should be based on
+        :param agent_id: the agent_id which schedule should be changed. It is also the agent_id that is the creator of
+        the new Candidate
+        :param new_schedule: the new schedule for *agent_id*
+        :return: A new SolutionCandidate object (without calculated performance!)
         """
         schedule_dict = {k: v.schedule for k, v in sysconfig.schedule_choices.items()}
         schedule_dict[agent_id] = new_schedule
