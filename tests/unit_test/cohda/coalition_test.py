@@ -1,7 +1,68 @@
+import mango.messages.codecs
 import pytest
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 from mango_library.coalition.core import *
+from mango_library.negotiation.util import extra_serializers
+
+
+def test_serialize_coalition_invite():
+    codec = mango.messages.codecs.JSON()
+    for serializer in extra_serializers:
+        codec.add_serializer(*serializer())
+
+    my_data = CoalitionInvite(coalition_id=uuid.uuid1(), topic='test_topic', details='Details')
+
+    encoded = codec.encode(my_data)
+    decoded = codec.decode(encoded)
+
+    assert my_data.coalition_id == decoded.coalition_id
+    assert my_data.topic == decoded.topic
+    assert my_data.details == decoded.details
+
+
+def test_serialize_coalition_response():
+    codec = mango.messages.codecs.JSON()
+    for serializer in extra_serializers:
+        codec.add_serializer(*serializer())
+
+    my_data = CoaltitionResponse(accept=True)
+    my_data_2 = CoaltitionResponse(accept=False)
+
+    encoded = codec.encode(my_data)
+    decoded = codec.decode(encoded)
+    assert my_data.accept == decoded.accept
+
+    encoded = codec.encode(my_data_2)
+    decoded = codec.decode(encoded)
+
+    assert my_data_2.accept == decoded.accept
+
+
+def test_serialize_coalition_assignment():
+    codec = mango.messages.codecs.JSON()
+    for serializer in extra_serializers:
+        codec.add_serializer(*serializer())
+
+    my_data = CoalitionAssignment(coalition_id=uuid.uuid1(), part_id='12',
+                                  neighbors=[('1', ('127.0.0.2', 5555), 'agent0'),
+                                             ('2', ('127.0.0.2', 5556), 'agent0')],
+                                  controller_agent_id='agent_0', controller_agent_addr=('127.0.0.2', 5556),
+                                  topic='test')
+
+    encoded = codec.encode(my_data)
+    decoded = codec.decode(encoded)
+    assert my_data.coalition_id == decoded.coalition_id
+    assert my_data.part_id == decoded.part_id
+    for neighbor_1, neighbor_2 in zip(my_data.neighbors, decoded.neighbors):
+        assert neighbor_1[0] == neighbor_2[0]
+        assert neighbor_1[1][0] == neighbor_2[1][0]
+        assert neighbor_1[1][1] == neighbor_2[1][1]
+        assert neighbor_1[2] == neighbor_2[2]
+    assert my_data.controller_agent_id == decoded.controller_agent_id
+    assert my_data.controller_agent_addr[0] == decoded.controller_agent_addr[0]
+    assert my_data.controller_agent_addr[1] == decoded.controller_agent_addr[1]
+    assert my_data.topic == decoded.topic
 
 
 @pytest.mark.asyncio

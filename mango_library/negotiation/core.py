@@ -14,10 +14,10 @@ Roles:
                                    and wraps the real message in the negotiation wrapper message
 """
 import uuid
-import asyncio
 from typing import Dict, Any
 from abc import ABC, abstractmethod
 
+from mango.messages.codecs import json_serializable
 from mango.role.api import ProactiveRole, SimpleReactiveRole
 from mango.util.scheduling import ConditionalTask
 from ..coalition.core import CoalitionAssignment, CoalitionModel
@@ -100,14 +100,16 @@ class NegotiationModel:
         self._negotiations[negotiation_id] = assignment
 
 
+@json_serializable
 class NegotiationMessage:
     """Message wrapper for negotiation messages.
     """
 
-    def __init__(self, coalition_id: uuid.UUID, negotiation_id: uuid.UUID, message) -> None:
+    def __init__(self, coalition_id: uuid.UUID, negotiation_id: uuid.UUID, message, message_weight=None) -> None:
         self._negotiation_id = negotiation_id
         self._coalition_id = coalition_id
         self._message = message
+        self.message_weight = message_weight
 
     @property
     def negotiation_id(self) -> uuid.UUID:
@@ -126,7 +128,7 @@ class NegotiationMessage:
         return self._coalition_id
 
     @property
-    def messsage(self):
+    def message(self):
         """Return the wrapped message
 
         :return: wrapped message
@@ -152,7 +154,6 @@ class NegotiationStarterRole(ProactiveRole):
         else:
             # when nothing has been provided just match the first coalition
             self._coalition_model_matcher = lambda _: True
-
         
     def setup(self):
         super().setup()
@@ -182,7 +183,8 @@ class NegotiationStarterRole(ProactiveRole):
         negotiation_uuid = uuid.uuid1()
         for neighbor in matched_assignment.neighbors:
             await self.context.send_message(
-                content=NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid, self._message_creator(matched_assignment)),
+                content=NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
+                                           self._message_creator(matched_assignment)),
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
                 acl_metadata={'sender_addr': self.context.addr,
@@ -215,7 +217,7 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
             negotiation_model.add(content.negotiation_id, Negotiation(
                 content.coalition_id, content.negotiation_id))
 
-        self.handle(content.messsage, assignment,
+        self.handle(content.message, assignment,
                     negotiation_model.by_id(content.negotiation_id), meta)
 
     @abstractmethod
@@ -228,7 +230,7 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
         :param meta: meta data
         """
 
-    def send_to_neighbors(self, assignment: CoalitionAssignment, negotation: Negotiation, message):
+    async def send_to_neighbors(self, assignment: CoalitionAssignment, negotation: Negotiation, message):
         """Send a message to all neighbors
 
         :param assignment: the coalition you want to use the neighbors of
@@ -236,21 +238,21 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
         :param message: the message you want to send
         """
         for neighbor in assignment.neighbors:
-            self.send(negotation, message, neighbor)
+            await self.send(negotation, message, neighbor)
 
-    def send(self, negotation: Negotiation, message, neighbor) -> None:
+    async def send(self, negotation: Negotiation, message, neighbor) -> None:
         """Send a negotiation message to the specified neighbor
 
         :param negotation: the negotiation
         :param message: the content you want to send
         :param neighbor: the neighbor
         """
-        asyncio.create_task(self.context.send_message(
+        await self.context.send_message(
             content=NegotiationMessage(negotation.coalition_id, negotation.negotiation_id, message),
             receiver_addr=neighbor[1], receiver_id=neighbor[2],
-            acl_metadata={'sender_addr': self.context.addr,
-                          'sender_id': self.context.aid},
-            create_acl=True))
+            acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
+            create_acl=True
+        )
 
     def is_applicable(self, content, meta):
         return isinstance(content, NegotiationMessage)

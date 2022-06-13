@@ -5,13 +5,16 @@ Module that holds the data classes necessary for a COHDA negotiation
 from typing import Dict, Callable, Optional
 import numpy as np
 
+from mango.messages.codecs import json_serializable
 
+
+@json_serializable
 class SolutionCandidate:
     """
     Model for a solution candidate in COHDA.
     """
 
-    def __init__(self, agent_id: int, schedules: Dict[int, np.array], perf: Optional[float]) -> None:
+    def __init__(self, agent_id: str, schedules: Dict[str, np.array], perf: Optional[float]) -> None:
         self._agent_id = agent_id
         self._schedules = schedules
         self._perf = perf
@@ -29,7 +32,7 @@ class SolutionCandidate:
         return self.agent_id == o.agent_id and self.perf == o.perf and schedules_equal
 
     @property
-    def agent_id(self) -> int:
+    def agent_id(self) -> str:
         """Return the agent id
 
         :return: agent id
@@ -37,7 +40,7 @@ class SolutionCandidate:
         return self._agent_id
 
     @agent_id.setter
-    def agent_id(self, new_id: int):
+    def agent_id(self, new_id: str):
         """Set the agent id
 
         :param new_id: agent id
@@ -45,7 +48,7 @@ class SolutionCandidate:
         self._agent_id = new_id
 
     @property
-    def schedules(self) -> Dict[int, np.array]:
+    def schedules(self) -> Dict[str, np.array]:
         """Return the candidate schedule map (part_id -> schedule)
 
         :return: map part_id -> schedule
@@ -77,7 +80,7 @@ class SolutionCandidate:
         return np.array(list(self.schedules.values()))
 
     @classmethod
-    def merge(cls, candidate_i, candidate_j, agent_id: int, perf_func: Callable, target_params):
+    def merge(cls, candidate_i, candidate_j, agent_id: str, perf_func: Callable, target_params):
         """
         Returns a merged Candidate. If the candidate_i remains unchanged, the same instance of candidate_i is
         returned, otherwise a new object is created with agent_id as candidate.agent_id
@@ -106,7 +109,7 @@ class SolutionCandidate:
                     candidate = candidate_j
         elif keyset_j - keyset_i:
             # If *candidate_j* shares some entries with *candidate_i*, update *candidate_i*
-            new_schedules: Dict[int, np.array] = {}
+            new_schedules: Dict[str, np.array] = {}
             for a in sorted(keyset_i | keyset_j):
                 if a in keyset_i:
                     schedule = candidate_i.schedules[a]
@@ -121,7 +124,7 @@ class SolutionCandidate:
         return candidate
 
     @classmethod
-    def create_from_updated_sysconf(cls, sysconfig, agent_id: int, new_schedule: np.array):
+    def create_from_updated_sysconf(cls, sysconfig, agent_id: str, new_schedule: np.array):
         """
         Creates a Candidate based on the cluster schedule of a SystemConfiguration,
         which is changed only for *agent_id* towards *new_schedule*
@@ -136,6 +139,7 @@ class SolutionCandidate:
         return cls(agent_id=agent_id, schedules=schedule_dict, perf=None)
 
 
+@json_serializable
 class ScheduleSelection:
     """
     A selection of a specific schedule
@@ -166,19 +170,20 @@ class ScheduleSelection:
         return self._schedule
 
 
+@json_serializable
 class SystemConfig:
     """
     Model for a system configuration in COHDA
     """
 
-    def __init__(self, schedule_choices: Dict[int, ScheduleSelection]) -> None:
+    def __init__(self, schedule_choices: Dict[str, ScheduleSelection]) -> None:
         self._schedule_choices = schedule_choices
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, SystemConfig) and self._schedule_choices == o._schedule_choices
 
     @property
-    def schedule_choices(self) -> Dict[int, ScheduleSelection]:
+    def schedule_choices(self) -> Dict[str, ScheduleSelection]:
         """Return the schedule_choices map (part_id -> scheduleSelection)
 
         :return: Dict with part_id -> ScheduleSelection
@@ -202,12 +207,12 @@ class SystemConfig:
         returned, otherwise a new object is created.
         """
 
-        sysconfig_i_schedules: Dict[int, ScheduleSelection] = sysconfig_i.schedule_choices
-        sysconfig_j_schedules: Dict[int, ScheduleSelection] = sysconfig_j.schedule_choices
+        sysconfig_i_schedules: Dict[str, ScheduleSelection] = sysconfig_i.schedule_choices
+        sysconfig_j_schedules: Dict[str, ScheduleSelection] = sysconfig_j.schedule_choices
         key_set_i = set(sysconfig_i_schedules.keys())
         key_set_j = set(sysconfig_j_schedules.keys())
 
-        new_sysconfig: Dict[int, ScheduleSelection] = {}
+        new_sysconfig: Dict[str, ScheduleSelection] = {}
         modified = False
 
         for i, a in enumerate(sorted(key_set_i | key_set_j)):
@@ -231,6 +236,7 @@ class SystemConfig:
         return sysconf
 
 
+@json_serializable
 class WorkingMemory:
     """Working memory of a COHDA agent
     """

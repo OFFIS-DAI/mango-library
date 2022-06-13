@@ -20,8 +20,10 @@ from uuid import UUID
 from ..coalition.core import CoalitionModel
 from .core import NegotiationModel
 from mango.role.api import Role
+from mango.messages.codecs import json_serializable
 
 
+@json_serializable
 class TerminationMessage:
     """Message for sending the remaining weight to the controller
     """
@@ -29,7 +31,6 @@ class TerminationMessage:
         self._weight = weight
         self._coalition_id = coalition_id
         self._negotiation_id = negotiation_id
-
 
     @property
     def weight(self) -> Fraction:
@@ -72,7 +73,7 @@ class NegotiationTerminationRole(Role):
         self.context.subscribe_send(self, self.on_send)
         self.context.subscribe_message(self, self.handle_term_msg, lambda c, _: isinstance(c, TerminationMessage))
         self.context.subscribe_message(self, self.handle_msg_start,
-                                       lambda c, _: hasattr(c, 'negotiation_id'), priority=float('-inf'))
+                                       lambda c, _: hasattr(c, 'negotiation_id') and not isinstance(c, TerminationMessage), priority=float('-inf'))
 
     def handle_term_msg(self, content: TerminationMessage, _: Dict[str, Any]) -> None:
         """Handle the termination message.
@@ -80,7 +81,7 @@ class NegotiationTerminationRole(Role):
         :param content: the message
         :param _: meta data
         """
-        self._weight_map[content.negotiation_id] = self._weight_map[content.negotiation_id] + Fraction(content.weight)
+        self._weight_map[content.negotiation_id] += content.weight
 
     def on_send(self, content,
                 receiver_addr: Union[str, Tuple[str, int]], *,
@@ -97,8 +98,8 @@ class NegotiationTerminationRole(Role):
         :param acl_metadata: ACL meta data. Defaults to None.
         :param mqtt_kwargs: Args for MQTT. Defaults to None.
         """
-        if hasattr(content, 'negotiation_id'):
-            if not content.negotiation_id in self._weight_map:
+        if hasattr(content, 'negotiation_id') and not isinstance(content, TerminationMessage):
+            if content.negotiation_id not in self._weight_map:
                 self._weight_map[content.negotiation_id] = Fraction(1, 1) if self._is_controller else Fraction(0, 1)
             content.message_weight = self._weight_map[content.negotiation_id] / 2
             self._weight_map[content.negotiation_id] /= 2
@@ -129,10 +130,9 @@ class NegotiationTerminationRole(Role):
                 (content.negotiation_id not in self._termination_check_tasks or
                  self._termination_check_tasks[content.negotiation_id].done()):
             # create a new conditional task that checks for termination
-            self._termination_check_tasks[content.negotiation_id] = \
-                self.context.schedule_conditional_task(
-                    self._send_weight(negotiation_model, content),
-                    condition_func=_check_weight_condition)
+            self._termination_check_tasks[content.negotiation_id] = self.context.schedule_conditional_task(
+                self._send_weight(negotiation_model, content),
+                condition_func=_check_weight_condition)
 
     async def _send_weight(self, negotiation_model: NegotiationModel, content):
         """
@@ -148,9 +148,7 @@ class NegotiationTerminationRole(Role):
         self._weight_map[content.negotiation_id] = Fraction(0, 1)
         # Send weight
         await self.context.send_message(
-            content=TerminationMessage(current_weight,
-                                       content.coalition_id,
-                                       content.negotiation_id),
+            content=TerminationMessage(current_weight, content.coalition_id, content.negotiation_id),
             receiver_addr=coalition.controller_agent_addr,
             receiver_id=coalition.controller_agent_id,
             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
