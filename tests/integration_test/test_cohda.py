@@ -130,7 +130,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
 
     agents[0].add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
 
-    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=25)
+    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=40)
 
     agents[0].add_role(CohdaNegotiationStarterRole(
         ([n_agents//4, n_agents//4, n_agents//4, n_agents//4], [1, 1, 1, 1])
