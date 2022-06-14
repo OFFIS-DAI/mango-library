@@ -107,59 +107,58 @@ async def test_coalition_to_cohda_with_termination_different_container():
     assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
 
 
-# @pytest.mark.asyncio
-# async def test_coalition_to_cohda_with_termination_long_scenario():
-#     # create containers
-#
-#     c = await Container.factory(addr=('127.0.0.2', 5555))
-#
-#     s_array = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]
-#
-#     # create agents
-#     n_agents = 60
-#     agents = []
-#     addrs = []
-#     for i in range(n_agents):
-#         a = RoleAgent(c)
-#         cohda_role = COHDARole(lambda: s_array)
-#         a.add_role(cohda_role)
-#         a.add_role(CoalitionParticipantRole())
-#         a.add_role(NegotiationTerminationRole(i == 0))
-#         agents.append(a)
-#         addrs.append((c.addr, a._aid))
-#
-#     agents[0].add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
-#
-#     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=40)
-#
-#     agents[0].add_role(CohdaNegotiationStarterRole(
-#         ([n_agents//4, n_agents//4, n_agents//4, n_agents//4], [1, 1, 1, 1])
-#     ))
-#
-#     for a in agents:
-#         if a._check_inbox_task.done():
-#             if a._check_inbox_task.exception() is not None:
-#                 raise a._check_inbox_task.exception()
-#             else:
-#                 assert False, f'check_inbox terminated unexpectedly.'
-#
-#     await asyncio.wait_for(wait_for_term(agents), timeout=40)
-#
-#     for agent in agents:
-#         if list(agent.roles[2]._weight_map.values())[0] != 0:
-#             print('Final weight:', agent.roles[2]._weight_map)
-#
-#     # gracefully shutdown
-#     for a in agents:
-#         await a.shutdown()
-#     await c.shutdown()
-#
-#     assert len(asyncio.all_tasks()) == 1
-#     assert np.array_equal(
-#         next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.cluster_schedule.sum(axis=0),
-#         [n_agents//4, n_agents//4, n_agents//4, n_agents//4])
-#     assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
-#
+@pytest.mark.asyncio
+async def test_coalition_to_cohda_with_termination_long_scenario():
+    # create containers
+
+    c = await Container.factory(addr=('127.0.0.2', 5555))
+    s_array = [[1], [0]]
+    n_agents = 40
+    agents = []
+    addrs = []
+
+    # create agents
+    for i in range(n_agents):
+        a = RoleAgent(c)
+        cohda_role = COHDARole(lambda: s_array)
+        a.add_role(cohda_role)
+        a.add_role(CoalitionParticipantRole())
+        a.add_role(NegotiationTerminationRole(i == 0))
+        agents.append(a)
+        addrs.append((c.addr, a._aid))
+
+    agents[0].add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
+
+    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+
+    agents[0].add_role(CohdaNegotiationStarterRole(
+        ([n_agents//2], [1])
+    ))
+
+    for a in agents:
+        if a._check_inbox_task.done():
+            if a._check_inbox_task.exception() is not None:
+                raise a._check_inbox_task.exception()
+            else:
+                assert False, f'check_inbox terminated unexpectedly.'
+
+    await asyncio.wait_for(wait_for_term(agents), timeout=15)
+
+    for agent in agents:
+        if list(agent.roles[2]._weight_map.values())[0] != 0:
+            print('Final weight:', agent.roles[2]._weight_map)
+
+    # gracefully shutdown
+    for a in agents:
+        await a.shutdown()
+    await c.shutdown()
+
+    assert len(asyncio.all_tasks()) == 1
+    assert np.array_equal(
+        next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.cluster_schedule.sum(axis=0),
+        [n_agents//2])
+    assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
+
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
