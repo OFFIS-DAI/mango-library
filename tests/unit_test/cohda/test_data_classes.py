@@ -180,18 +180,11 @@ def test_candidate_merge(schedules_i: Dict[str, List], agent_id_i: str, perf_i: 
     expected_candidate = SolutionCandidate(schedules={k: np.array(v) for k, v in expected_schedules.items()},
                                            agent_id=expected_agent_id, perf=expected_perf)
 
-    def sum_schedule(cluster_schedule, target_params):
+    def sum_schedule(cluster_schedule, _):
         return cluster_schedule.sum()
 
     assert SolutionCandidate.merge(candidate_i=candidate_i, candidate_j=candidate_j, agent_id=own_agent_id,
                                    perf_func=sum_schedule, target_params=None) == expected_candidate
-
-
-def test_sysconf_cluster_schedule():
-    selections_1 = ScheduleSelection(schedule=np.array([1, 2, 3]), counter=42)
-    selections_2 = ScheduleSelection(schedule=np.array([4, 2, 1]), counter=4)
-    sysconf = SystemConfig({'2': selections_2, '1': selections_1})
-    assert np.array_equal(sysconf.cluster_schedule, np.array([[4, 2, 1], [1, 2, 3]]))
 
 
 def test_candidate_cluster_schedule():
