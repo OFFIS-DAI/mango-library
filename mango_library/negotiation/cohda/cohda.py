@@ -1,7 +1,7 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import asyncio
 import numpy as np
 
@@ -65,22 +65,45 @@ class COHDA:
         self._counter = 0
         self._part_id = part_id
         if perf_func is None:
-            def deviation_to_target_schedule(cluster_schedule: np.array, target_parameters):
-                if cluster_schedule.size == 0:
-                    return float('-inf')
-                target_schedule, weights = target_parameters
-                sum_cs = cluster_schedule.sum(axis=0)  # sum for each interval
-                diff = np.abs(np.array(target_schedule) - sum_cs)  # deviation to the target schedule
-                w_diff = diff * np.array(weights)  # multiply with weight vector
-                result = -np.sum(w_diff)
-                return float(result)
-            self._perf_func = deviation_to_target_schedule
+            self._perf_func = self.deviation_to_target_schedule
         else:
             self._perf_func = perf_func
 
-    def perceive(self, messages: List[CohdaMessage]) -> Tuple[SystemConfig, SolutionCandidate]:
-        """
+    @staticmethod
+    def deviation_to_target_schedule(cluster_schedule: np.array, target_parameters):
+        if cluster_schedule.size == 0:
+            return float('-inf')
+        target_schedule, weights = target_parameters
+        sum_cs = cluster_schedule.sum(axis=0)  # sum for each interval
+        diff = np.abs(np.array(target_schedule) - sum_cs)  # deviation to the target schedule
+        w_diff = diff * np.array(weights)  # multiply with weight vector
+        result = -np.sum(w_diff)
+        return float(result)
 
+    def handle_cohda_msgs(self, messages: List[CohdaMessage]) -> Optional[CohdaMessage]:
+        """
+        This called by the COHDARole. It takes a List of COHDA messages, executes perceive, decide, act and returns
+        a CohdaMessage in case the working memory has changed and None otherwise
+        :param messages: The list of received CohdaMessages
+        :return: The message to be sent to the neighbors, None if no message has to be sent
+        """
+        old_sysconf = self._memory.system_config
+        old_candidate = self._memory.solution_candidate
+
+        # perceive
+        sysconf, candidate = self._perceive(messages)
+
+        # decide
+        if sysconf is not old_sysconf or candidate is not old_candidate:
+            sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
+            # act
+            return self._act(new_sysconfig=sysconf, new_candidate=candidate)
+        else:
+            return None
+
+    def _perceive(self, messages: List[CohdaMessage]) -> Tuple[SystemConfig, SolutionCandidate]:
+        """
+        Updates the current knowledge
         :param messages: The List of received CohdaMessages
         :return: a tuple of SystemConfig, Candidate as a result of perceive
         """
@@ -88,17 +111,18 @@ class COHDA:
         current_candidate = None
         for message in messages:
             if self._memory.target_params is None:
+                # get target parameters if not known
                 self._memory.target_params = message.working_memory.target_params
 
             if current_sysconfig is None:
                 if self._part_id not in self._memory.system_config.schedule_choices:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
-
                     schedule_choices = self._memory.system_config.schedule_choices
                     schedule_choices[self._part_id] = ScheduleSelection(
                         np.array(self._schedule_provider()[0]), self._counter + 1)
                     self._counter += 1
-                    # we need to create a new class of Systemconfig so the COHDARole recognizes the update
+                    # we need to create a new class of Systemconfig so the updates are
+                    # recognized in handle_cohda_msgs()
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
                 else:
                     current_sysconfig = self._memory.system_config
@@ -108,7 +132,8 @@ class COHDA:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
                     schedules[self._part_id] = self._schedule_provider()[0]
-                    # we need to create a new class of SolutionCandidate so the COHDARole recognizes the update
+                    # we need to create a new class of SolutionCandidate so the updates are
+                    # recognized in handle_cohda_msgs()
                     current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)
                     current_candidate.perf = self._perf_func(current_candidate.cluster_schedule,
                                                              self._memory.target_params)
@@ -118,6 +143,7 @@ class COHDA:
             new_sysconf = message.working_memory.system_config
             new_candidate = message.working_memory.solution_candidate
 
+            # Merge new information into current_sysconfig and current_candidate
             current_sysconfig = SystemConfig.merge(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
             current_candidate = SolutionCandidate.merge(candidate_i=current_candidate,
                                                         candidate_j=new_candidate,
@@ -127,12 +153,13 @@ class COHDA:
 
         return current_sysconfig, current_candidate
 
-    def decide(self, sysconfig: SystemConfig, candidate: SolutionCandidate) -> Tuple[SystemConfig, SolutionCandidate]:
+    def _decide(self, sysconfig: SystemConfig, candidate: SolutionCandidate) -> Tuple[SystemConfig, SolutionCandidate]:
         """
-
-        :param sysconfig:
-        :param candidate:
-        :return:
+        Check whether a better SolutionCandidate can be created based on the current state of the negotiation
+        :param sysconfig: Current SystemConfig
+        :param candidate: Current SolutionCandidate
+        :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
+        found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
         possible_schedules = self._schedule_provider()
         current_best_candidate = candidate
@@ -143,6 +170,7 @@ class COHDA:
                     agent_id=self._part_id, sysconfig=sysconfig, new_schedule=np.array(schedule)
                 )
                 new_performance = self._perf_func(new_candidate.cluster_schedule, self._memory.target_params)
+                # only keep new candidates that perform better than the current one
                 if new_performance > current_best_candidate.perf:
                     new_candidate.perf = new_performance
                     current_best_candidate = new_candidate
@@ -160,9 +188,9 @@ class COHDA:
 
         return sysconfig, current_best_candidate
 
-    def act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> CohdaMessage:
+    def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> CohdaMessage:
         """
-        Stores the new SystemCondig and SolutionCandidate in Memory and returns the COHDA message that should be sent
+        Stores the new SystemConfig and SolutionCandidate in Memory and returns the COHDA message that should be sent
         :param new_sysconfig: The SystemConfig as a result from perceive and decide
         :param new_candidate: The SolutionCandidate as a result from perceive and decide
         :return: The COHDA message that should be sent
@@ -239,31 +267,20 @@ class COHDARole(NegotiationParticipant):
                 """
 
                 if len(self._cohda_msg_queues[negotiation.coalition_id]) > 0:
-                    # copy queue
+                    # get queue
                     cohda_message_queue, self._cohda_msg_queues[negotiation.coalition_id] = \
                         self._cohda_msg_queues[negotiation.coalition_id], []
-                    # get cohda object
-                    current_cohda = self._cohda[negotiation.coalition_id]
-                    # copy old memory
-                    old_sysconf = current_cohda._memory.system_config
-                    old_candidate = current_cohda._memory.solution_candidate
 
-                    # perceive
-                    sysconf, candidate = current_cohda.perceive(cohda_message_queue)
+                    message_to_send = self._cohda[negotiation.coalition_id].handle_cohda_msgs(cohda_message_queue)
 
-                    # decide
-                    if sysconf is not old_sysconf or candidate is not old_candidate:
-                        sysconf, candidate = current_cohda.decide(sysconfig=sysconf, candidate=candidate)
-                        # act
-                        message_to_send = current_cohda.act(new_sysconfig=sysconf, new_candidate=candidate)
-                        if message_to_send is not None:
-                            await self.send_to_neighbors(assignment, negotiation,
-                                                         message_to_send)
+                    if message_to_send is not None:
+                        await self.send_to_neighbors(assignment, negotiation, message_to_send)
 
                     else:
                         # set the negotiation as inactive as the incoming information was known already
                         negotiation.active = False
                 else:
+                    # set the negotiation as inactive as no message has arrived
                     negotiation.active = False
 
             self._cohda_tasks.append(self.context.schedule_periodic_task(process_msg_queue,

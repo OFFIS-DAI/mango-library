@@ -13,7 +13,7 @@ def test_cohda_init():
                   is_local_acceptable=lambda s: True,
                   part_id='1')
     cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate('1', {}, 0)))
-    cohda.perceive([cohda_message])
+    cohda._perceive([cohda_message])
 
     assert cohda._memory.target_params == ([1, 2, 3], [1, 1, 1])
 
@@ -22,8 +22,8 @@ def test_cohda_selection_multi():
     cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
                   is_local_acceptable=lambda s: True, part_id='1')
     cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate('1', {}, 0)))
-    sysconf, candidate = cohda.perceive([cohda_message])
-    sysconf, candidate = cohda.decide(candidate=candidate, sysconfig=sysconf)
+    sysconf, candidate = cohda._perceive([cohda_message])
+    sysconf, candidate = cohda._decide(candidate=candidate, sysconfig=sysconf)
 
     assert np.array_equal(candidate.schedules['1'], [1, 1, 1])
     assert sysconf.schedule_choices['1'].counter == 2
@@ -38,7 +38,7 @@ def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate,
                   is_local_acceptable=lambda s: True, part_id='1')
     cohda._memory.system_config = old_sysconfig
     cohda._memory.solution_candidate = old_candidate
-    new_sysconfig, new_candidate = cohda.perceive(messages=messages)
+    new_sysconfig, new_candidate = cohda._perceive(messages=messages)
     for part_id in new_sysconfig.schedule_choices:
         assert np.array_equal(
             new_sysconfig.schedule_choices[part_id].schedule, expected_sysconfig.schedule_choices[part_id].schedule), \
@@ -59,7 +59,7 @@ def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate,
 def test_decide(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, cohda_object: COHDA,
                 expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
 
-    new_sysconfig, new_candidate = cohda_object.decide(sysconfig=old_sysconfig, candidate=old_candidate)
+    new_sysconfig, new_candidate = cohda_object._decide(sysconfig=old_sysconfig, candidate=old_candidate)
     for part_id in new_sysconfig.schedule_choices:
         assert np.array_equal(
             new_sysconfig.schedule_choices[part_id].schedule, expected_sysconfig.schedule_choices[part_id].schedule), \
