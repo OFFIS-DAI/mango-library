@@ -48,7 +48,7 @@ async def test_successful_negotiation_thirty_agents_with_withdrawals():
     # the topology of the agents is a simple ring topology, therefore it needs a time to live from number_of_agents -1
     # to make sure one message can be forwarded through the complete network
     ttl = 29
-    agents, container = await create_agents(number_of_agents=number_of_agents, ttl=ttl, time_to_sleep=15)
+    agents, container = await create_agents(number_of_agents=number_of_agents, ttl=ttl, time_to_sleep=25)
 
     for agent in agents:
         agent.update_flexibility(t_start=0, min_p=0, max_p=10)
