@@ -1,0 +1,1 @@
+Winzent Implementation on the basis of: Eric MSP Veith: Universal Smart Grid Agent for Distributed Power Generation Management, 2017.
