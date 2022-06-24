@@ -30,6 +30,9 @@ class WinzentAgent(Agent):
         # in final, the result for a disequilibrium is stored
         self.final = {}
 
+        # PGASC in result, the final negotiated (accepted and acknowledged) result is saved
+        self.result = {}
+
         # store other agents as neighbors in a list
         self.neighbors = {}
 
@@ -472,6 +475,7 @@ class WinzentAgent(Agent):
                         msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                         is_answer=True, answer_to=reply.id,
                         sender=self._aid, receiver=reply.sender,
+                        value=reply.value,  # PGASC added value to AAN messages to confirm the results
                         ttl=self._current_ttl, id=str(uuid.uuid4()))
                     await self.send_message(answer)
                     self._adapted_flex_according_to_msgs.append(reply.id)
@@ -491,6 +495,10 @@ class WinzentAgent(Agent):
                 return
             # Remove the Acknowledgement from the solution journal
             self.governor.solution_journal.remove_message(reply.answer_to)
+
+            # PGASC: Save the acknowledged value in result
+            self.save_accepted_values(reply)
+
             # if the solution journal is empty afterwards, the agent does not
             # wait for any further acknowledgments and can stop the negotiation
             if self.governor.solution_journal.is_empty():
@@ -509,6 +517,20 @@ class WinzentAgent(Agent):
                     del self._acknowledgements_sent[reply.id]
                     self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
                     self._adapted_flex_according_to_msgs.remove(reply.answer_to)
+
+                    # PGASC add logging
+                    logging.debug(
+                        f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value {reply.value}"
+                    )
+
+    def save_accepted_values(self, message):
+        # PGASC add logging
+        logging.debug(
+            f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} from sgen {message.sender}"
+        )
+        if message.sender not in self.result.keys():
+            self.result[message.sender] = 0
+        self.result[message.sender] += message.value[0]
 
     async def reset(self):
         """
