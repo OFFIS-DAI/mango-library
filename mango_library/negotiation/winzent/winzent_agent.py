@@ -770,6 +770,8 @@ class WinzentAgent(Agent):
         logger.debug(
             f"*** {self._aid} sends message with type {winzent_message.msg_type}. ***")
 
+        # PGASC added deep copy of messages
+        message = copy_winzent_message(winzent_message)
         if receiver is not None:
             if receiver in self.neighbors.keys():
                 await self._container.send_message(
@@ -790,6 +792,21 @@ class WinzentAgent(Agent):
                                   'sender_id': self._aid},
                     create_acl=True
                 )
+
+
+def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
+    """PGASC fix: deep copy of winzent3 message object (otherwise two agents manipulate the same object and its ttl)"""
+    return WinzentMessage(
+        msg_type=message.msg_type,
+        sender=message.sender,
+        is_answer=message.is_answer,
+        receiver=message.receiver,
+        time_span=message.time_span,
+        value=message.value[:],
+        ttl=message.ttl,
+        id=message.id,
+        answer_to=message.answer_to,
+    )
 
 
 class DictList:
