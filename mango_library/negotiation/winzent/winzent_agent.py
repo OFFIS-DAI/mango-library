@@ -167,6 +167,9 @@ class WinzentAgent(Agent):
                 logger.debug(
                     "trigger_solver: stopped waiting for acknowledgments"
                 )
+                # PGASC adaption: reset final so unsuccessful negotiations are removed from final
+                # self.final = {}
+
                 self._waiting_for_acknowledgements = False
                 for acc_msg in self._curr_sent_acceptances:
                     withdrawal = WinzentMessage(time_span=acc_msg.time_span,
@@ -591,7 +594,7 @@ class WinzentAgent(Agent):
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
-            print(
+            logger.debug(
                 f'*** {self._aid} has not enough flexibility. Timeout? '
                 f'{self.governor.triggered_due_to_timeout} ***')
             if not self.governor.triggered_due_to_timeout:
@@ -728,7 +731,7 @@ class WinzentAgent(Agent):
         if self._solution_found:
             return
         # PGASC changed print to logging
-        logger.info(
+        logger.debug(
             f'*** {self._aid} has no solution after timeout. ***')
         self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
         self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
