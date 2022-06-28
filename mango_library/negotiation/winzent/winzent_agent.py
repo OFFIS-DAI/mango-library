@@ -166,10 +166,13 @@ class WinzentAgent(Agent):
                                                 sender=self._aid
                                                 )
                     await self.send_message(withdrawal, receiver=acc_msg.receiver)
-                await asyncio.sleep(self._time_to_sleep)
-                await self.reset()
+
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
                 self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
+
+                await asyncio.sleep(self._time_to_sleep)
+                await self.reset()
+
                 self._curr_sent_acceptances = []
 
     async def handle_internal_request(self, requirement):
@@ -415,10 +418,8 @@ class WinzentAgent(Agent):
             # If there is no message in solution journal or
             # the solution journal does not contain this message, it is
             # irrelevant
-            if self.governor.solution_journal.is_empty():
-                return
-            if not self.governor.solution_journal.contains_message(
-                    reply.answer_to):
+            if self.governor.solution_journal.is_empty() or not self.governor.solution_journal.contains_message(
+                    reply.answer_to) or not self._waiting_for_acknowledgements:
                 return
             # Remove the Acknowledgement from the solution journal
             self.governor.solution_journal.remove_message(reply.answer_to)
