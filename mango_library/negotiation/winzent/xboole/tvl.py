@@ -9,7 +9,7 @@ class Tvl:
         self._vv = collections.OrderedDict()
         self._max = 0
         if type(vv) == list:
-            if len(vv) is not 0:
+            if len(vv) != 0:
                 for i in range(0, len(vv)):
                     self._vv[vv[i]] = []
         elif vv is not None:
