@@ -23,19 +23,19 @@ from typing import Dict, Any, List, Tuple, Union
 
 from mango.role.api import ProactiveRole, Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
+from mango.messages.codecs import json_serializable
 
 
+@json_serializable
 class CoalitionAssignment:
     """Message/Model for assigning a participant to an already accepted coalition. In this
     assignment all relevant information about the coalition are contained,
     f.e. participant id, neighbors, ... .
     """
 
-    def __init__(self,
-                 coalition_id: UUID,
-                 neighbors: List[Tuple[int, Union[str, Tuple[str, int]], str]],
+    def __init__(self, coalition_id: UUID, neighbors: List[Tuple[str, Union[str, Tuple[str, int]], str]],
                  topic: str,
-                 part_id: int,
+                 part_id: str,
                  controller_agent_id: str,
                  controller_agent_addr):
         self._coalition_id = coalition_id
@@ -54,7 +54,7 @@ class CoalitionAssignment:
         return self._coalition_id
 
     @property
-    def neighbors(self) -> List[Tuple[int, Union[str, Tuple[str, int]], str]]:
+    def neighbors(self) -> List[Tuple[str, Union[str, Tuple[str, int]], str]]:
         """Neighbors of the participant.
 
         :return: List of the participant, a participant is modelled as
@@ -71,7 +71,7 @@ class CoalitionAssignment:
         return self._topic
 
     @property
-    def part_id(self) -> int:
+    def part_id(self) -> str:
         """The id of the participant
 
         :return: id
@@ -137,6 +137,7 @@ class CoalitionModel:
         return coalition_id in self._assignments
 
 
+@json_serializable
 class CoalitionInvite:
     """Message for inviting an agent to a coalition.
     """
@@ -171,6 +172,7 @@ class CoalitionInvite:
         return self._details
 
 
+@json_serializable
 class CoaltitionResponse:
     """Message for responding to a coalition invite.
     """
@@ -187,9 +189,9 @@ class CoaltitionResponse:
         return self._accept
 
 
-def clique_creator(participants: List[Tuple[int, Union[str, Tuple[str, int]], str]]) -> \
-        Dict[Tuple[int, Union[str, Tuple[str, int]], str],
-             List[Tuple[int, Union[str, Tuple[str, int]], str]]]:
+def clique_creator(participants: List[Tuple[str, Union[str, Tuple[str, int]], str]]) -> \
+        Dict[Tuple[str, Union[str, Tuple[str, int]], str],
+             List[Tuple[str, Union[str, Tuple[str, int]], str]]]:
     """Create a clique topology
 
     :param participants: the list of all participants
@@ -248,12 +250,10 @@ class CoalitionInitiatorRole(ProactiveRole):
 
     def handle_msg(self, content: CoaltitionResponse, meta: Dict[str, Any]) -> None:
         """Handle the responses to the invites.
-
-
         :param content: the invite response
         :param meta: meta data
         """
-        self._part_to_state[(meta['sender_addr'],
+        self._part_to_state[(meta['sender_addr'][0], meta['sender_addr'][1],
                              meta['sender_id'])] = content.accept
 
         if len(self._part_to_state) == len(self._participants) and not self._assignments_sent:
@@ -264,9 +264,10 @@ class CoalitionInitiatorRole(ProactiveRole):
         part_id = 0
         accepted_participants = []
         for part in self._participants:
-            if part in self._part_to_state and self._part_to_state[part]:
+            part_key = part[0][0], part[0][1], part[1]
+            if part_key in self._part_to_state and self._part_to_state[part_key]:
                 part_id += 1
-                accepted_participants.append((part_id, part[0], part[1]))
+                accepted_participants.append((str(part_id), (part_key[0], part_key[1]), part_key[2]))
 
         part_to_neighbors = self._topology_creator(accepted_participants)
         for part in accepted_participants:
