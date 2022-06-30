@@ -146,6 +146,14 @@ class SystemConfig:
         """
         return self._schedule_choices
 
+    @property
+    def cluster_schedule(self) -> np.array:
+        """
+        Return the cluster schedule of the current sysconfig
+        :return: the cluster schedule as np.array
+        """
+        return np.array([selection.schedule for selection in self.schedule_choices.values()])
+
 
 @json_serializable
 class WorkingMemory:
