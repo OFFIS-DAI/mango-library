@@ -1,7 +1,7 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any, Tuple, Optional, Callable
 import asyncio
 import numpy as np
 
@@ -144,8 +144,8 @@ class COHDA:
             new_candidate = message.working_memory.solution_candidate
 
             # Merge new information into current_sysconfig and current_candidate
-            current_sysconfig = SystemConfig.merge(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
-            current_candidate = SolutionCandidate.merge(candidate_i=current_candidate,
+            current_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
+            current_candidate = self._merge_candidates(candidate_i=current_candidate,
                                                         candidate_j=new_candidate,
                                                         agent_id=self._part_id,
                                                         perf_func=self._perf_func,
@@ -200,6 +200,89 @@ class COHDA:
         self._memory.solution_candidate = new_candidate
         # return COHDA message
         return CohdaMessage(working_memory=self._memory)
+
+    @staticmethod
+    def _merge_sysconfigs(sysconfig_i: SystemConfig, sysconfig_j: SystemConfig):
+        """
+        Merge *sysconf_i* and *sysconf_j* and return the result.
+
+        Returns a merged systemconfig. If the sysconfig_i remains unchanged, the same instance of sysconfig_i is
+        returned, otherwise a new object is created.
+        """
+
+        sysconfig_i_schedules: Dict[str, ScheduleSelection] = sysconfig_i.schedule_choices
+        sysconfig_j_schedules: Dict[str, ScheduleSelection] = sysconfig_j.schedule_choices
+        key_set_i = set(sysconfig_i_schedules.keys())
+        key_set_j = set(sysconfig_j_schedules.keys())
+
+        new_sysconfig: Dict[str, ScheduleSelection] = {}
+        modified = False
+
+        for i, a in enumerate(sorted(key_set_i | key_set_j)):
+            # An a might be in key_set_i, key_set_j or in both!
+            if a in key_set_i and \
+                    (a not in key_set_j or sysconfig_i_schedules[a].counter >= sysconfig_j_schedules[a].counter):
+                # Use data of sysconfig_i
+                schedule_selection = sysconfig_i_schedules[a]
+            else:
+                # Use data of sysconfig_j
+                schedule_selection = sysconfig_j_schedules[a]
+                modified = True
+
+            new_sysconfig[a] = schedule_selection
+
+        if modified:
+            sysconf = SystemConfig(new_sysconfig)
+        else:
+            sysconf = sysconfig_i
+
+        return sysconf
+
+    @staticmethod
+    def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate,
+                          agent_id: str, perf_func: Callable, target_params):
+        """
+        Returns a merged Candidate. If the candidate_i remains unchanged, the same instance of candidate_i is
+        returned, otherwise a new object is created with agent_id as candidate.agent_id
+        :param candidate_i: The first candidate
+        :param candidate_j: The second candidate
+        :param agent_id: The agent_id that defines who is the creator of a new candidate
+        :param perf_func: The performance function
+        :param target_params: The current target parameters (e. g. a target schedule)
+        :return:  A merged SolutionCandidate. If the candidate_i remains unchanged, the same instance of candidate_i is
+        returned, otherwise a new object is created.
+        """
+        keyset_i = set(candidate_i.schedules.keys())
+        keyset_j = set(candidate_j.schedules.keys())
+        candidate = candidate_i  # Default candidate is *i*
+
+        if keyset_i < keyset_j:
+            # Use *j* if *K_i* is a true subset of *K_j*
+            candidate = candidate_j
+        elif keyset_i == keyset_j:
+            # Compare the performance if the keyset is equal
+            if candidate_j.perf > candidate_i.perf:
+                # Choose *j* if it performs better
+                candidate = candidate_j
+            elif candidate_j.perf == candidate_i.perf:
+                # If both perform equally well, order them by name
+                if candidate_j.agent_id < candidate_i.agent_id:
+                    candidate = candidate_j
+        elif keyset_j - keyset_i:
+            # If *candidate_j* shares some entries with *candidate_i*, update *candidate_i*
+            new_schedules: Dict[str, np.array] = {}
+            for a in sorted(keyset_i | keyset_j):
+                if a in keyset_i:
+                    schedule = candidate_i.schedules[a]
+                else:
+                    schedule = candidate_j.schedules[a]
+                new_schedules[a] = schedule
+
+            # create new SolutionCandidate
+            candidate = SolutionCandidate(agent_id=agent_id, schedules=new_schedules, perf=None)
+            candidate.perf = perf_func(candidate.cluster_schedule, target_params)
+
+        return candidate
 
 
 class COHDARole(NegotiationParticipant):

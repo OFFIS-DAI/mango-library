@@ -2,7 +2,7 @@ import fractions
 
 from mango_library.negotiation.cohda.data_classes import SystemConfig,\
     SolutionCandidate, ScheduleSelection, WorkingMemory
-from mango_library.negotiation.cohda.cohda import CohdaMessage
+from mango_library.negotiation.cohda.cohda import CohdaMessage, COHDA
 from mango_library.negotiation.util import extra_serializers
 from mango_library.negotiation.core import *
 from mango.messages.codecs import *
@@ -149,7 +149,7 @@ def test_sysconf_merge(schedules_i: Dict[str, Tuple[List, int]], schedules_j: Di
     sysconfig_j = SystemConfig(schedule_choices=schedule_selections_j)
     expected_sysconfig = SystemConfig(schedule_choices=expected_selections)
 
-    merged_sysconfig = SystemConfig.merge(sysconfig_i, sysconfig_j)
+    merged_sysconfig = COHDA._merge_sysconfigs(sysconfig_i, sysconfig_j)
     assert merged_sysconfig == expected_sysconfig
     assert (sysconfig_i == merged_sysconfig) == (sysconfig_i is merged_sysconfig)
 
@@ -183,7 +183,7 @@ def test_candidate_merge(schedules_i: Dict[str, List], agent_id_i: str, perf_i: 
     def sum_schedule(cluster_schedule, _):
         return cluster_schedule.sum()
 
-    assert SolutionCandidate.merge(candidate_i=candidate_i, candidate_j=candidate_j, agent_id=own_agent_id,
+    assert COHDA._merge_candidates(candidate_i=candidate_i, candidate_j=candidate_j, agent_id=own_agent_id,
                                    perf_func=sum_schedule, target_params=None) == expected_candidate
 
 
