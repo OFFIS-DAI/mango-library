@@ -813,10 +813,10 @@ class WinzentAgent(Agent):
         logger.debug(
             f"*** {self._aid} sends message with type {winzent_message.msg_type}. ***")
 
-        # PGASC added deep copy of messages
-        message = copy_winzent_message(winzent_message)
         if receiver is not None:
             if receiver in self.neighbors.keys():
+                # PGASC added deep copy of messages
+                message = copy_winzent_message(winzent_message)
                 await self._container.send_message(
                     content=message, receiver_addr=self.neighbors[receiver],
                     receiver_id=receiver,
@@ -824,6 +824,8 @@ class WinzentAgent(Agent):
                                   'sender_id': self._aid}, create_acl=True)
         else:
             for neighbor in self.neighbors.keys():
+                # PGASC added deep copy of messages - every neighbor gets own message object
+                message = copy_winzent_message(winzent_message)
                 if message.sender == neighbor:
                     continue
                 if message.receiver is None:
