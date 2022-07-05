@@ -500,7 +500,12 @@ class WinzentAgent(Agent):
             self.governor.solution_journal.remove_message(reply.answer_to)
 
             # PGASC: Save the acknowledged value in result
-            self.save_accepted_values(reply)
+            if self.check_if_ackowledgment_is_valid(reply):
+                self.save_accepted_values(reply)
+            else:
+                logger.debug(
+                    f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) was not valid"
+                )
 
             # if the solution journal is empty afterwards, the agent does not
             # wait for any further acknowledgments and can stop the negotiation
@@ -525,6 +530,35 @@ class WinzentAgent(Agent):
                     logging.debug(
                         f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value {reply.value}"
                     )
+                else:
+                    pass
+                    logger.debug(
+                        f"Withdrawal received: {reply.answer_to} not in {self._adapted_flex_according_to_msgs}"
+                    )
+            else:
+                logger.debug(
+                    f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id {reply.id} which is not in {self._acknowledgements_sent}"
+                )
+
+    def check_if_ackowledgment_is_valid(self, reply) -> bool:
+        """
+        Checks if the Acknowledgment is a reply to a current AcceptanceNotification
+        :param reply:
+        :return:
+        """
+        acceptance_msg = None
+        for acc_msg in self._curr_sent_acceptances:
+            if acc_msg.id == reply.answer_to:
+                acceptance_msg = acc_msg
+
+        if acceptance_msg is not None:
+            self._curr_sent_acceptances.remove(acceptance_msg)
+            return True
+        else:
+            logger.error(
+                "AcceptanceAcknowledgement was sent without there being a current Acceptance"
+            )
+            return False
 
     def save_accepted_values(self, message):
         # PGASC add logging
