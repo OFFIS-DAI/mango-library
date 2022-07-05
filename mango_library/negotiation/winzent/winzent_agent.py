@@ -561,7 +561,7 @@ class WinzentAgent(Agent):
             self._curr_sent_acceptances.remove(acceptance_msg)
             return True
         else:
-            logger.error(
+            logger.debug(
                 "AcceptanceAcknowledgement was sent without there being a current Acceptance"
             )
             return False
