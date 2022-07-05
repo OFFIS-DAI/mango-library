@@ -102,6 +102,12 @@ class WinzentAgent(Agent):
         """
         self.neighbors[aid] = addr
 
+    def delete_neighbor(self, aid):
+        """
+        Delete an agent from the list of neighbors with agent id (aid)
+        """
+        self.neighbors.pop(aid, None)
+
     def update_flexibility(self, t_start, min_p, max_p):
         """
         Update the own flexibility. Flexibility is a range from power from
