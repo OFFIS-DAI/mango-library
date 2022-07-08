@@ -24,8 +24,9 @@ class WinzentAgent(Agent):
         # create Governor with PowerBalance
         self.governor = xboole.Governor()
         self.governor.power_balance = xboole.PowerBalance()
-        self.governor.power_balance_strategy = \
+        self.governor.power_balance_strategy = (
             xboole.XboolePowerBalanceSolverStrategy()
+        )
 
         # in final, the result for a disequilibrium is stored
         self.final = {}
@@ -477,7 +478,7 @@ class WinzentAgent(Agent):
 
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
             # First, check whether the AcceptanceNotification is still valid
-            if self.acknowledgement_valid(reply):
+            if self.acceptance_valid(reply):
                 # Send an AcceptanceAcknowledgementNotification for the
                 # acceptance
                 if await self.flexibility_valid(reply):
@@ -493,8 +494,10 @@ class WinzentAgent(Agent):
 
                     del self._current_inquiries_from_agents[reply.answer_to]
             return
-        elif reply.msg_type == \
-                xboole.MessageType.AcceptanceAcknowledgementNotification:
+        elif (
+            reply.msg_type
+            == xboole.MessageType.AcceptanceAcknowledgementNotification
+        ):
             # If there is no message in solution journal or
             # the solution journal does not contain this message, it is
             # irrelevant
@@ -507,7 +510,7 @@ class WinzentAgent(Agent):
             self.governor.solution_journal.remove_message(reply.answer_to)
 
             # PGASC: Save the acknowledged value in result
-            if self.check_if_acknowledgment_is_valid(reply):
+            if self.acknowledgement_valid(reply):
                 self.save_accepted_values(reply)
             else:
                 logger.debug(
@@ -525,14 +528,18 @@ class WinzentAgent(Agent):
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
             # if the id is not saved, the agent already handled this
             # WithdrawalNotification
-            if reply.id in self._acknowledgements_sent:
+            if reply.answer_to in self._acknowledgements_sent:
                 # Withdraw flexibility for this interval, therefore
                 # it is possible to participate in a negotiation for
                 # this time span
                 if reply.answer_to in self._adapted_flex_according_to_msgs:
-                    del self._acknowledgements_sent[reply.id]
-                    self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
-                    self._adapted_flex_according_to_msgs.remove(reply.answer_to)
+                    self._acknowledgements_sent.remove(reply.answer_to)
+                    self.flex[reply.time_span[0]] = self.original_flex[
+                        reply.time_span[0]
+                    ]
+                    self._adapted_flex_according_to_msgs.remove(
+                        reply.answer_to
+                    )
 
                     # PGASC add logging
                     logging.debug(
@@ -550,7 +557,7 @@ class WinzentAgent(Agent):
                     f"{reply.id} which is not in {self._acknowledgements_sent} "
                 )
 
-    def check_if_acknowledgment_is_valid(self, reply) -> bool:
+    def acknowledgement_valid(self, reply) -> bool:
         """
         Checks if the Acknowledgment is a reply to a current AcceptanceNotification
         :param reply:
@@ -565,7 +572,7 @@ class WinzentAgent(Agent):
             self._curr_sent_acceptances.remove(acceptance_msg)
             return True
         else:
-            logger.debug(
+            logger.error(
                 "AcceptanceAcknowledgement was sent without there being a current Acceptance"
             )
             return False
@@ -573,8 +580,7 @@ class WinzentAgent(Agent):
     def save_accepted_values(self, message):
         # PGASC add logging
         logging.debug(
-            f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} "
-            f"from sgen {message.sender}"
+            f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} from sgen {message.sender}"
         )
         if message.sender not in self.result.keys():
             self.result[message.sender] = 0
@@ -594,7 +600,7 @@ class WinzentAgent(Agent):
 
         self._acknowledgements_sent = []
 
-    def acknowledgement_valid(self, msg):
+    def acceptance_valid(self, msg):
         """
         Returns whether the message is still valid by checking whether it is
         in the current inquiries the agent received from others
@@ -845,7 +851,7 @@ class WinzentAgent(Agent):
 
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
-    """PGASC fix: deep copy of winzent3 message object (otherwise two agents manipulate the same object and its ttl)"""
+    """PGASC fix: deep copy of winzent message object (otherwise two agents manipulate the same object and its ttl)"""
     return WinzentMessage(
         msg_type=message.msg_type,
         sender=message.sender,
