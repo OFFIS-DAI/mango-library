@@ -13,11 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class WinzentAgent(Agent):
-    def __init__(self, container, ttl, time_to_sleep=2, message_paths=False):
+    def __init__(self, container, ttl, time_to_sleep=2, send_message_paths=False):
         super().__init__(container)
 
         # PGASC: if true stores the message path in the message
-        message_paths = message_paths
+        self.send_message_paths = send_message_paths
 
         # store flexibility as interval with maximum and minimum value per time
         self.flex = {}
@@ -181,6 +181,8 @@ class WinzentAgent(Agent):
 
                 self._waiting_for_acknowledgements = False
                 for acc_msg in self._curr_sent_acceptances:
+                    # TODO: Nachrichttyp 1
+                    logger.info(1)
                     withdrawal = WinzentMessage(time_span=acc_msg.time_span,
                                                 is_answer=True, answer_to=acc_msg.id,
                                                 msg_type=xboole.MessageType.WithdrawalNotification,
@@ -267,6 +269,8 @@ class WinzentAgent(Agent):
         )
         self._own_request = requirement.message
         self._negotiation_running = True
+        # TODO: Nachrichttyp 2
+        logger.info(2)
         await self.send_message(neg_msg)
 
     def get_flexibility_for_interval(self, t_start, msg_type):
@@ -314,10 +318,13 @@ class WinzentAgent(Agent):
                 return True
         return False
 
-    async def handle_external_request(self, requirement):
+    async def handle_external_request(self, requirement, message_path=None):
         """
         The agent received a negotiation request from another agent.
         """
+        if message_path is None:
+            message_path = []
+
         message = requirement.message
         # There is already a negotiation running
         if self._negotiation_running and self._own_request.time_span == message.time_span:
@@ -327,6 +334,9 @@ class WinzentAgent(Agent):
             )
             # first, check whether the value fulfills the own request
             if self.should_withdraw(message):
+                logger.info(
+                    f"handle_external_request: {self.aid} should withdrawal"
+                )
                 withdrawal = WinzentMessage(time_span=self._own_request.time_span,
                                             is_answer=True, answer_to=self._own_request.id,
                                             msg_type=xboole.MessageType.WithdrawalNotification,
@@ -335,7 +345,9 @@ class WinzentAgent(Agent):
                                             id=str(uuid.uuid4()),
                                             sender=self._aid
                                             )
-                await self.send_message(withdrawal)
+                # TODO: Nachrichttyp 3
+                logger.info(3)
+                await self.send_message(withdrawal, ontology=message_path, send_back=True)
                 await self.reset()
             else:
                 # no withdrawal, still keep the negotiation running
@@ -382,12 +394,14 @@ class WinzentAgent(Agent):
                                        value=[value], ttl=self._current_ttl,
                                        id=str(uuid.uuid4()))
                 # PGASC add logging
-                logger.debug(
+                logger.info(
                     f"{self.aid} sends {reply.msg_type} notification to {reply.receiver} to offer him {reply.value[0]}"
                 )
                 self.governor.message_journal.add(reply)
                 self._current_inquiries_from_agents[reply.id] = reply
-                await self.send_message(reply)
+                # TODO: Nachrichttyp 4
+                logger.info(4)
+                await self.send_message(reply, ontology=message_path, send_back=True)
         message.ttl -= 1
         if message.ttl <= 0:
             # PGASC add logging
@@ -418,7 +432,9 @@ class WinzentAgent(Agent):
         message.value.append(val - value)
         message.is_answer = False
         message.receiver = ''
-        await self.send_message(message)
+        # TODO: Nachrichttyp 5
+        logger.info(5)
+        await self.send_message(message, ontology=message_path)
 
     async def flexibility_valid(self, reply):
         """
@@ -439,12 +455,15 @@ class WinzentAgent(Agent):
                 self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
         return valid
 
-    async def handle_external_reply(self, requirement):
+    async def handle_external_reply(self, requirement, message_path=None):
         """
         Handle a reply from other agents. Reply may be from types:
         DemandNotification, OfferNotification, AcceptanceNotification,
         AcceptanceAcknowledgementNotification
         """
+        if message_path is None:
+            message_path = []
+
         reply = requirement.message
         # PGASC add logging
         logger.debug(f"receiver of this reply is {reply.receiver}")
@@ -460,7 +479,9 @@ class WinzentAgent(Agent):
             )
             reply.ttl = reply.ttl - 1
             if reply.ttl > 0:
-                await self.send_message(reply)
+                # TODO: Nachrichttyp 6
+                logger.info(6)
+                await self.send_message(reply, ontology=message_path)
             return
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
@@ -490,7 +511,9 @@ class WinzentAgent(Agent):
                         sender=self._aid, receiver=reply.sender,
                         value=reply.value,  # PGASC added value to AAN messages to confirm the results
                         ttl=self._current_ttl, id=str(uuid.uuid4()))
-                    await self.send_message(answer)
+                    # TODO: Nachrichttyp 7
+                    logger.info(7)
+                    await self.send_message(answer, ontology=message_path, send_back=True)
                     self._adapted_flex_according_to_msgs.append(reply.id)
                     self._acknowledgements_sent.append(reply.id)
 
@@ -710,6 +733,8 @@ class WinzentAgent(Agent):
 
             # store acceptance message
             self.governor.solution_journal.add(msg)
+            # TODO: Nachrittyp 8
+            logger.info(8)
             await self.send_message(msg)
         for key in zero_indeces:
             del self.final[key]
@@ -807,44 +832,59 @@ class WinzentAgent(Agent):
             if content.is_answer:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_reply(req))
+                asyncio.create_task(self.handle_external_reply(req, message_path=meta["ontology"]))
                 return
             req = xboole.Requirement(content,
                                      content.sender, ttl=self._current_ttl)
-            asyncio.create_task(self.handle_external_request(req))
+            asyncio.create_task(self.handle_external_request(req, message_path=meta["ontology"]))
 
-    async def send_message(self, winzent_message, receiver=None):
+    async def send_message(self, winzent_message, receiver=None, ontology=None, send_back=False):
         """
         Sends the given message to all neighbors unless the receiver is given.
         """
         # PGASC changed print to logging
+        if ontology is None:
+            ontology = []
+
         logger.debug(
             f"*** {self._aid} sends message with type {winzent_message.msg_type}. ***")
 
-        if receiver is not None:
-            if receiver in self.neighbors.keys():
-                # PGASC added deep copy of messages
-                message = copy_winzent_message(winzent_message)
-                await self._container.send_message(
-                    content=message, receiver_addr=self.neighbors[receiver],
-                    receiver_id=receiver,
-                    acl_metadata={'sender_addr': self._container.addr,
-                                  'sender_id': self._aid}, create_acl=True)
-        else:
-            for neighbor in self.neighbors.keys():
-                # PGASC added deep copy of messages - every neighbor gets own message object
-                message = copy_winzent_message(winzent_message)
-                if message.sender == neighbor:
-                    continue
-                if message.receiver is None:
-                    message.receiver = ''
-                await self._container.send_message(
-                    content=message, receiver_addr=self.neighbors[neighbor],
-                    receiver_id=neighbor,
-                    acl_metadata={'sender_addr': self._container.addr,
-                                  'sender_id': self._aid},
-                    create_acl=True
-                )
+        # going backwards on the message path
+        if send_back:
+            # message is answer
+            if len(ontology) == 0:
+                logger.info("errror")
+                return
+            receiver = ontology.pop()
+
+        # receiver is a neighbor
+        if receiver is not None and receiver in self.neighbors.keys():
+            await self._container.send_message(
+                content=copy_winzent_message(winzent_message), receiver_addr=self.neighbors[receiver],
+                receiver_id=receiver,
+                acl_metadata={'sender_addr': self._container.addr,
+                              'sender_id': self._aid}, create_acl=True)
+            return
+
+        # append aid of this agent to the message path
+        if self.send_message_paths and not send_back:
+            ontology.append(self.aid)
+
+        for neighbor in self.neighbors.keys():
+            # PGASC added deep copy of messages - every neighbor gets own message object
+            message = copy_winzent_message(winzent_message)
+            if message.sender == neighbor:
+                continue
+            if message.receiver is None:
+                message.receiver = ''
+            await self._container.send_message(
+                content=message, receiver_addr=self.neighbors[neighbor],
+                receiver_id=neighbor,
+                acl_metadata={'sender_addr': self._container.addr,
+                              'sender_id': self._aid,
+                              'ontology': ontology},
+                create_acl=True
+            )
 
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
