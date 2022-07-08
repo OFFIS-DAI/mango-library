@@ -13,8 +13,11 @@ logger = logging.getLogger(__name__)
 
 
 class WinzentAgent(Agent):
-    def __init__(self, container, ttl, time_to_sleep=2):
+    def __init__(self, container, ttl, time_to_sleep=2, message_paths=False):
         super().__init__(container)
+
+        # PGASC: if true stores the message path in the message
+        message_paths = message_paths
 
         # store flexibility as interval with maximum and minimum value per time
         self.flex = {}
