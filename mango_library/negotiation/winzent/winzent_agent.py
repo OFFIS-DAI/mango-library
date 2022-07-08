@@ -343,7 +343,8 @@ class WinzentAgent(Agent):
         )
         # PGASC add logging
         logger.debug(
-            f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, {message.is_answer}"
+            f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
+            f"{message.is_answer} "
         )
         value = 0
         if self.exists_flexibility(
@@ -506,11 +507,12 @@ class WinzentAgent(Agent):
             self.governor.solution_journal.remove_message(reply.answer_to)
 
             # PGASC: Save the acknowledged value in result
-            if self.check_if_ackowledgment_is_valid(reply):
+            if self.check_if_acknowledgment_is_valid(reply):
                 self.save_accepted_values(reply)
             else:
                 logger.debug(
-                    f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) was not valid"
+                    f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
+                    f"was not valid "
                 )
 
             # if the solution journal is empty afterwards, the agent does not
@@ -534,7 +536,8 @@ class WinzentAgent(Agent):
 
                     # PGASC add logging
                     logging.debug(
-                        f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value {reply.value}"
+                        f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
+                        f"{reply.value} "
                     )
                 else:
                     pass
@@ -543,10 +546,11 @@ class WinzentAgent(Agent):
                     )
             else:
                 logger.debug(
-                    f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id {reply.id} which is not in {self._acknowledgements_sent}"
+                    f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
+                    f"{reply.id} which is not in {self._acknowledgements_sent} "
                 )
 
-    def check_if_ackowledgment_is_valid(self, reply) -> bool:
+    def check_if_acknowledgment_is_valid(self, reply) -> bool:
         """
         Checks if the Acknowledgment is a reply to a current AcceptanceNotification
         :param reply:
@@ -569,7 +573,8 @@ class WinzentAgent(Agent):
     def save_accepted_values(self, message):
         # PGASC add logging
         logging.debug(
-            f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} from sgen {message.sender}"
+            f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} "
+            f"from sgen {message.sender}"
         )
         if message.sender not in self.result.keys():
             self.result[message.sender] = 0
