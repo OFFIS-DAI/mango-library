@@ -23,7 +23,6 @@ class WinzentAgent(Agent):
 
         self.messages_sent = 0
 
-
         # store flexibility as interval with maximum and minimum value per time
         self.flex = {}
         self.original_flex = {}
@@ -268,7 +267,6 @@ class WinzentAgent(Agent):
                                  time_span=requirement.time_span,
                                  sender=self._aid,
                                  )
-
         # PGASC add logging
         logger.debug(
             f"handle_internal_request: {self.aid} sends negotiation Request"
@@ -346,7 +344,7 @@ class WinzentAgent(Agent):
                 withdrawal = WinzentMessage(time_span=self._own_request.time_span,
                                             is_answer=True, answer_to=self._own_request.id,
                                             msg_type=xboole.MessageType.WithdrawalNotification,
-                                            ttl=self._current_ttl, receiver=message.sender, # PGASC: added sender
+                                            ttl=self._current_ttl, receiver=message.sender,  # PGASC: added sender
                                             # because this message will be sent endlessly otherwise
                                             value=self._own_request.value,
                                             id=str(uuid.uuid4()),
@@ -401,7 +399,9 @@ class WinzentAgent(Agent):
                     message_path.reverse()
                     if message_path is not None:
                         demander_index = message_path[-1]
-                        self.negotiation_connections[demander_index] = message_path  # send offer and save established connection demander:[self.aid/supplier, ..., demander]
+                        self.negotiation_connections[
+                            demander_index] = message_path
+                        # send offer and save established connection demander:[self.aid/supplier, ..., demander]
                     else:
                         logger.error("message path none")
                     logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
@@ -438,7 +438,8 @@ class WinzentAgent(Agent):
         message.value.append(val - value)
         message.is_answer = False
         message.receiver = ''
-        logger.debug(f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}")
+        logger.debug(
+            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}")
         if self.send_message_paths:
             await self.send_message(message, message_path=message_path)
         else:
@@ -487,7 +488,9 @@ class WinzentAgent(Agent):
             )
             reply.ttl = reply.ttl - 1
             if reply.ttl > 0:
-                logger.debug(f"{self.aid} is not receiver {reply.receiver} of reply {reply.msg_type}, forward; path {message_path}")
+                logger.debug(
+                    f"{self.aid} is not receiver {reply.receiver} of reply {reply.msg_type}, forward; "
+                    f"path {message_path}")
                 if self.send_message_paths:
                     await self.send_message(reply, message_path=message_path)
                 else:
@@ -501,7 +504,6 @@ class WinzentAgent(Agent):
             # because the negotiation is already done.
             if self.governor.power_balance.empty():
                 return
-
             # If there is no solution found already, the reply is considered
             # to find a new solution. Therefore, trigger solver.
             if not self._solution_found:
@@ -511,7 +513,8 @@ class WinzentAgent(Agent):
                 # Save the established connection
                 if self.send_message_paths:
                     message_path.reverse()
-                    self.negotiation_connections[message_path[-1]] = message_path # received offer establish connection
+                    self.negotiation_connections[
+                        message_path[-1]] = message_path  # received offer; establish connection
                     # supplier:[self.aid/demander, ..., supplier]
                 await self.solve()
 
@@ -877,22 +880,23 @@ class WinzentAgent(Agent):
                 if self.aid in message_path:
                     # remove old message loops
                     index_of_self = message_path.index(self.aid)
-                    message_path = message_path[0:index_of_self-1]
+                    message_path = message_path[0:index_of_self - 1]
                 message_path.append(self.aid)
 
             # sending over the message path, so next receiver in the neighborhood is known
             else:
-                logger.debug(f"{self.aid} sends {winzent_message.msg_type} on the message path in message_path: {message_path}")
+                logger.debug(
+                    f"{self.aid} sends {winzent_message.msg_type} on the message path in message_path: {message_path}")
                 if len(message_path) == 0:
                     logger.error("message_path has length zero")
                     return
                 index_of_next_on_path = message_path.index(self.aid) + 1
                 receiver = message_path[index_of_next_on_path]
                 if receiver not in self.neighbors.keys():
-                    logger.error(f"message_path at {self.aid} with message_path {message_path} failed because receiver {receiver} "
-                                 f"not in {self.neighbors.keys()}")
+                    logger.error(
+                        f"message_path at {self.aid} with message_path {message_path} failed because "
+                        f"receiver {receiver} not in {self.neighbors.keys()}")
                     return
-
 
         if receiver is not None and receiver in self.neighbors.keys():
             # receiver is a neighbor
@@ -917,7 +921,8 @@ class WinzentAgent(Agent):
                     receiver_id=neighbor,
                     acl_metadata={'sender_addr': self._container.addr,
                                   'sender_id': self._aid,
-                                  'ontology': message_path.copy()},  # copy to avoid neighbors working on the same object
+                                  'ontology': message_path.copy()},
+                    # copy to avoid neighbors working on the same object
                     create_acl=True
                 )
 
