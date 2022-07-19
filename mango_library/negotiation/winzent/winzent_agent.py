@@ -21,6 +21,9 @@ class WinzentAgent(Agent):
         self.negotiation_connections = {}  # message paths of all agents that have established a connection in
         # the negotiation
 
+        self.messages_sent = 0
+
+
         # store flexibility as interval with maximum and minimum value per time
         self.flex = {}
         self.original_flex = {}
@@ -860,6 +863,8 @@ class WinzentAgent(Agent):
         """
         Sends the given message to all neighbors unless the receiver is given.
         """
+        self.messages_sent += 1
+
         if message_path is None:
             message_path = []
 
