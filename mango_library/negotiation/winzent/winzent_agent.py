@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 class WinzentAgent(Agent):
     def __init__(self, container, ttl, time_to_sleep=2, send_message_paths=False):
         super().__init__(container)
+        print("Version from 26.08.2022 17:42")
 
         # PGASC: if true stores the message path in the message
         self.send_message_paths = send_message_paths
