@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class WinzentAgent(Agent):
-    def __init__(self, container, ttl, time_to_sleep=2, send_message_paths=False):
+    def __init__(self, container, ttl, time_to_sleep=10, send_message_paths=False):
         super().__init__(container)
 
         # PGASC: if true stores the message path in the message
