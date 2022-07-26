@@ -866,8 +866,6 @@ class WinzentAgent(Agent):
         """
         Sends the given message to all neighbors unless the receiver is given.
         """
-        self.messages_sent += 1
-
         if message_path is None:
             message_path = []
 
@@ -901,6 +899,7 @@ class WinzentAgent(Agent):
         if receiver is not None and receiver in self.neighbors.keys():
             # receiver is a neighbor
             message = copy_winzent_message(winzent_message)
+            self.messages_sent += 1
             await self._container.send_message(
                 content=message, receiver_addr=self.neighbors[receiver],
                 receiver_id=receiver,
@@ -916,6 +915,7 @@ class WinzentAgent(Agent):
                     continue
                 if message.receiver is None:
                     message.receiver = ''
+                self.messages_sent += 1
                 await self._container.send_message(
                     content=message, receiver_addr=self.neighbors[neighbor],
                     receiver_id=neighbor,
