@@ -19,7 +19,6 @@ Impressum
 | Prof. Dr. Sebastian Lehnhoff (Vorsitzender)
 | Prof. Dr.-Ing. Wolfgang H. Nebel
 | Prof. Dr. techn. Susanne Boll-Westermann
-| Prof. Dr.-Ing. Andreas Hein
 
 
 **Registergericht**
