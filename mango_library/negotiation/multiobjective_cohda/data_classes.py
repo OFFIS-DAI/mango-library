@@ -1,15 +1,17 @@
 """
 Module that holds the data classes necessary for a COHDA negotiation
 """
-import json
+
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
 import numpy as np
+
 from mango.messages.codecs import json_serializable
+from mango_library.negotiation.multiobjective_cohda.sms_emoa.individual import Individual
 
 
-@dataclass(frozen=True)
+@dataclass
 class SolutionPoint:
     """
     Data structure that hold the information about one singular solution point of the parete front.
@@ -56,6 +58,7 @@ class SolutionCandidate:
         self._schedules = schedules
         self._num_solution_points = num_solution_points
         self._perf: List[Tuple[float, ...]] = perf
+        self.perf = perf  # TODO this can be removed once we remove the creation of Individuals in the setter of perf
         self._hypervolume: float = hypervolume
 
     def __eq__(self, o: object) -> bool:
@@ -134,7 +137,8 @@ class SolutionCandidate:
 
     @perf.setter
     def perf(self, new_perf: List[Tuple[float, ...]]):
-        self._perf = new_perf
+        if new_perf is not None:
+            self._perf = new_perf
 
     @property
     def hypervolume(self) -> Optional[float]:
@@ -315,8 +319,7 @@ class WorkingMemory:
 
     def __eq__(self, o: object) -> bool:
         return (isinstance(o, WorkingMemory) and self.solution_candidate == o.solution_candidate
-                and self.system_config == o.system_config and self.target_params == o.target_params
-                and self.ref_point == o.ref_point)
+                and self.system_config == o.system_config and self.target_params == o.target_params)
 
 
 class Target:

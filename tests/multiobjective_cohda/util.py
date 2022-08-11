@@ -4,6 +4,7 @@ import numpy as np
 
 from mango_library.coalition.core import CoalitionParticipantRole, \
     CoalitionInitiatorRole
+from mango_library.negotiation.termination import NegotiationTerminationRole
 from mango.role.core import RoleAgent
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     CohdaNegotiationStarterRole
@@ -38,10 +39,13 @@ async def create_agents(container, targets, possible_schedules,
     addrs = []
 
     for i in range(num_agents):
-        a = RoleAgent(container)
+        if isinstance(container, list):
+            this_container = container[i % len(container)]
+        else:
+            this_container = container
+        a = RoleAgent(this_container)
 
         def provide_schedules(index):
-            print('possible_schedules are:', possible_schedules[index])
             return lambda: possible_schedules[index]
 
         cohda_role = MultiObjectiveCOHDARole(
@@ -53,14 +57,18 @@ async def create_agents(container, targets, possible_schedules,
         pick_func=pick_fkt, mutate_func=mutate_fkt)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
-        # a.add_role(NegotiationTerminationRole(i == 0))
+        a.add_role(NegotiationTerminationRole(i == 0))
         agents.append(a)
-        addrs.append((container.addr, a._aid))
+        addrs.append((this_container.addr, a._aid))
+
     agents[0].add_role(
         CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+    print('Coalition build done')
     agents[0].add_role(
         CohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
+
+    print('Negotiation started')
 
     return agents, addrs
 
