@@ -409,7 +409,7 @@ class COHDA:
             # calculate and set perf
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
-           #candidate.hypervolume = self.get_hypervolume(candidate.perf)
+            candidate.hypervolume = self.get_hypervolume(candidate.perf)
 
         return candidate
 
