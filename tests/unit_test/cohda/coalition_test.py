@@ -3,12 +3,12 @@ import pytest
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 from mango_library.coalition.core import *
-from mango_library.negotiation.util import extra_serializers
+from mango_library.negotiation.util import cohda_serializers
 
 
 def test_serialize_coalition_invite():
     codec = mango.messages.codecs.JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
 
     my_data = CoalitionInvite(coalition_id=uuid.uuid1(), topic='test_topic', details='Details')
@@ -23,7 +23,7 @@ def test_serialize_coalition_invite():
 
 def test_serialize_coalition_response():
     codec = mango.messages.codecs.JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
 
     my_data = CoaltitionResponse(accept=True)
@@ -41,7 +41,7 @@ def test_serialize_coalition_response():
 
 def test_serialize_coalition_assignment():
     codec = mango.messages.codecs.JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
 
     my_data = CoalitionAssignment(coalition_id=uuid.uuid1(), part_id='12',
