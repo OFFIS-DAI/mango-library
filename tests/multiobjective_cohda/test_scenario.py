@@ -31,7 +31,6 @@ for i in range(11):
 SCHEDULES_FOR_AGENTS_COMPLEX=[SCHEDULES_FOR_AGENTS_COMPLEX]
 
 
-
 @pytest.mark.asyncio
 async def test_minimize_scenario():
     """
@@ -57,7 +56,7 @@ async def test_minimize_scenario():
                                         CHECK_MSG_QUEUE_INTERVAL,
                                         num_agents=NUM_AGENTS)
 
-    await asyncio.sleep(2)
+    await asyncio.wait_for(wait_for_term(agents), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print('solution:', solution_dict, '\n')
@@ -89,7 +88,7 @@ async def test_maximize_scenario():
                                         CHECK_MSG_QUEUE_INTERVAL,
                                         num_agents=NUM_AGENTS)
 
-    await asyncio.sleep(2)
+    await asyncio.wait_for(wait_for_term(agents), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print('solution:', solution_dict, '\n')
@@ -122,8 +121,8 @@ async def test_complex_scenario():
     target_second = Target(target_function=minimize_second, ref_point=1.1, maximize=False)
     pick_fkt = COHDA.pick_all_points
     # pick_fkt = COHDA.pick_random_point
-    # mutate_fkt = COHDA.mutate_with_all_possible
-    mutate_fkt = COHDA.mutate_with_one_random
+    mutate_fkt = COHDA.mutate_with_all_possible
+    # mutate_fkt = COHDA.mutate_with_one_random
 
     agents, addrs = await create_agents(container=c,
                                         targets=[target_first, target_second],
@@ -137,7 +136,7 @@ async def test_complex_scenario():
                                         mutate_fkt=mutate_fkt,
                                         )
 
-    await asyncio.sleep(10)
+    await asyncio.wait_for(wait_for_term(agents), timeout=35)
 
     solution = get_solution(agents)
     print('cluster schedules:', solution.cluster_schedules)
@@ -151,3 +150,10 @@ async def test_complex_scenario():
 
     # gracefully shutdown
     await c.shutdown()
+
+
+async def wait_for_term(agents):
+    await asyncio.sleep(0.1)
+    for agent in agents:
+        while not agent.inbox.empty() or next(iter(agents[0].roles[2]._weight_map.values())) != 1:
+            await asyncio.sleep(0.1)

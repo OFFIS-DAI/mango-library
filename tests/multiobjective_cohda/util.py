@@ -4,6 +4,7 @@ import numpy as np
 
 from mango_library.coalition.core import CoalitionParticipantRole, \
     CoalitionInitiatorRole
+from mango_library.negotiation.termination import NegotiationTerminationRole
 from mango.role.core import RoleAgent
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     CohdaNegotiationStarterRole
@@ -53,7 +54,7 @@ async def create_agents(container, targets, possible_schedules,
         pick_func=pick_fkt, mutate_func=mutate_fkt)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
-        # a.add_role(NegotiationTerminationRole(i == 0))
+        a.add_role(NegotiationTerminationRole(i == 0))
         agents.append(a)
         addrs.append((container.addr, a._aid))
     agents[0].add_role(
