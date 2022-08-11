@@ -186,6 +186,7 @@ class WinzentAgent(Agent):
                                                 value=[acc_msg.value[0]],
                                                 id=str(uuid.uuid4()),
                                                 sender=self._aid
+
                                                 )
                     await self.send_message(withdrawal, receiver=acc_msg.receiver)
                 await asyncio.sleep(self._time_to_sleep)
