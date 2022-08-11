@@ -266,10 +266,11 @@ class COHDA:
 
             # calculate hypervolume of new front
             new_hyper_volume = get_hypervolume_sms_emoa(performances=[ind.objective_values for ind in all_individuals],
-                                                    reference_point=self._ref_point)
+                                                        reference_point=self._ref_point)
 
-            print(f'Candidate after decide:\nPerformance: {sorted([(round(ind.objective_values[0], 2), round(ind.objective_values[1], 2)) for ind in all_individuals], key=lambda l : l[0])}\n'
-                  f'Hypervolume: {round(new_hyper_volume, 4)}')
+            sorted_perfs = sorted([(round(ind.objective_values[0], 2),
+                                    round(ind.objective_values[1], 2)) for ind in all_individuals], key=lambda l: l[0])
+            print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
@@ -352,7 +353,7 @@ class COHDA:
 
     @staticmethod
     def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str, perf_func,
-              reference_point, target_params=None):
+                          reference_point, target_params=None):
         """
         Merge *candidate_i* and *candidate_j* and return the result.
 
@@ -480,7 +481,6 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
                 await task
             except asyncio.CancelledError:
                 pass
-
 
     def handle(self,
                message,

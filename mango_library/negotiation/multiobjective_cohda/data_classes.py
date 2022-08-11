@@ -19,7 +19,7 @@ class SolutionPoint:
     and the idx dict, mapping agent_id to the idx of the cluster schedule
     """
     cluster_schedule: np.array
-    performance: Tuple[float,...]
+    performance: Tuple[float, ...]
     idx: Dict[str, int]
 
 
@@ -333,7 +333,7 @@ class Target:
             # try if the performance function accepts the target_params
             return self._factor * self._target_function(cs, target_params)
         except TypeError:
-            # if not call the function without the target params
+            # if it doesn't accept target params call the function without the target params
             return self._factor * self._target_function(cs)
 
     @property
