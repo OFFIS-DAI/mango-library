@@ -3,6 +3,9 @@ import asyncio
 import numpy as np
 import pytest
 from mango.core.container import Container
+from mango.messages.codecs import JSON
+
+from mango_library.negotiation.util import multi_objective_serializers
 
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
@@ -28,7 +31,7 @@ SCHEDULES_FOR_AGENTS_SIMPEL = [
 SCHEDULES_FOR_AGENTS_COMPLEX = [[1, 1], [0.6, 0.6]]
 for i in range(11):
     SCHEDULES_FOR_AGENTS_COMPLEX.append([i * 0.1, 1 - i * 0.1])
-SCHEDULES_FOR_AGENTS_COMPLEX=[SCHEDULES_FOR_AGENTS_COMPLEX]
+SCHEDULES_FOR_AGENTS_COMPLEX = [SCHEDULES_FOR_AGENTS_COMPLEX]
 
 
 @pytest.mark.asyncio
@@ -52,8 +55,7 @@ async def test_minimize_scenario():
                                         possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
                                         num_iterations=NUM_ITERATIONS,
                                         num_candidates=NUM_CANDIDATES,
-                                        check_msg_queue_interval=
-                                        CHECK_MSG_QUEUE_INTERVAL,
+                                        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
                                         num_agents=NUM_AGENTS)
 
     await asyncio.wait_for(wait_for_term(agents), timeout=15)
@@ -84,8 +86,7 @@ async def test_maximize_scenario():
                                         possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
                                         num_iterations=NUM_ITERATIONS,
                                         num_candidates=NUM_CANDIDATES,
-                                        check_msg_queue_interval=
-                                        CHECK_MSG_QUEUE_INTERVAL,
+                                        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
                                         num_agents=NUM_AGENTS)
 
     await asyncio.wait_for(wait_for_term(agents), timeout=15)
@@ -105,11 +106,52 @@ async def test_maximize_scenario():
 
 
 @pytest.mark.asyncio
+async def test_maximize_different_container():
+    """
+    This method follows the same principle as the other test, but the
+    goal is to maximize the objectives.
+    """
+    codec = JSON()
+    codec2 = JSON()
+    for serializer in multi_objective_serializers:
+        codec.add_serializer(*serializer())
+        codec2.add_serializer(*serializer())
+
+    c_1 = await Container.factory(addr=('127.0.0.2', 5555), codec=codec)
+    c_2 = await Container.factory(addr=('127.0.0.2', 5556), codec=codec2)
+
+    agents, addrs = await create_agents(container=[c_1, c_2],
+                                        targets=MAXIMIZE_TARGETS,
+                                        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+                                        num_iterations=NUM_ITERATIONS,
+                                        num_candidates=NUM_CANDIDATES,
+                                        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+                                        num_agents=NUM_AGENTS)
+
+    await asyncio.wait_for(wait_for_term(agents), timeout=15)
+
+    solution_dict = get_solution(agents).schedules
+    print('solution:', solution_dict, '\n')
+    for aid, chosen_schedules in solution_dict.items():
+        # for minimizing, every second schedule is the better because
+        # sum and deviations are minimized
+        chosen_schedule = chosen_schedules[0]
+        print(f'[{aid}] chosen schedule: {chosen_schedule}.')
+        idx = int(aid[-1]) - 1
+        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+
+    # gracefully shutdown
+    await c_1.shutdown()
+    await c_2.shutdown()
+
+
+@pytest.mark.asyncio
 async def test_complex_scenario():
     """
         Now we are going to test more complex scenarios
         """
-    c = await Container.factory(addr=('127.0.0.2', 5555))
+
+    c_1 = await Container.factory(addr=('127.0.0.2', 5555))
 
     def minimize_first(cs):
         return float(np.mean(cs, axis=0)[0])
@@ -124,19 +166,27 @@ async def test_complex_scenario():
     mutate_fkt = COHDA.mutate_with_all_possible
     # mutate_fkt = COHDA.mutate_with_one_random
 
-    agents, addrs = await create_agents(container=c,
+    agents, addrs = await create_agents(container=c_1,
                                         targets=[target_first, target_second],
                                         possible_schedules=SCHEDULES_FOR_AGENTS_COMPLEX,
                                         num_iterations=NUM_ITERATIONS,
                                         num_candidates=5,
-                                        check_msg_queue_interval=
-                                        CHECK_MSG_QUEUE_INTERVAL,
-                                        num_agents=10,
+                                        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+                                        num_agents=5,
                                         pick_fkt=pick_fkt,
                                         mutate_fkt=mutate_fkt,
                                         )
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=35)
+    await asyncio.sleep(2)
+
+    for a in agents:
+        if a._check_inbox_task.done():
+            if a._check_inbox_task.exception() is not None:
+                raise a._check_inbox_task.exception()
+            else:
+                assert False, f'check_inbox terminated unexpectedly.'
+
+    await asyncio.wait_for(wait_for_term(agents), timeout=10)
 
     solution = get_solution(agents)
     print('cluster schedules:', solution.cluster_schedules)
@@ -149,11 +199,12 @@ async def test_complex_scenario():
             assert np.sum(schedule) == 1
 
     # gracefully shutdown
-    await c.shutdown()
+    await c_1.shutdown()
 
 
 async def wait_for_term(agents):
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.5)
     for agent in agents:
+        await asyncio.sleep(0.1)
         while not agent.inbox.empty() or next(iter(agents[0].roles[2]._weight_map.values())) != 1:
             await asyncio.sleep(0.1)
