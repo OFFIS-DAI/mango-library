@@ -46,7 +46,7 @@ class SolutionCandidate:
         self._schedules = schedules
         self._population = []
         self._num_solution_points = num_solution_points
-        self._perf: List[Tuple[float, ...]] = perf
+        self.perf: List[Tuple[float, ...]] = perf
         self._hypervolume: float = hypervolume
 
     def __eq__(self, o: object) -> bool:
@@ -125,12 +125,13 @@ class SolutionCandidate:
 
     @perf.setter
     def perf(self, new_perf: List[Tuple[float, ...]]):
-        if not self._population:
-            self._population = [Individual(solution_point.cluster_schedule, perf)
-                                for solution_point, perf in zip(self.solution_points, new_perf)]
+        if new_perf is not None:
+            if not self._population:
+                self._population = [Individual(solution_point.cluster_schedule, perf)
+                                    for solution_point, perf in zip(self.solution_points, new_perf)]
 
-        for idx, entry in enumerate(new_perf):
-            self._population[idx].objective_values = entry
+            for idx, entry in enumerate(new_perf):
+                self._population[idx].objective_values = entry
         self._perf = new_perf
 
     @property
@@ -315,8 +316,7 @@ class WorkingMemory:
 
     def __eq__(self, o: object) -> bool:
         return (isinstance(o, WorkingMemory) and self.solution_candidate == o.solution_candidate
-                and self.system_config == o.system_config and self.target_params == o.target_params
-                and self.ref_point == o.ref_point)
+                and self.system_config == o.system_config and self.target_params == o.target_params)
 
 
 class Target:
