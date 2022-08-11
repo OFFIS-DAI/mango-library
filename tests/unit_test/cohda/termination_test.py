@@ -3,12 +3,12 @@ import fractions
 import uuid
 from mango.messages.codecs import JSON
 from mango_library.negotiation.termination import TerminationMessage
-from mango_library.negotiation.util import extra_serializers
+from mango_library.negotiation.util import cohda_serializers
 
 
 def test_serialization():
     codec = JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
     my_data = TerminationMessage(coalition_id=uuid.uuid1(), negotiation_id=uuid.uuid1(), weight=fractions.Fraction(1, 2))
 

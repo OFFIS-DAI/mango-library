@@ -335,7 +335,7 @@ class Target:
             # try if the performance function accepts the target_params
             return self._factor * self._target_function(cs, target_params)
         except TypeError:
-            # if not call the function without the target params
+            # if it doesn't accept target params call the function without the target params
             return self._factor * self._target_function(cs)
 
     @property
