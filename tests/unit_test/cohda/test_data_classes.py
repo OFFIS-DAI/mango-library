@@ -3,7 +3,7 @@ import fractions
 from mango_library.negotiation.cohda.data_classes import SystemConfig,\
     SolutionCandidate, ScheduleSelection, WorkingMemory
 from mango_library.negotiation.cohda.cohda import CohdaMessage, COHDA
-from mango_library.negotiation.util import extra_serializers
+from mango_library.negotiation.util import cohda_serializers
 from mango_library.negotiation.core import *
 from mango.messages.codecs import *
 import numpy as np
@@ -20,7 +20,7 @@ def test_sysconf_init():
 
 def test_serialization():
     codec = JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
 
     selections_1 = ScheduleSelection(schedule=np.array([1, 2, 3]), counter=42)
