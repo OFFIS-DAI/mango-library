@@ -59,7 +59,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
     # create containers
     codec = mango.messages.codecs.JSON()
     codec2 = mango.messages.codecs.JSON()
-    for serializer in util.extra_serializers:
+    for serializer in util.cohda_serializers:
         codec.add_serializer(*serializer())
         codec2.add_serializer(*serializer())
     c_1 = await Container.factory(addr=('127.0.0.2', 5555), codec=codec)
