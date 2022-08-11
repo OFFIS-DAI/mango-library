@@ -1,10 +1,7 @@
 from typing import List, Tuple
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, SolutionPoint
-from mango_library.negotiation.multiobjective_cohda.multiobjective_util import get_hypervolume
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 import numpy as np
-
-from mango_library.negotiation.multiobjective_cohda.sms_emoa.hyper_volume_calculation import calculate_hv_COHDA
 
 
 def test_init():
@@ -39,7 +36,18 @@ def perf_fkt_min(solution_points: List[SolutionPoint], target_params=None) -> Li
 
 
 def test_merge_dummy():
+    possible_schedules = []
     ref_point = (1.1, 1.1, 1.1)
+
+    cohda = COHDA(
+        schedule_provider=lambda: possible_schedules,
+        is_local_acceptable=lambda s: True,
+        perf_func=perf_fkt,
+        reference_point=ref_point,
+        part_id='1',
+        num_iterations=1,
+    )
+
     schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
     schedules_2_1 = np.array([[1, 1, 1], [1, 1, 1]], np.int32)
 
@@ -54,32 +62,29 @@ def test_merge_dummy():
                                     schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume(candidate_1.perf,
-                                              reference_point=ref_point)
+    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
-                                                           '2': schedules_2_2}, num_solution_points=2)
+                                                             '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = get_hypervolume(candidate_2.perf,
-                                              reference_point=ref_point)
+    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
-                                                           '3': schedule_3_3}, num_solution_points=2)
+                                                             '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = get_hypervolume(candidate_3.perf,
-                                              reference_point=ref_point)
+    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
 
     print(candidate_1.perf)
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_2, agent_id='1',
         perf_func=perf_fkt)
 
     assert merge_result != candidate_1 and merge_result is not candidate_1
 
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_1, agent_id='1',
         perf_func=perf_fkt)
     assert merge_result == candidate_1 and merge_result is candidate_1
 
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_3, candidate_j=candidate_1, agent_id='3',
         perf_func=perf_fkt)
 
@@ -94,6 +99,17 @@ def test_merge_dummy():
 
 def test_merge_sms_emoa():
     ref_point = (1.1, 1.1, 1.1)
+    possible_schedules = [[0.1, 0.9], [0.3, 0.6]]
+
+    cohda = COHDA(
+        schedule_provider=lambda: possible_schedules,
+        is_local_acceptable=lambda s: True,
+        perf_func=perf_fkt,
+        reference_point=ref_point,
+        part_id='1',
+        num_iterations=1,
+    )
+
     schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
     schedules_2_1 = np.array([[1, 1, 1], [1, 1, 1]], np.int32)
 
@@ -107,33 +123,30 @@ def test_merge_sms_emoa():
     candidate_1 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt_min(candidate_1.solution_points)
-    candidate_1.hypervolume = calculate_hv_COHDA(candidate_1.perf,
-                                                 reference_point=ref_point)
+    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
 
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
-                                                           '2': schedules_2_2}, num_solution_points=2)
+                                                             '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt_min(candidate_2.solution_points)
-    candidate_2.hypervolume = calculate_hv_COHDA(candidate_2.perf,
-                                                 reference_point=ref_point)
+    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
 
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
-                                                           '3': schedule_3_3}, num_solution_points=2)
+                                                             '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt_min(candidate_3.solution_points)
-    candidate_3.hypervolume = calculate_hv_COHDA(candidate_3.perf,
-                                                 reference_point=ref_point)
+    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
 
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_2, agent_id='1',
         perf_func=perf_fkt_min)
 
     assert merge_result is candidate_1
 
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_1, agent_id='1',
         perf_func=perf_fkt_min)
     assert merge_result is candidate_1
 
-    merge_result = COHDA._merge_candidates(
+    merge_result = cohda._merge_candidates(
         candidate_i=candidate_3, candidate_j=candidate_1, agent_id='3',
         perf_func=perf_fkt)
 

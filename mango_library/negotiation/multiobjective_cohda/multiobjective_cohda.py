@@ -1,22 +1,20 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import Optional
 import asyncio
-import numpy as np
-from evoalgos.selection import HyperVolumeContributionSelection
 import random
 import time
 from typing import Dict, List, Any, Tuple, Callable, Optional
 
+import numpy as np
+from evoalgos.selection import HyperVolumeContributionSelection
 from mango.messages.codecs import json_serializable
+
 from mango_library.coalition.core import CoalitionAssignment
-from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, Individual, WorkingMemory,\
-    SystemConfig, ScheduleSelections, Target, SolutionPoint
-from mango_library.negotiation.multiobjective_cohda.multiobjective_util import get_hypervolume_sms_emoa, \
-    get_index_of_worst_sms_emoa
 from mango_library.negotiation.core import NegotiationParticipant, \
     NegotiationStarterRole, Negotiation
+from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
+    SystemConfig, ScheduleSelections, Target, SolutionPoint
 
 
 @json_serializable
@@ -107,6 +105,7 @@ class COHDA:
         self._mutate_func = mutate_func if mutate_func is not None else self.mutate_with_all_possible
         self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
         self._selection.construct_ref_point = self.construct_ref_point
+        self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
 
     def construct_ref_point(self, solution_points, offsets=None):
         # ref point is given, but possible solution calculation could be here
@@ -263,7 +262,7 @@ class COHDA:
             print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
             # calculate hypervolume of new front
-            new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
+            new_hyper_volume = self.get_hypervolume(performances=[ind.performance for ind in all_solution_points])
 
             print(
                 f'Candidate after decide:\nPerformance: '
@@ -350,7 +349,6 @@ class COHDA:
         return sysconf
 
     def get_hypervolume(self, performances):
-        self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
         return self._selection.sorting_component.hypervolume_indicator. \
             assess_non_dom_front(performances)
 
@@ -411,7 +409,7 @@ class COHDA:
             # calculate and set perf
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
-            candidate.hypervolume = self.get_hypervolume(candidate.perf)
+           #candidate.hypervolume = self.get_hypervolume(candidate.perf)
 
         return candidate
 

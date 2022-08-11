@@ -31,13 +31,13 @@ SCHEDULES_FOR_AGENTS_SIMPEL = [
 SCHEDULES_FOR_AGENTS_COMPLEX = [[1, 1], [0.6, 0.6]]
 for i in range(11):
     SCHEDULES_FOR_AGENTS_COMPLEX.append([i * 0.1, 1 - i * 0.1])
-SCHEDULES_FOR_AGENTS_COMPLEX=[SCHEDULES_FOR_AGENTS_COMPLEX]
+SCHEDULES_FOR_AGENTS_COMPLEX = [SCHEDULES_FOR_AGENTS_COMPLEX]
 
 
 @pytest.mark.asyncio
 async def test_minimize_scenario():
     """
-    Method to test a scenario of multiobjective COHDA with two objectives to
+    Method to test a scenario of multi-objective COHDA with two objectives to
     minimize: to minimize the deviation within a schedule and to minimize
     the sum of the schedule. In this example, only one candidate is taken
     and each agent only stores two possible schedules. The schedules are

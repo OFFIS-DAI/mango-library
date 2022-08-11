@@ -1,14 +1,12 @@
 """
 Module that holds the data classes necessary for a COHDA negotiation
 """
-
+import json
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
 import numpy as np
-
 from mango.messages.codecs import json_serializable
-from mango_library.negotiation.multiobjective_cohda.sms_emoa.individual import Individual
 
 
 @dataclass
@@ -33,7 +31,9 @@ class SolutionPoint:
 
     def __eq__(self, other):
         # TODO discuss: is idx check necessary?
-        return np.array_equal(self.cluster_schedule, other.cluster_schedule) and self.performance == other.performance
+        return np.array_equal(self.cluster_schedule,
+                              other.cluster_schedule) and self.performance == other.performance
+
 
 @json_serializable
 class SolutionCandidate:

@@ -1,13 +1,8 @@
 import numpy as np
 
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import CohdaMessage, COHDA
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, ScheduleSelections, \
     SystemConfig, WorkingMemory
-from mango_library.negotiation.multiobjective_cohda.multiobjective_util import get_hypervolume_sms_emoa
-
-
-def send_to_neighbors(cohda, assignment, negotation, message):
-    pass
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import CohdaMessage, COHDA
 
 
 def target_func(cluster_schedules, target_params=None):
@@ -34,13 +29,11 @@ def test_perceive():
     }, num_solution_points=2)
 
     candidate_1.perf = target_func(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume_sms_emoa(
-        candidate_1.population,
-        reference_point=(1, 1))
+    candidate_1.hypervolume = cohda.get_hypervolume(performances=candidate_1.perf)
 
     systemconfig_1 = SystemConfig(schedule_choices={
         '2': ScheduleSelections(counter=2,
-                              schedules=np.array([[0.1, 0.1], [0.2, 0.2]])),
+                                schedules=np.array([[0.1, 0.1], [0.2, 0.2]])),
     }, num_solution_points=2
     )
 
