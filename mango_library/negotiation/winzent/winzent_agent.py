@@ -556,7 +556,10 @@ class WinzentAgent(Agent):
 
             # PGASC: Save the acknowledged value in result
             if self.acknowledgement_valid(reply):
-                self.save_accepted_values(reply)
+                if not self.solution_overshoots_requirement(reply):
+                    self.save_accepted_values(reply)
+                else:
+                    logger.info(f"{self._aid} has thrown out reply {reply.value}")
             else:
                 logger.debug(
                     f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
@@ -597,6 +600,14 @@ class WinzentAgent(Agent):
                     f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
                     f"{reply.id} which is not in {self._acknowledgements_sent} "
                 )
+
+    def solution_overshoots_requirement(self, reply) -> bool:
+        final_solution = 0
+        for agent in self.result.keys():
+            final_solution += self.result[agent]
+        if (final_solution + reply.value) > self.governor.message_journal[0].value:
+            return True
+        return False
 
     def acknowledgement_valid(self, reply) -> bool:
         """
@@ -657,6 +668,7 @@ class WinzentAgent(Agent):
         """
         answer_objects = []
         initial_value = initial_req.forecast.second
+        logger.info(f"initial value is {initial_value}")
         initial_msg_type = initial_req.message.msg_type
         # determine flexibility sign according to msg type
         positive = False if initial_msg_type == xboole.MessageType.DemandNotification else True
@@ -814,6 +826,8 @@ class WinzentAgent(Agent):
             if len(answers) > 0:
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} found solution. ***')
+                logger.info(f'\n*** {self._aid} found solution. ***')
+                logger.info(f'\n*** {self._aid} found solution.{answers} is something. {gcd_p} is something else ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 
