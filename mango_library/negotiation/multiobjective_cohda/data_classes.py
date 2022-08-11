@@ -46,7 +46,8 @@ class SolutionCandidate:
         self._schedules = schedules
         self._population = []
         self._num_solution_points = num_solution_points
-        self.perf: List[Tuple[float, ...]] = perf
+        self._perf: List[Tuple[float, ...]] = perf
+        self.perf = perf  # TODO this can be removed once we remove the creation of Individuals in the setter of perf
         self._hypervolume: float = hypervolume
 
     def __eq__(self, o: object) -> bool:
