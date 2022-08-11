@@ -28,81 +28,80 @@ SCHEDULES_FOR_AGENTS_SIMPEL = [
 SCHEDULES_FOR_AGENTS_COMPLEX = [[1, 1], [0.6, 0.6]]
 for i in range(11):
     SCHEDULES_FOR_AGENTS_COMPLEX.append([i * 0.1, 1 - i * 0.1])
-SCHEDULES_FOR_AGENTS_COMPLEX=[SCHEDULES_FOR_AGENTS_COMPLEX]
+SCHEDULES_FOR_AGENTS_COMPLEX = [SCHEDULES_FOR_AGENTS_COMPLEX]
 
+#
+# @pytest.mark.asyncio
+# async def test_minimize_scenario():
+#     """
+#     Method to test a scenario of multiobjective COHDA with two objectives to
+#     minimize: to minimize the deviation within a schedule and to minimize
+#     the sum of the schedule. In this example, only one candidate is taken
+#     and each agent only stores two possible schedules. The schedules are
+#     very conflicting and one is good for both objectives, the other one not.
+#     Since there is only one candidate given, the agent mutates its chosen
+#     schedule in the given candidate and because of the mock mutation function,
+#     both schedules are tried at least once. By that it is made sure that the
+#     solution of the negotiation is actually the best possible because all
+#     options were considered.
+#     """
+#     c = await Container.factory(addr=('127.0.0.2', 5555))
+#
+#     agents, addrs = await create_agents(container=c,
+#                                         targets=MINIMIZE_TARGETS,
+#                                         possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+#                                         num_iterations=NUM_ITERATIONS,
+#                                         num_candidates=NUM_CANDIDATES,
+#                                         check_msg_queue_interval=
+#                                         CHECK_MSG_QUEUE_INTERVAL,
+#                                         num_agents=NUM_AGENTS)
+#
+#     await asyncio.sleep(2)
+#
+#     solution_dict = get_solution(agents).schedules
+#     print('solution:', solution_dict, '\n')
+#     for aid, chosen_schedules in solution_dict.items():
+#         # for minimizing, every second schedule is the better because
+#         # sum and deviations are minimized
+#         chosen_schedule = chosen_schedules[0]
+#         print(f'[{aid}] chosen schedule: {chosen_schedule}.')
+#         idx = int(aid[-1]) - 1
+#         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
+#
+#     await c.shutdown()
 
-
-@pytest.mark.asyncio
-async def test_minimize_scenario():
-    """
-    Method to test a scenario of multiobjective COHDA with two objectives to
-    minimize: to minimize the deviation within a schedule and to minimize
-    the sum of the schedule. In this example, only one candidate is taken
-    and each agent only stores two possible schedules. The schedules are
-    very conflicting and one is good for both objectives, the other one not.
-    Since there is only one candidate given, the agent mutates its chosen
-    schedule in the given candidate and because of the mock mutation function,
-    both schedules are tried at least once. By that it is made sure that the
-    solution of the negotiation is actually the best possible because all
-    options were considered.
-    """
-    c = await Container.factory(addr=('127.0.0.2', 5555))
-
-    agents, addrs = await create_agents(container=c,
-                                        targets=MINIMIZE_TARGETS,
-                                        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-                                        num_iterations=NUM_ITERATIONS,
-                                        num_candidates=NUM_CANDIDATES,
-                                        check_msg_queue_interval=
-                                        CHECK_MSG_QUEUE_INTERVAL,
-                                        num_agents=NUM_AGENTS)
-
-    await asyncio.sleep(2)
-
-    solution_dict = get_solution(agents).schedules
-    print('solution:', solution_dict, '\n')
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f'[{aid}] chosen schedule: {chosen_schedule}.')
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
-
-    await c.shutdown()
-
-
-@pytest.mark.asyncio
-async def test_maximize_scenario():
-    """
-    This method follows the same principle as the other test, but the
-    goal is to maximize the objectives.
-    """
-    c = await Container.factory(addr=('127.0.0.2', 5555))
-
-    agents, addrs = await create_agents(container=c,
-                                        targets=MAXIMIZE_TARGETS,
-                                        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-                                        num_iterations=NUM_ITERATIONS,
-                                        num_candidates=NUM_CANDIDATES,
-                                        check_msg_queue_interval=
-                                        CHECK_MSG_QUEUE_INTERVAL,
-                                        num_agents=NUM_AGENTS)
-
-    await asyncio.sleep(2)
-
-    solution_dict = get_solution(agents).schedules
-    print('solution:', solution_dict, '\n')
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f'[{aid}] chosen schedule: {chosen_schedule}.')
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
-
-    # gracefully shutdown
-    await c.shutdown()
+#
+# @pytest.mark.asyncio
+# async def test_maximize_scenario():
+#     """
+#     This method follows the same principle as the other test, but the
+#     goal is to maximize the objectives.
+#     """
+#     c = await Container.factory(addr=('127.0.0.2', 5555))
+#
+#     agents, addrs = await create_agents(container=c,
+#                                         targets=MAXIMIZE_TARGETS,
+#                                         possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+#                                         num_iterations=NUM_ITERATIONS,
+#                                         num_candidates=NUM_CANDIDATES,
+#                                         check_msg_queue_interval=
+#                                         CHECK_MSG_QUEUE_INTERVAL,
+#                                         num_agents=NUM_AGENTS)
+#
+#     await asyncio.sleep(2)
+#
+#     solution_dict = get_solution(agents).schedules
+#     print('solution:', solution_dict, '\n')
+#     for aid, chosen_schedules in solution_dict.items():
+#         # for minimizing, every second schedule is the better because
+#         # sum and deviations are minimized
+#         chosen_schedule = chosen_schedules[0]
+#         print(f'[{aid}] chosen schedule: {chosen_schedule}.')
+#         idx = int(aid[-1]) - 1
+#         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+#
+#     # gracefully shutdown
+#     await c.shutdown()
 
 
 @pytest.mark.asyncio
@@ -120,8 +119,8 @@ async def test_complex_scenario():
 
     target_first = Target(target_function=minimize_first, ref_point=1.1, maximize=False)
     target_second = Target(target_function=minimize_second, ref_point=1.1, maximize=False)
-    pick_fkt = COHDA.pick_all_points
-    # pick_fkt = COHDA.pick_random_point
+    # pick_fkt = COHDA.pick_all_points
+    pick_fkt = COHDA.pick_random_point
     # mutate_fkt = COHDA.mutate_with_all_possible
     mutate_fkt = COHDA.mutate_with_one_random
 

@@ -1,17 +1,15 @@
 """
 Module that holds the data classes necessary for a COHDA negotiation
 """
-
+import json
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
 import numpy as np
-
 from mango.messages.codecs import json_serializable
-from mango_library.negotiation.multiobjective_cohda.sms_emoa.individual import Individual
 
 
-@dataclass
+@dataclass(frozen=True)
 class SolutionPoint:
     """
     Data structure that hold the information about one singular solution point of the parete front.
@@ -19,9 +17,21 @@ class SolutionPoint:
     and the idx dict, mapping agent_id to the idx of the cluster schedule
     """
     cluster_schedule: np.array
-    performance: Tuple[float,...]
+    performance: Tuple[float, ...]
     idx: Dict[str, int]
 
+    @property
+    def objective_values(self):
+        return self.performance
+
+    def __hash__(self):
+        cs = (self.cluster_schedule[0][0], self.cluster_schedule[0][1])
+        idx = json.dumps(self.idx)
+        return hash((cs, self.performance, idx))
+
+    def __eq__(self, other):
+        # TODO discuss: is idx check necessary?
+        return np.array_equal(self.cluster_schedule, other.cluster_schedule) and self.performance == other.performance
 
 @json_serializable
 class SolutionCandidate:
@@ -44,7 +54,6 @@ class SolutionCandidate:
         """
         self._agent_id = agent_id
         self._schedules = schedules
-        self._population = []
         self._num_solution_points = num_solution_points
         self._perf: List[Tuple[float, ...]] = perf
         self._hypervolume: float = hypervolume
@@ -125,12 +134,6 @@ class SolutionCandidate:
 
     @perf.setter
     def perf(self, new_perf: List[Tuple[float, ...]]):
-        if not self._population:
-            self._population = [Individual(solution_point.cluster_schedule, perf)
-                                for solution_point, perf in zip(self.solution_points, new_perf)]
-
-        for idx, entry in enumerate(new_perf):
-            self._population[idx].objective_values = entry
         self._perf = new_perf
 
     @property
@@ -140,10 +143,6 @@ class SolutionCandidate:
     @hypervolume.setter
     def hypervolume(self, new_hypervolume: float):
         self._hypervolume = new_hypervolume
-
-    @property
-    def population(self):
-        return self._population
 
     @classmethod
     def create_from_sysconf(cls, sysconfig, agent_id: str):
@@ -258,6 +257,7 @@ class SystemConfig:
 class WorkingMemory:
     """Working memory of a multi objective COHDA agent
     """
+
     def __init__(self, *, target_params, system_config: SystemConfig,
                  solution_candidate: SolutionCandidate):
         self._target_params = target_params
@@ -266,7 +266,7 @@ class WorkingMemory:
 
     @property
     def target_params(self):
-        """Return the parameters to calculatet the target functions
+        """Return the parameters to calculate the target functions
 
         :return: the target params
         """

@@ -1,22 +1,21 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import Optional
 import asyncio
+import json
 import random
 from typing import Dict, List, Any, Tuple, Callable
+from typing import Optional
 
 import numpy as np
-
+from evoalgos.selection import HyperVolumeContributionSelection
 from mango.messages.codecs import json_serializable
+
 from mango_library.coalition.core import CoalitionAssignment
-from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, Individual, WorkingMemory,\
-    SystemConfig, ScheduleSelections, Target, SolutionPoint
-from mango_library.negotiation.multiobjective_cohda.multiobjective_util import get_hypervolume_sms_emoa, \
-    get_index_of_worst_sms_emoa
 from mango_library.negotiation.core import NegotiationParticipant, \
     NegotiationStarterRole, Negotiation
-
+from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
+    SystemConfig, ScheduleSelections, Target, SolutionPoint
 
 
 @json_serializable
@@ -61,6 +60,7 @@ class CohdaNegotiationStarterRole(NegotiationStarterRole):
             coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid
         )
 
+
 class COHDA:
     """
     COHDA-decider
@@ -104,6 +104,12 @@ class COHDA:
         self._num_iterations = num_iterations
         self._pick_func = pick_func if pick_func is not None else self.pick_all_points
         self._mutate_func = mutate_func if mutate_func is not None else self.mutate_with_all_possible
+        self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
+        self._selection.construct_ref_point = self.construct_ref_point
+
+    def construct_ref_point(self, solution_points, offsets=None):
+        # ref point is given, but possible solution calculation could be here
+        return self._ref_point
 
     @staticmethod
     def pick_all_points(solution_points: List[SolutionPoint]) -> List[SolutionPoint]:
@@ -198,9 +204,9 @@ class COHDA:
                                                           num_solution_points=num_solution_points)
                     current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
                                                              self._memory.target_params)
-                    current_candidate.hypervolume = get_hypervolume_sms_emoa(
-                        current_candidate.population, self._ref_point
-                    )
+
+                    performances = current_candidate.perf
+                    current_candidate.hypervolume = self.get_hypervolume(performances)
                 else:
                     current_candidate = self._memory.solution_candidate
 
@@ -211,7 +217,7 @@ class COHDA:
             current_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
             current_candidate = self._merge_candidates(
                 candidate_i=current_candidate, candidate_j=new_candidate, agent_id=self._part_id,
-                perf_func=self._perf_func, target_params=self._memory.target_params, reference_point=self._ref_point)
+                perf_func=self._perf_func, target_params=self._memory.target_params)
 
         return current_sysconfig, current_candidate
 
@@ -230,7 +236,7 @@ class COHDA:
                 SolutionCandidate.create_from_sysconf(sysconfig=sysconfig, agent_id=self._part_id)
             candidate_from_sysconfig.perf = self._perf_func(candidate_from_sysconfig.cluster_schedules,
                                                             self._memory.target_params)
-            all_individuals = candidate_from_sysconfig.population
+            all_solution_points = candidate_from_sysconfig.solution_points
 
             # pick solution points to mutate
             solution_points_to_mutate = self._pick_func(solution_points=candidate_from_sysconfig.solution_points)
@@ -240,34 +246,27 @@ class COHDA:
                 new_solution_points = self._mutate_func(
                     solution_point=solution_point, agent_id=self._part_id, perf_func=self._perf_func,
                     target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
-                for new_solution_point in new_solution_points:
-                    all_individuals.append(Individual(new_solution_point.cluster_schedule,
-                                                      new_solution_point.performance))
+                all_solution_points.extend(new_solution_points)
 
-            # now remove points until we have reached the desired number of solution_points
-            # TODO Implement a more efficient way to reduce number of solution points
-            while len(all_individuals) > candidate.num_solution_points:
-                worst_solution_point_index = get_index_of_worst_sms_emoa(
-                    performances=all_individuals,
-                    reference_point=self._ref_point)
-                all_individuals.pop(worst_solution_point_index)
+            self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
 
             # calculate hypervolume of new front
-            new_hyper_volume = get_hypervolume_sms_emoa(performances=[ind.objective_values for ind in all_individuals],
-                                                    reference_point=self._ref_point)
+            new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
 
-            print(f'Candidate after decide:\nPerformance: {sorted([(round(ind.objective_values[0], 2), round(ind.objective_values[1], 2)) for ind in all_individuals], key=lambda l : l[0])}\n'
-                  f'Hypervolume: {round(new_hyper_volume, 4)}')
+            print(
+                f'Candidate after decide:\nPerformance: '
+                f'{sorted([(round(ind.objective_values[0], 2), round(ind.objective_values[1], 2)) for ind in all_solution_points], key=lambda l: l[0])}\n'
+                f'Hypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
                 idx = solution_points_to_mutate[0].idx
                 new_schedule_dict = {aid: [] for aid in idx.keys()}
                 new_perf = []
-                for individual in all_individuals:
+                for individual in all_solution_points:
                     new_perf.append(individual.objective_values)
                     for aid, cs_idx in idx.items():
-                        new_schedule_dict[aid].append(individual.genome[cs_idx])
+                        new_schedule_dict[aid].append(individual.cluster_schedule[cs_idx])
                 for aid in idx.keys():
                     new_schedule_dict[aid] = np.array(new_schedule_dict[aid])
 
@@ -338,9 +337,13 @@ class COHDA:
 
         return sysconf
 
-    @staticmethod
-    def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str, perf_func,
-              reference_point, target_params=None):
+    def get_hypervolume(self, performances):
+        self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
+        return self._selection.sorting_component.hypervolume_indicator. \
+            assess_non_dom_front(performances)
+
+    def _merge_candidates(self, candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
+                          perf_func, target_params=None):
         """
         Merge *candidate_i* and *candidate_j* and return the result.
 
@@ -396,9 +399,7 @@ class COHDA:
             # calculate and set perf
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
-            candidate.hypervolume = get_hypervolume_sms_emoa(
-                performances=candidate.population,
-                reference_point=reference_point)
+            candidate.hypervolume = self.get_hypervolume(candidate.perf)
 
         return candidate
 
@@ -409,7 +410,7 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
 
     def __init__(self, *, schedule_provider, targets: List[Target], num_solution_points: int,
                  local_acceptable_func=None, check_inbox_interval: float = 0.1,
-                 pick_func=None, mutate_func=None, num_iterations: int = 1,):
+                 pick_func=None, mutate_func=None, num_iterations: int = 1, ):
         super().__init__()
 
         self._schedule_provider = schedule_provider
@@ -468,7 +469,6 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
                 await task
             except asyncio.CancelledError:
                 pass
-
 
     def handle(self,
                message,
