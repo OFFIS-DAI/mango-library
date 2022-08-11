@@ -1,12 +1,11 @@
 """Module for distributed real power planning with COHDA. Contains roles, which
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
-from typing import Optional
 import asyncio
-import random
-from typing import Dict, List, Any, Tuple, Callable
-
 import numpy as np
+import random
+import time
+from typing import Dict, List, Any, Tuple, Callable, Optional
 
 from mango.messages.codecs import json_serializable
 from mango_library.coalition.core import CoalitionAssignment
@@ -16,7 +15,6 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_util import g
     get_index_of_worst_sms_emoa
 from mango_library.negotiation.core import NegotiationParticipant, \
     NegotiationStarterRole, Negotiation
-
 
 
 @json_serializable
@@ -60,6 +58,7 @@ class CohdaNegotiationStarterRole(NegotiationStarterRole):
                                                      num_solution_points=num_solution_points))),
             coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid
         )
+
 
 class COHDA:
     """
@@ -146,13 +145,20 @@ class COHDA:
         old_candidate = self._memory.solution_candidate
 
         # perceive
+        t_handle_start = time.time()
         sysconf, candidate = self._perceive(messages)
-
+        t_after_perceive = time.time()
+        print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
+            t_after_decide = time.time()
+            print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
-            return self._act(new_sysconfig=sysconf, new_candidate=candidate)
+            return_msg = self._act(new_sysconfig=sysconf, new_candidate=candidate)
+            t_after_act = time.time()
+            print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
+            return return_msg
         else:
             return None
 
@@ -223,6 +229,7 @@ class COHDA:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
+        t_start_decide = time.time()
         current_best_candidate = candidate
 
         for iteration in range(self._num_iterations):
@@ -243,6 +250,8 @@ class COHDA:
                 for new_solution_point in new_solution_points:
                     all_individuals.append(Individual(new_solution_point.cluster_schedule,
                                                       new_solution_point.performance))
+            t_after_point_creation = time.time()
+            print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
             # now remove points until we have reached the desired number of solution_points
             # TODO Implement a more efficient way to reduce number of solution points
@@ -251,6 +260,9 @@ class COHDA:
                     performances=all_individuals,
                     reference_point=self._ref_point)
                 all_individuals.pop(worst_solution_point_index)
+
+            t_after_recuction = time.time()
+            print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
             new_hyper_volume = get_hypervolume_sms_emoa(performances=[ind.objective_values for ind in all_individuals],
