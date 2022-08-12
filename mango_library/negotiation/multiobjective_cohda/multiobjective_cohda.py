@@ -108,7 +108,11 @@ class COHDA:
         self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
 
     def construct_ref_point(self, solution_points, offsets=None):
-        # ref point is given, but possible solution calculation could be here
+        """
+        Method to construct the reference point according to the given solution points.
+        """
+        # ToDo: discuss, whether we want to keep this
+        # In this case, the reference point is given, but a possible solution calculation could be placed here
         return self._ref_point
 
     @staticmethod
