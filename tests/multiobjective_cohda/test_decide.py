@@ -38,7 +38,7 @@ def initial_working_memory():
 @pytest.fixture
 def cohda(initial_working_memory):
     global_ref_point = (1.1, 1.1)
-    possible_schedules = [[0.1, 0.9], [0.3, 0.6]]
+    possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
     my_cohda = COHDA(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
@@ -56,6 +56,7 @@ def test_decide(cohda):
         sysconfig=deepcopy(cohda._memory.system_config), candidate=deepcopy(cohda._memory.solution_candidate))
 
     assert new_sys != cohda._memory.system_config
-    assert np.array_equal(np.array([[0.1, 0.9], [0.3, 0.6]]), new_candidate.schedules['1']) or np.array_equal(
-        np.array([[0.3, 0.6], [0.1, 0.9]])
+    # ToDo: discuss in next meeting
+    assert np.array_equal(np.array([[0.1, 0.1], [0.1, 0.1]]), new_candidate.schedules['1']) or np.array_equal(
+        np.array([[0.1, 0.1], [0.1, 0.1]])
     )
