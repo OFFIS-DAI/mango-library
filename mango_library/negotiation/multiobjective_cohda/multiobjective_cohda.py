@@ -256,11 +256,14 @@ class COHDA:
                     target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
                 all_solution_points.extend(new_solution_points)
 
+            t_after_point_creation = time.time()
+            print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
+
             # reduce solution points to given number of solution points
             self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
 
-            t_after_point_creation = time.time()
-            print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
+            t_after_reduction = time.time()
+            print(f'Reducing points took {round(t_after_reduction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.performance for ind in all_solution_points])
