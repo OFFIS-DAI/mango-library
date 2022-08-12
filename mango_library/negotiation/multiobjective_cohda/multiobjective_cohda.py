@@ -256,6 +256,7 @@ class COHDA:
                     target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
                 all_solution_points.extend(new_solution_points)
 
+            # reduce solution points to given number of solution points
             self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
 
             t_after_point_creation = time.time()
