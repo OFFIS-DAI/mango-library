@@ -4,6 +4,24 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 import numpy as np
 
 
+def get_hypervolume(performances: List[Tuple[float, ...]]) -> float:
+    """
+    This function calculates the hypervolume from a list of performance tuples with a given reference point
+    :param performances:
+    :return:
+    """
+    #  ----- START DUMMY ALLERT -----
+
+    total_performance = 0
+    for candidate_performance in performances:
+        for objective_performance in candidate_performance:
+            total_performance += objective_performance
+
+    #  ----- END DUMMY ALLERT -----
+
+    return total_performance
+
+
 def test_init():
     schedules_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
     schedules_2 = np.array([[4, 2, 1], [4, 5, 4]], np.int32)
@@ -47,6 +65,8 @@ def test_merge_dummy():
         part_id='1',
         num_iterations=1,
     )
+    # use dummy function for hypervolume calculation for testing
+    cohda.get_hypervolume = get_hypervolume
 
     schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
     schedules_2_1 = np.array([[1, 1, 1], [1, 1, 1]], np.int32)
@@ -62,15 +82,15 @@ def test_merge_dummy():
                                     schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
+    candidate_1.hypervolume = get_hypervolume(candidate_1.perf)
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
                                                              '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
+    candidate_2.hypervolume = get_hypervolume(candidate_2.perf)
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
                                                              '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
+    candidate_3.hypervolume = get_hypervolume(candidate_3.perf)
 
     print(candidate_1.perf)
     merge_result = cohda._merge_candidates(
