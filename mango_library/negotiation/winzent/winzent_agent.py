@@ -556,6 +556,7 @@ class WinzentAgent(Agent):
 
             # PGASC: Save the acknowledged value in result
             if self.acknowledgement_valid(reply):
+                logger.info("this is just a test")
                 #if not self.solution_overshoots_requirement(reply):
                 self.save_accepted_values(reply)
                 #else:
