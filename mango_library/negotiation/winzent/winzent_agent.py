@@ -263,7 +263,7 @@ class WinzentAgent(Agent):
                                  msg_type=requirement.message.
                                  msg_type,
                                  ttl=self._current_ttl,
-                                 value=message.value + 1000000000000000,
+                                 value=message.value,
                                  id=message.id,
                                  time_span=requirement.time_span,
                                  sender=self._aid,
