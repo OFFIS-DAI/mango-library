@@ -605,16 +605,9 @@ class WinzentAgent(Agent):
 
     def solution_overshoots_requirement(self, reply) -> bool:
         final_solution = 0
-        print("before for loop")
         for agent in self.result.keys():
-            print("in for loop")
             final_solution += self.result[agent]
-        print("before if statement")
-        print(self.governor.curr_requirement_value)
-        print(final_solution)
-        print(reply.value)
-        if (final_solution + reply.value) > self.governor.curr_requirement_value:
-            print("after if statement")
+        if (final_solution + reply.value[0]) > self.governor.curr_requirement_value:
             return True
         return False
 
