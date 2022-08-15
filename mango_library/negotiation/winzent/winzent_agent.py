@@ -557,10 +557,10 @@ class WinzentAgent(Agent):
 
             # PGASC: Save the acknowledged value in result
             if self.acknowledgement_valid(reply):
-                #if not self.solution_overshoots_requirement(reply):
+                if not self.solution_overshoots_requirement(reply):
                     self.save_accepted_values(reply)
-                #else:
-                #    logger.info(f"{self._aid} has thrown out reply {reply.value}")
+                else:
+                    logger.info(f"{self._aid} has thrown out reply {reply.value}")
             else:
                 logger.debug(
                     f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
@@ -602,13 +602,17 @@ class WinzentAgent(Agent):
                     f"{reply.id} which is not in {self._acknowledgements_sent} "
                 )
 
-    # def solution_overshoots_requirement(self, reply) -> bool:
-    #     final_solution = 0
-    #     for agent in self.result.keys():
-    #         final_solution += self.result[agent]
-    #     if (final_solution + reply.value) > self.governor.curr_requirement_value:
-    #         return True
-    #     return False
+    def solution_overshoots_requirement(self, reply) -> bool:
+        final_solution = 0
+        print("before for loop")
+        for agent in self.result.keys():
+            print("in for loop")
+            final_solution += self.result[agent]
+        print("before if statement")
+        if (final_solution + reply.value) > self.governor.curr_requirement_value:
+            print("after if statement")
+            return True
+        return False
 
     def acknowledgement_valid(self, reply) -> bool:
         """
