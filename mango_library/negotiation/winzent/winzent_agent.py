@@ -558,6 +558,7 @@ class WinzentAgent(Agent):
             # PGASC: Save the acknowledged value in result
             if self.acknowledgement_valid(reply):
                 if not self.solution_overshoots_requirement(reply):
+                    print("soulution legit")
                     self.save_accepted_values(reply)
                 else:
                     logger.info(f"{self._aid} has thrown out reply {reply.value}")
@@ -609,6 +610,8 @@ class WinzentAgent(Agent):
             print("in for loop")
             final_solution += self.result[agent]
         print("before if statement")
+        print(self.governor.curr_requirement_value)
+        print((final_solution + reply.value))
         if (final_solution + reply.value) > self.governor.curr_requirement_value:
             print("after if statement")
             return True
