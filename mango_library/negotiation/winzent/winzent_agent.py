@@ -611,7 +611,8 @@ class WinzentAgent(Agent):
             final_solution += self.result[agent]
         print("before if statement")
         print(self.governor.curr_requirement_value)
-        print((final_solution + reply.value))
+        print(final_solution)
+        print(reply.value)
         if (final_solution + reply.value) > self.governor.curr_requirement_value:
             print("after if statement")
             return True
