@@ -605,11 +605,13 @@ class WinzentAgent(Agent):
 
     def solution_overshoots_requirement(self, reply) -> bool:
         final_solution = 0
-        print("are u there?")
-        logger.info(f"governor.message_journal[0].value is:  {self.governor.message_journal[0].value}")
+        print(self.governor.message_journal[0].value)
+        print("test after gov")
         for agent in self.result.keys():
+            print("test in for")
             final_solution += self.result[agent]
         if (final_solution + reply.value) > self.governor.message_journal[0].value:
+            print("test in return")
             return True
         return False
 
