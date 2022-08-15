@@ -45,6 +45,7 @@ class Governor:
         self._requirement = None
         self.diff_to_real_value = 0
         self.curr_time = None
+        self.curr_requirement_value = 0
         self.message_journal = MessageJournal()
         self.solution_journal = MessageJournal()
         self.solver_triggered = False

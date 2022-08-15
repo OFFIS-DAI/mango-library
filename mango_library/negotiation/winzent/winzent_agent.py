@@ -141,6 +141,7 @@ class WinzentAgent(Agent):
         message = requirement.message
         message.sender = self._aid
         self.governor.message_journal.add(message)
+        self.governor.curr_requirement_value = value
         self.negotiation_done = asyncio.Future()
 
         await self.handle_internal_request(requirement)
@@ -555,9 +556,7 @@ class WinzentAgent(Agent):
             self.governor.solution_journal.remove_message(reply.answer_to)
 
             # PGASC: Save the acknowledged value in result
-            print("before ack valid")
             if self.acknowledgement_valid(reply):
-                print("after ack valid")
                 if not self.solution_overshoots_requirement(reply):
                     self.save_accepted_values(reply)
                 else:
@@ -605,13 +604,9 @@ class WinzentAgent(Agent):
 
     def solution_overshoots_requirement(self, reply) -> bool:
         final_solution = 0
-        print(self.governor.message_journal[0])
-        print("test after gov")
         for agent in self.result.keys():
-            print("test in for")
             final_solution += self.result[agent]
-        if (final_solution + reply.value) > self.governor.message_journal[0].value:
-            print("test in return")
+        if (final_solution + reply.value) > self.governor.curr_requirement_value:
             return True
         return False
 
