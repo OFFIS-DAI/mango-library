@@ -562,6 +562,20 @@ class WinzentAgent(Agent):
                     self.save_accepted_values(reply)
                 else:
                     logger.info(f"{self._aid} has thrown out reply {reply.value}")
+                    withdrawal = WinzentMessage(time_span=self._own_request.time_span,
+                                                is_answer=True, answer_to=self._own_request.id,
+                                                msg_type=xboole.MessageType.WithdrawalNotification,
+                                                ttl=self._current_ttl, receiver=reply.sender,  # PGASC: added sender
+                                                # because this message will be sent endlessly otherwise
+                                                value=self._own_request.value,
+                                                id=str(uuid.uuid4()),
+                                                sender=self._aid
+                                                )
+                    if self.send_message_paths:
+                        await self.send_message(withdrawal,
+                                                message_path=self.negotiation_connections[withdrawal.receiver])
+                    else:
+                        await self.send_message(withdrawal)
             else:
                 logger.debug(
                     f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
