@@ -603,8 +603,8 @@ class WinzentAgent(Agent):
                 )
 
     def solution_overshoots_requirement(self, reply) -> bool:
-        print("now checking overshoot")
         final_solution = 0
+        logger.info(f"governor.message_journal[0].value is:  {self.governor.message_journal[0].value}")
         for agent in self.result.keys():
             final_solution += self.result[agent]
         if (final_solution + reply.value) > self.governor.message_journal[0].value:
