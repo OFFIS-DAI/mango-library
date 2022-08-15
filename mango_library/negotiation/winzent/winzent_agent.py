@@ -555,8 +555,9 @@ class WinzentAgent(Agent):
             self.governor.solution_journal.remove_message(reply.answer_to)
 
             # PGASC: Save the acknowledged value in result
+            print("before ack valid")
             if self.acknowledgement_valid(reply):
-                logger.info("this is just a test")
+                print("after ack valid")
                 if not self.solution_overshoots_requirement(reply):
                     self.save_accepted_values(reply)
                 else:
