@@ -605,7 +605,7 @@ class WinzentAgent(Agent):
 
     def solution_overshoots_requirement(self, reply) -> bool:
         final_solution = 0
-        print(self.governor.message_journal[0].value)
+        print(self.governor.message_journal[0])
         print("test after gov")
         for agent in self.result.keys():
             print("test in for")
