@@ -40,7 +40,7 @@ class WinzentAgent(Agent):
 
         # PGASC in result, the final negotiated (accepted and acknowledged) result is saved
         self.result = {}
-
+        self.result_sum = 0
         # store other agents as neighbors in a list
         self.neighbors = {}
 
@@ -558,7 +558,6 @@ class WinzentAgent(Agent):
             # PGASC: Save the acknowledged value in result
             if self.acknowledgement_valid(reply):
                 if not self.solution_overshoots_requirement(reply):
-                    print("soulution legit")
                     self.save_accepted_values(reply)
                 else:
                     logger.info(f"{self._aid} has thrown out reply {reply.value}")
@@ -618,10 +617,7 @@ class WinzentAgent(Agent):
                 )
 
     def solution_overshoots_requirement(self, reply) -> bool:
-        final_solution = 0
-        for agent in self.result.keys():
-            final_solution += self.result[agent]
-        if (final_solution + reply.value[0]) > self.governor.curr_requirement_value:
+        if (self.result_sum + reply.value[0]) > self.governor.curr_requirement_value:
             return True
         return False
 
@@ -654,6 +650,7 @@ class WinzentAgent(Agent):
         if message.sender not in self.result.keys():
             self.result[message.sender] = 0
         self.result[message.sender] += message.value[0]
+        self.result_sum += message.value[0]
 
     async def reset(self):
         """
