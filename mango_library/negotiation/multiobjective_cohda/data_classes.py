@@ -60,7 +60,7 @@ class SolutionCandidate:
         self._schedules = schedules
         self._num_solution_points = num_solution_points
         self._perf: List[Tuple[float, ...]] = perf
-        self.perf = perf  # TODO this can be removed once we remove the creation of Individuals in the setter of perf
+        self._sort_solution_points()
 
     def __eq__(self, o: object) -> bool:
         if (not isinstance(o, SolutionCandidate) or self._agent_id != o.agent_id or self.perf != o.perf or
@@ -74,14 +74,16 @@ class SolutionCandidate:
 
     def _sort_solution_points(self):
         if self._perf is not None:
-            ind = np.lexsort(np.transponse(self._perf))
+            ind = np.lexsort(np.transpose(self._perf))
             for part_id in self.schedules.keys():
                 self.schedules[part_id] = self.schedules[part_id][ind[::-1]]
-            # TODO sort perf accordingly
+
+            new_perf = []
+            for perf_ind in reversed(ind):
+                new_perf.append(self._perf[perf_ind])
+            self._perf = new_perf
+
             # TODO TEST me
-
-
-
 
     @property
     def agent_id(self) -> str:
@@ -152,6 +154,7 @@ class SolutionCandidate:
     def perf(self, new_perf: List[Tuple[float, ...]]):
         if new_perf is not None:
             self._perf = new_perf
+            self._sort_solution_points()
 
     @property
     def hypervolume(self) -> Optional[float]:
