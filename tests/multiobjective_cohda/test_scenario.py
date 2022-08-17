@@ -170,14 +170,12 @@ async def test_complex_scenario():
                                         targets=[target_first, target_second],
                                         possible_schedules=SCHEDULES_FOR_AGENTS_COMPLEX,
                                         num_iterations=NUM_ITERATIONS,
-                                        num_candidates=5,
+                                        num_candidates=10,
                                         check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-                                        num_agents=5,
+                                        num_agents=10,
                                         pick_fkt=pick_fkt,
                                         mutate_fkt=mutate_fkt,
                                         )
-
-    await asyncio.sleep(2)
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -186,7 +184,7 @@ async def test_complex_scenario():
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=10)
+    await asyncio.wait_for(wait_for_term(agents), timeout=30)
 
     solution = get_solution(agents)
     print('cluster schedules:', solution.cluster_schedules)
