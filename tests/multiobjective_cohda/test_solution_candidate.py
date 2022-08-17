@@ -66,6 +66,7 @@ def test_merge_dummy():
         num_iterations=1,
     )
     # use dummy function for hypervolume calculation for testing
+
     cohda.get_hypervolume = get_hypervolume
 
     schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
@@ -82,15 +83,15 @@ def test_merge_dummy():
                                     schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume(candidate_1.perf)
+    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
                                                              '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = get_hypervolume(candidate_2.perf)
+    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
                                                              '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = get_hypervolume(candidate_3.perf)
+    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
 
     print(candidate_1.perf)
     merge_result = cohda._merge_candidates(
@@ -112,9 +113,17 @@ def test_merge_dummy():
     assert merge_result.agent_id == '3'
     candidate = merge_result.schedules
     assert set(candidate.keys()) == {'1', '2', '3'}
-    assert np.array_equal(candidate['1'], schedules_1_1)
-    assert np.array_equal(candidate['2'], schedules_2_3)
-    assert np.array_equal(candidate['3'], schedule_3_3)
+
+    # the order of the selected schedules could have changed
+    assert np.array_equal(candidate['1'], schedules_1_1) or (
+            np.array_equal(candidate['1'][0], schedules_1_1[1]) and np.array_equal(candidate['1'][1],
+                                                                                   schedules_1_1[0]))
+    assert np.array_equal(candidate['2'], schedules_2_3) or (
+            np.array_equal(candidate['2'][0], schedules_2_3[1]) and np.array_equal(candidate['2'][1],
+                                                                                   schedules_2_3[0]))
+    assert np.array_equal(candidate['3'], schedule_3_3) or (
+            np.array_equal(candidate['3'][0], schedule_3_3[1]) and np.array_equal(candidate['3'][1],
+                                                                                  schedule_3_3[0]))
 
 
 def test_merge_sms_emoa():
@@ -174,9 +183,18 @@ def test_merge_sms_emoa():
     assert merge_result.agent_id == '3'
     schedules = merge_result.schedules
     assert set(schedules.keys()) == {'1', '2', '3'}
-    assert np.array_equal(schedules['1'], schedules_1_1)
-    assert np.array_equal(schedules['2'], schedules_2_3)
-    assert np.array_equal(schedules['3'], schedule_3_3)
+
+    assert np.array_equal(schedules['1'], schedules_1_1) or (
+            np.array_equal(schedules['1'][0], schedules_1_1[1]) and np.array_equal(schedules['1'][1],
+                                                                                   schedules_1_1[0]))
+
+    assert np.array_equal(schedules['2'], schedules_2_3) or (
+            np.array_equal(schedules['2'][0], schedules_2_3[1]) and np.array_equal(schedules['2'][1],
+                                                                                   schedules_2_3[0]))
+
+    assert np.array_equal(schedules['3'], schedule_3_3) or (
+            np.array_equal(schedules['3'][0], schedule_3_3[1]) and np.array_equal(schedules['3'][1],
+                                                                                  schedule_3_3[0]))
 
 
 def test_cluster_schedule():
@@ -190,6 +208,18 @@ def test_cluster_schedule():
 
 
 def test_sort_solution_points():
+    ref_point = (1.1, 1.1, 1.1)
+    possible_schedules = [[0.1, 0.9], [0.3, 0.6]]
+
+    cohda = COHDA(
+        schedule_provider=lambda: possible_schedules,
+        is_local_acceptable=lambda s: True,
+        perf_func=perf_fkt,
+        reference_point=ref_point,
+        part_id='1',
+        num_iterations=1,
+    )
+
     schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
     schedules_2_1 = np.array([[1, 1, 1], [1, 1, 1]], np.int32)
 
@@ -204,18 +234,17 @@ def test_sort_solution_points():
                                     schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume(candidate_1.perf)
+    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
                                                              '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = get_hypervolume(candidate_2.perf)
+    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
                                                              '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = get_hypervolume(candidate_3.perf)
+    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
     print(candidate_1.perf)
     print(candidate_1.schedules)
     candidate_1._sort_solution_points()
     print(candidate_1.perf)
     print(candidate_1.schedules)
-
