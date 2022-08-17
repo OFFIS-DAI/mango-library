@@ -184,7 +184,7 @@ async def test_complex_scenario():
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=30)
+    await asyncio.wait_for(wait_for_term(agents), timeout=60)
 
     solution = get_solution(agents)
     print('cluster schedules:', solution.cluster_schedules)

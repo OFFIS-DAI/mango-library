@@ -103,6 +103,8 @@ class COHDA:
         self._num_iterations = num_iterations
         self._pick_func = pick_func if pick_func is not None else self.pick_all_points
         self._mutate_func = mutate_func if mutate_func is not None else self.mutate_with_all_possible
+
+        # create selection for hyper volume calculation
         self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
         self._selection.construct_ref_point = self.construct_ref_point
         self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
@@ -252,30 +254,42 @@ class COHDA:
 
             # pick solution points to mutate
             solution_points_to_mutate = self._pick_func(solution_points=candidate_from_sysconfig.solution_points)
+
             # execute mutate for all solution points
             for solution_point in solution_points_to_mutate:
                 # add new solution points to list of all solution points
                 new_solution_points = self._mutate_func(
                     solution_point=solution_point, agent_id=self._part_id, perf_func=self._perf_func,
                     target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
+
                 all_solution_points.extend(new_solution_points)
 
             t_after_point_creation = time.time()
             print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
-            # reduce solution points to given number of solution points
-            self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
+            population_set = set(all_solution_points)
+            num_unique_solution_points = len(population_set)
 
-            t_after_reduction = time.time()
-            print(f'Reducing points took {round(t_after_reduction - t_after_point_creation, 3)} seconds.')
+            if num_unique_solution_points > candidate.num_solution_points:
+                diff = len(all_solution_points) - num_unique_solution_points
+                self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points + diff)
+            else:
+                indices = [idx for idx, val in enumerate(all_solution_points) if val in all_solution_points[:idx]]
+                for idx in reversed(indices):
+                    if len(all_solution_points) > candidate.num_solution_points:
+                        del all_solution_points[idx]
+                    else:
+                        break
+
+            t_after_recuction = time.time()
+            print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
-            new_hyper_volume = self.get_hypervolume(performances=[ind.performance for ind in all_solution_points])
+            new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
 
-            print(
-                f'Candidate after decide:\nPerformance: '
-                f'{sorted([(round(ind.objective_values[0], 2), round(ind.objective_values[1], 2)) for ind in all_solution_points], key=lambda l: l[0])}\n'
-                f'Hypervolume: {round(new_hyper_volume, 4)}')
+            sorted_perfs = sorted([(round(ind.objective_values[0], 2),
+                                    round(ind.objective_values[1], 2)) for ind in all_solution_points], key=lambda l: l[0])
+            print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
