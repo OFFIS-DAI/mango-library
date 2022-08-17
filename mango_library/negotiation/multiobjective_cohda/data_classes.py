@@ -32,7 +32,8 @@ class SolutionPoint:
     def __eq__(self, other):
         # TODO discuss: is idx check necessary?
         return np.array_equal(self.cluster_schedule,
-                              other.cluster_schedule) and self.performance == other.performance
+                              other.cluster_schedule) and self.performance == other.performance \
+               and self.idx == other.idx
 
 
 @json_serializable
@@ -55,11 +56,11 @@ class SolutionCandidate:
         :param hypervolume: Hypervolume of the Candidate
         """
         self._agent_id = agent_id
+        self._hypervolume: float = hypervolume
         self._schedules = schedules
         self._num_solution_points = num_solution_points
         self._perf: List[Tuple[float, ...]] = perf
         self.perf = perf  # TODO this can be removed once we remove the creation of Individuals in the setter of perf
-        self._hypervolume: float = hypervolume
 
     def __eq__(self, o: object) -> bool:
         if (not isinstance(o, SolutionCandidate) or self._agent_id != o.agent_id or self.perf != o.perf or
