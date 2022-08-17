@@ -663,7 +663,7 @@ class WinzentAgent(Agent):
         self._curr_sent_acceptances = []
         if not self.negotiation_done.done():
             self.negotiation_done.set_result(True)
-
+        self.result_sum = 0
         self._acknowledgements_sent = []
         self.negotiation_connections = {}
 
