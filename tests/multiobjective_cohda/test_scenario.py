@@ -161,10 +161,10 @@ async def test_complex_scenario():
 
     target_first = Target(target_function=minimize_first, ref_point=1.1, maximize=False)
     target_second = Target(target_function=minimize_second, ref_point=1.1, maximize=False)
-    pick_fkt = COHDA.pick_all_points
-    # pick_fkt = COHDA.pick_random_point
-    mutate_fkt = COHDA.mutate_with_all_possible
-    # mutate_fkt = COHDA.mutate_with_one_random
+    # pick_fkt = COHDA.pick_all_points
+    pick_fkt = COHDA.pick_random_point
+    # mutate_fkt = COHDA.mutate_with_all_possible
+    mutate_fkt = COHDA.mutate_with_one_random
 
     agents, addrs = await create_agents(container=c_1,
                                         targets=[target_first, target_second],
@@ -184,7 +184,7 @@ async def test_complex_scenario():
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=30)
+    await asyncio.wait_for(wait_for_term(agents), timeout=60)
 
     solution = get_solution(agents)
     print('cluster schedules:', solution.cluster_schedules)
@@ -194,6 +194,9 @@ async def test_complex_scenario():
         # for minimizing, every second schedule is the better because
         # sum and deviations are minimized
         for schedule in chosen_schedules:
+            sum = np.sum(schedule)
+            if sum != 1:
+                print()
             assert np.sum(schedule) == 1
 
     # gracefully shutdown
