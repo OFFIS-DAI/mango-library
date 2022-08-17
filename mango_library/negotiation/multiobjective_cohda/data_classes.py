@@ -71,6 +71,13 @@ class SolutionCandidate:
                     return False
             return True
 
+    def _sort_solution_points(self):
+        if self._perf is not None:
+            ind = np.lexsort(np.transponse(self._perf))
+            # TODO
+
+
+
     @property
     def agent_id(self) -> str:
         """Return the agent id
@@ -110,11 +117,12 @@ class SolutionCandidate:
         :return: list of SolutionPoints
         """
         solution_points = []
-        idx = {k: i for i, k in enumerate(self.schedules.keys())}
+
+        idx = {k: i for i, k in enumerate(sorted(self.schedules.keys()))}
         for i in range(self.num_solution_points):
             current_candidate = []
-            for schedule_array in self.schedules.values():
-                current_candidate.append(schedule_array[i])
+            for part_id in sorted(self.schedules.keys()):
+                current_candidate.append(self.schedules[part_id][i])
             perf = self.perf[i] if self.perf else None
             solution_points.append(
                 SolutionPoint(cluster_schedule=np.array(current_candidate, dtype=float), performance=perf, idx=idx)
@@ -234,8 +242,8 @@ class SystemConfig:
         cluster_schedules = []
         for i in range(self.num_solution_points):
             current_cs = []
-            for schedule_selection in self.schedule_choices.values():
-                current_cs.append(schedule_selection.schedules[i])
+            for part_id in sorted(self.schedule_choices.keys()):
+                current_cs.append(self.schedule_choices[part_id].schedules[i])
             cluster_schedules.append(np.array(current_cs))
         return cluster_schedules
 

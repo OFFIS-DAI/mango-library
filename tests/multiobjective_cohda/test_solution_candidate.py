@@ -184,6 +184,6 @@ def test_cluster_schedule():
     schedules_2 = np.array([[4, 2, 1], [4, 5, 4]])
     candidate = SolutionCandidate(schedules={'2': schedules_2, '1': schedules_1},
                                   agent_id='1', num_solution_points=2)
-    assert candidate.solution_points[0].idx == {'1': 1, '2': 0}
-    assert np.array_equal(candidate.solution_points[0].cluster_schedule, np.array([[4, 2, 1], [1, 2, 3]]))
-    assert np.array_equal(candidate.solution_points[1].cluster_schedule, np.array([[4, 5, 4], [2, 3, 4]]))
+    assert candidate.solution_points[0].idx == {'1': 0, '2': 1}
+    assert np.array_equal(candidate.solution_points[0].cluster_schedule, np.array([[1, 2, 3], [4, 2, 1]]))
+    assert np.array_equal(candidate.solution_points[1].cluster_schedule, np.array([[2, 3, 4], [4, 5, 4]]))

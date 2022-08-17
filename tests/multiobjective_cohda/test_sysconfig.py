@@ -59,4 +59,4 @@ def test_cluster_schedule():
     selections_2 = ScheduleSelections(schedules=np.array([[4, 2, 1], [4, 5, 4]]), counter=4)
     sysconf = SystemConfig({'2': selections_2, '1': selections_1}, num_solution_points=2)
     assert np.array_equal(sysconf.cluster_schedules,
-                          [np.array([[4, 2, 1], [1, 2, 3]]), np.array([[4, 5, 4], [2, 3, 4]])])
+                          [np.array([[1, 2, 3], [4, 2, 1]]), np.array([[2, 3, 4], [4, 5, 4]])])
