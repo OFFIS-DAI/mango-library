@@ -768,6 +768,7 @@ class WinzentAgent(Agent):
             if len(answers) > 0:
                 # PGASC changed print to logging
                 logger.info(f'\n*** {self._aid} found solution. ***')
+                logger.info("correct version")
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 
