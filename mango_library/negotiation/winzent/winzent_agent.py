@@ -664,7 +664,6 @@ class WinzentAgent(Agent):
         if not self.negotiation_done.done():
             self.negotiation_done.set_result(True)
         self.result_sum = 0
-        logger.info("reset of result sum")
         self._acknowledgements_sent = []
         self.negotiation_connections = {}
 
