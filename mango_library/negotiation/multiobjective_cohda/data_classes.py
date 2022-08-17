@@ -75,7 +75,11 @@ class SolutionCandidate:
     def _sort_solution_points(self):
         if self._perf is not None:
             ind = np.lexsort(np.transponse(self._perf))
-            # TODO
+            for part_id in self.schedules.keys():
+                self.schedules[part_id] = self.schedules[part_id][ind[::-1]]
+            # TODO sort perf accordingly
+            # TODO TEST me
+
 
 
 
