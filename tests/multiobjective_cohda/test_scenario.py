@@ -5,10 +5,9 @@ import pytest
 from mango.core.container import Container
 from mango.messages.codecs import JSON
 
-from mango_library.negotiation.util import multi_objective_serializers
-
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.util import multi_objective_serializers
 from util import MINIMIZE_TARGETS, MAXIMIZE_TARGETS, \
     create_agents, get_solution
 
@@ -194,10 +193,11 @@ async def test_complex_scenario():
         # for minimizing, every second schedule is the better because
         # sum and deviations are minimized
         for schedule in chosen_schedules:
-            assert np.sum(schedule) == 1
+            if np.sum(schedule) != 1:
+                assert pick_fkt == COHDA.pick_random_point or mutate_fkt == COHDA.mutate_with_one_random
 
-    # gracefully shutdown
-    await c_1.shutdown()
+        # gracefully shutdown
+        await c_1.shutdown()
 
 
 async def wait_for_term(agents):
