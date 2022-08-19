@@ -187,35 +187,3 @@ def test_cluster_schedule():
     assert candidate.solution_points[0].idx == {'1': 0, '2': 1}
     assert np.array_equal(candidate.solution_points[0].cluster_schedule, np.array([[1, 2, 3], [4, 2, 1]]))
     assert np.array_equal(candidate.solution_points[1].cluster_schedule, np.array([[2, 3, 4], [4, 5, 4]]))
-
-
-def test_sort_solution_points():
-    schedules_1_1 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
-    schedules_2_1 = np.array([[1, 1, 1], [1, 1, 1]], np.int32)
-
-    schedules_1_2 = np.array([[2, 3, 4], [2, 4, 5]], np.int32)
-    schedules_2_2 = np.array([[2, 2, 2], [2, 2, 2]], np.int32)
-
-    schedules_1_3 = np.array([[1, 2, 3], [2, 3, 4]], np.int32)
-    schedules_2_3 = np.array([[4, 2, 1], [4, 5, 4]], np.int32)
-    schedule_3_3 = np.array([[4, 2, 1], [4, 5, 4]], np.int32)
-
-    candidate_1 = SolutionCandidate(agent_id='1',
-                                    schedules={'1': schedules_1_1, '2': schedules_2_1},
-                                    num_solution_points=2)
-    candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume(candidate_1.perf)
-    candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
-                                                             '2': schedules_2_2}, num_solution_points=2)
-    candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = get_hypervolume(candidate_2.perf)
-    candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
-                                                             '3': schedule_3_3}, num_solution_points=2)
-    candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = get_hypervolume(candidate_3.perf)
-    print(candidate_1.perf)
-    print(candidate_1.schedules)
-    candidate_1._sort_solution_points()
-    print(candidate_1.perf)
-    print(candidate_1.schedules)
-

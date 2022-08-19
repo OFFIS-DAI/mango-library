@@ -31,9 +31,23 @@ class SolutionPoint:
 
     def __eq__(self, other):
         # TODO discuss: is idx check necessary?
-        return np.array_equal(self.cluster_schedule,
+        return isinstance(other, SolutionPoint) and np.array_equal(self.cluster_schedule,
                               other.cluster_schedule) and self.performance == other.performance \
                and self.idx == other.idx
+
+    def __lt__(self, other):
+        if self == other:
+            return False
+        elif self.performance != other.performance:
+            if self.performance is None:
+                return True
+            elif other.performance is None:
+                return False
+            else:
+                return self.performance < other.performance
+        else:
+            difference_cs = self.cluster_schedule-other.cluster_schedule
+            return difference_cs[difference_cs.nonzero()][0] < 0
 
 
 @json_serializable
@@ -60,7 +74,6 @@ class SolutionCandidate:
         self._schedules = schedules
         self._num_solution_points = num_solution_points
         self._perf: List[Tuple[float, ...]] = perf
-        self._sort_solution_points()
 
     def __eq__(self, o: object) -> bool:
         if (not isinstance(o, SolutionCandidate) or self._agent_id != o.agent_id or self.perf != o.perf or
@@ -71,19 +84,6 @@ class SolutionCandidate:
                 if not np.array_equal(v, o.schedules[k]):
                     return False
             return True
-
-    def _sort_solution_points(self):
-        if self._perf is not None:
-            ind = np.lexsort(np.transpose(self._perf))
-            for part_id in self.schedules.keys():
-                self.schedules[part_id] = self.schedules[part_id][ind[::-1]]
-
-            new_perf = []
-            for perf_ind in reversed(ind):
-                new_perf.append(self._perf[perf_ind])
-            self._perf = new_perf
-
-            # TODO TEST me
 
     @property
     def agent_id(self) -> str:
@@ -152,9 +152,7 @@ class SolutionCandidate:
 
     @perf.setter
     def perf(self, new_perf: List[Tuple[float, ...]]):
-        if new_perf is not None:
-            self._perf = new_perf
-            self._sort_solution_points()
+        self._perf = new_perf
 
     @property
     def hypervolume(self) -> Optional[float]:
