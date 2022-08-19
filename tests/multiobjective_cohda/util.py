@@ -35,7 +35,8 @@ async def create_agents(container, targets, possible_schedules,
                         num_candidates, num_iterations,
                         check_msg_queue_interval, num_agents,
                         pick_fkt = None,
-                        mutate_fkt = None):
+                        mutate_fkt = None,
+                        schedules_all_equal=False):
     agents = []
     addrs = []
 
@@ -47,7 +48,10 @@ async def create_agents(container, targets, possible_schedules,
         a = RoleAgent(this_container)
 
         def provide_schedules(index):
-            return deepcopy(lambda: possible_schedules[index])
+            if not schedules_all_equal:
+                return deepcopy(lambda: possible_schedules[index])
+            else:
+                return lambda: possible_schedules
 
         cohda_role = MultiObjectiveCOHDARole(
             schedule_provider=provide_schedules(i % len(possible_schedules)),
