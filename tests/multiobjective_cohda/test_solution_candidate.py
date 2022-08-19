@@ -82,15 +82,15 @@ def test_merge_dummy():
                                     schedules={'1': schedules_1_1, '2': schedules_2_1},
                                     num_solution_points=2)
     candidate_1.perf = perf_fkt(candidate_1.cluster_schedules)
-    candidate_1.hypervolume = get_hypervolume(candidate_1.perf)
+    candidate_1.hypervolume = cohda.get_hypervolume(candidate_1.perf)
     candidate_2 = SolutionCandidate(agent_id='1', schedules={'1': schedules_1_2,
                                                              '2': schedules_2_2}, num_solution_points=2)
     candidate_2.perf = perf_fkt(candidate_2.cluster_schedules)
-    candidate_2.hypervolume = get_hypervolume(candidate_2.perf)
+    candidate_2.hypervolume = cohda.get_hypervolume(candidate_2.perf)
     candidate_3 = SolutionCandidate(agent_id='2', schedules={'2': schedules_2_3,
                                                              '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
-    candidate_3.hypervolume = get_hypervolume(candidate_3.perf)
+    candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
 
     print(candidate_1.perf)
     merge_result = cohda._merge_candidates(

@@ -128,11 +128,19 @@ class COHDA:
     @staticmethod
     def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
             -> List[SolutionPoint]:
-        new_schedule = random.choice(schedule_creator())
-        new_cs = np.copy(solution_point.cluster_schedule)
-        new_cs[solution_point.idx[agent_id]] = new_schedule
-        new_perf = perf_func([new_cs], target_params)[0]
-        return [SolutionPoint(cluster_schedule=new_cs, performance=new_perf, idx=solution_point.idx)]
+        schedules = schedule_creator()
+        if len(schedules) > 1:
+            point_before_mutation = list(solution_point.cluster_schedule[solution_point.idx[agent_id]])
+            if point_before_mutation in schedules:
+                schedules.remove(point_before_mutation)
+            new_schedule = random.choice(schedules)
+            new_cs = np.copy(solution_point.cluster_schedule)
+            new_cs[solution_point.idx[agent_id]] = new_schedule
+            new_perf = perf_func([new_cs], target_params)[0]
+            return [SolutionPoint(cluster_schedule=new_cs, performance=new_perf, idx=solution_point.idx)]
+
+        else:
+            return [solution_point]
 
     @staticmethod
     def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
@@ -288,7 +296,8 @@ class COHDA:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
 
             sorted_perfs = sorted([(round(ind.objective_values[0], 2),
-                                    round(ind.objective_values[1], 2)) for ind in all_solution_points], key=lambda l: l[0])
+                                    round(ind.objective_values[1], 2)) for ind in all_solution_points],
+                                  key=lambda l: l[0])
             print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current

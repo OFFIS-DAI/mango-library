@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 
 import numpy as np
 
@@ -23,9 +24,9 @@ def get_solution(agents):
                         value._part_id] = value._memory.solution_candidate
 
     final_candidate = list(resulting_candidates.values())[0]
-    # for part_id, candidate in resulting_candidates.items():
-    #     assert np.allclose(final_candidate.cluster_schedules,
-    #                        candidate.cluster_schedules)
+    for part_id, candidate in resulting_candidates.items():
+        assert np.allclose(final_candidate.cluster_schedules,
+                           candidate.cluster_schedules)
 
     return final_candidate
 
@@ -46,7 +47,7 @@ async def create_agents(container, targets, possible_schedules,
         a = RoleAgent(this_container)
 
         def provide_schedules(index):
-            return lambda: possible_schedules[index]
+            return deepcopy(lambda: possible_schedules[index])
 
         cohda_role = MultiObjectiveCOHDARole(
             schedule_provider=provide_schedules(i % len(possible_schedules)),
