@@ -16,6 +16,7 @@ Roles:
 import uuid
 from typing import Dict, Any
 from abc import ABC, abstractmethod
+from fractions import Fraction
 
 from mango.messages.codecs import json_serializable
 from mango.role.api import ProactiveRole, SimpleReactiveRole
@@ -141,9 +142,11 @@ class NegotiationStarterRole(ProactiveRole):
     a negotiation within its coalition.
     """
 
-    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None) -> None:
+    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None, send_weight: bool = True)\
+            -> None:
         super().__init__()
         self._message_creator = message_creator
+        self._send_weight = send_weight
 
         if coalition_uuid is not None:
             # if id is provided create matcher matching this id when the coalition is looked up
@@ -181,10 +184,16 @@ class NegotiationStarterRole(ProactiveRole):
         # Assume there is a exactly one coalition
         matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
         negotiation_uuid = uuid.uuid1()
+
+        weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
         for neighbor in matched_assignment.neighbors:
+            neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
+                                           self._message_creator(matched_assignment))
+            if self._send_weight:
+                neg_msg.message_weight = weight_per_msg
+                print('Going to send init msg with weight:', weight_per_msg)
             await self.context.send_message(
-                content=NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
-                                           self._message_creator(matched_assignment)),
+                content=neg_msg,
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
                 acl_metadata={'sender_addr': self.context.addr,

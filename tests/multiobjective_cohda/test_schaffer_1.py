@@ -6,10 +6,9 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 from util import create_agents, get_solution
 from mango.core.container import Container
 
-
 A = 10
-NUM_AGENTS = 20
-NUM_SCHEDULES = 10
+NUM_AGENTS = 30
+NUM_SCHEDULES = 20
 NUM_SOLUTION_POINTS = 5
 TIMEOUT = 100
 
@@ -33,17 +32,10 @@ async def test_schaffer_1():
 
     c_1 = await Container.factory(addr=('127.0.0.2', 5555))
 
-    agents, addrs = await create_agents(container=c_1,
-                                        targets=targets,
-                                        possible_schedules=possible_schedules,
-                                        num_iterations=1,
-                                        num_candidates=NUM_SOLUTION_POINTS,
-                                        check_msg_queue_interval=0.1,
-                                        num_agents=NUM_AGENTS,
-                                        pick_fkt=PICK_FKT,
-                                        mutate_fkt=MUTATE_FKT,
-                                        schedules_all_equal=True
-                                        )
+    agents, addrs = await create_agents(
+        container=c_1, targets=targets, possible_schedules=possible_schedules, num_iterations=1,
+        num_candidates=NUM_SOLUTION_POINTS, check_msg_queue_interval=0.1, num_agents=NUM_AGENTS, pick_fkt=PICK_FKT,
+        mutate_fkt=MUTATE_FKT, schedules_all_equal=True)
 
     await asyncio.wait_for(wait_for_term(agents), timeout=TIMEOUT)
 
@@ -58,7 +50,6 @@ async def test_schaffer_1():
 
 
 async def wait_for_term(agents):
-    await asyncio.sleep(0.2)
     for agent in agents:
         await asyncio.sleep(0.1)
         while not agent.inbox.empty() or next(iter(agents[0].roles[2]._weight_map.values())) != 1:
