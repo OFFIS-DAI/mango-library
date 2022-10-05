@@ -188,8 +188,6 @@ class CoaltitionResponse:
         """""
         return self._accept
 
-# (agent_id, (host, port), part_id)
-# typing
 
 def clique_creator(participants: List[Tuple[str, Union[str, Tuple[str, int]], str]]) -> \
         Dict[Tuple[str, Union[str, Tuple[str, int]], str],
