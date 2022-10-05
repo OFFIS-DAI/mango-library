@@ -265,9 +265,7 @@ class CoalitionInitiatorRole(ProactiveRole):
     def _send_assignments(self, agent_context: RoleContext):
         part_id = 0
         accepted_participants = []
-        print("print all participants")
         for part in self._participants:
-            print(part)
             part_key = part[0][0], part[0][1], part[1]
             if part_key in self._part_to_state and self._part_to_state[part_key]:
                 part_id += 1
