@@ -34,8 +34,8 @@ def get_solution(agents):
 async def create_agents(container, targets, possible_schedules,
                         num_candidates, num_iterations,
                         check_msg_queue_interval, num_agents,
-                        pick_fkt = None,
-                        mutate_fkt = None,
+                        pick_fkt=None,
+                        mutate_fkt=None,
                         schedules_all_equal=False):
     agents = []
     addrs = []
@@ -59,7 +59,7 @@ async def create_agents(container, targets, possible_schedules,
             local_acceptable_func=lambda s: True,
             num_solution_points=num_candidates, num_iterations=num_iterations,
             check_inbox_interval=check_msg_queue_interval,
-        pick_func=pick_fkt, mutate_func=mutate_fkt)
+            pick_func=pick_fkt, mutate_func=mutate_fkt)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationRole(i == 0))
