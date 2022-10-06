@@ -92,9 +92,6 @@ class NegotiationTerminationParticipantRole(Role):
                                                      and not isinstance(c, TerminationInformationMessage)),
                                        priority=float('-inf'))
 
-        self.context.subscribe_message(self, self.on_termination,
-                                       lambda c, _: isinstance(c, TerminationInformationMessage))
-
 
     def on_send(self, content,
                 receiver_addr: Union[str, Tuple[str, int]], *,
@@ -118,14 +115,6 @@ class NegotiationTerminationParticipantRole(Role):
                 content.message_weight = self._weight_map[content.negotiation_id] / 2
             self._weight_map[content.negotiation_id] /= 2
 
-    def on_termination(self, content, _) -> None:
-        """
-
-        :param content:
-        :param _:
-        :return:
-        """
-        print('I am terminated')
 
     def handle_msg_start(self, content, _: Dict[str, Any]) -> None:
         """Check whether a coalition related message has been received and manipulate the internal
@@ -206,7 +195,6 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
-        print('Received termination msg')
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
             if neg_id not in self._participant_map:
