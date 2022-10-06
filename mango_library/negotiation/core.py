@@ -191,7 +191,6 @@ class NegotiationStarterRole(ProactiveRole):
                                            self._message_creator(matched_assignment))
             if self._send_weight:
                 neg_msg.message_weight = weight_per_msg
-                print('Going to send init msg with weight:', weight_per_msg)
             await self.context.send_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
