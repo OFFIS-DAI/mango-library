@@ -119,15 +119,34 @@ class COHDA:
 
     @staticmethod
     def pick_all_points(solution_points: List[SolutionPoint]) -> List[SolutionPoint]:
+        """
+        Function that picks all solution points
+        :param solution_points:
+        :return:
+        """
         return solution_points
 
     @staticmethod
     def pick_random_point(solution_points: List[SolutionPoint]) -> List[SolutionPoint]:
+        """
+        Function that picks one random point
+        :param solution_points:
+        :return:
+        """
         return [random.choice(solution_points)]
 
     @staticmethod
     def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
             -> List[SolutionPoint]:
+        """
+        Function that mutates a solution point with one random schedule
+        :param solution_point:
+        :param schedule_creator:
+        :param agent_id:
+        :param perf_func:
+        :param target_params:
+        :return:
+        """
         schedules = schedule_creator()
         if len(schedules) > 1:
             point_before_mutation = list(solution_point.cluster_schedule[solution_point.idx[agent_id]])
@@ -145,6 +164,15 @@ class COHDA:
     @staticmethod
     def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
             -> List[SolutionPoint]:
+        """
+        Function that mutates a solution point with all possible schedules
+        :param solution_point:
+        :param schedule_creator:
+        :param agent_id:
+        :param perf_func:
+        :param target_params:
+        :return:
+        """
         possible_schedules = schedule_creator()
         new_solution_points = []
         for new_schedule in possible_schedules:
@@ -169,16 +197,16 @@ class COHDA:
         t_handle_start = time.time()
         sysconf, candidate = self._perceive(messages)
         t_after_perceive = time.time()
-        print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
+        # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
             t_after_decide = time.time()
-            print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
+            # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
             return_msg = self._act(new_sysconfig=sysconf, new_candidate=candidate)
             t_after_act = time.time()
-            print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
+            # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
             return return_msg
         else:
             return None
@@ -273,7 +301,7 @@ class COHDA:
                 all_solution_points.extend(new_solution_points)
 
             t_after_point_creation = time.time()
-            print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
+            # print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
             population_set = set(all_solution_points)
             num_unique_solution_points = len(population_set)
@@ -290,7 +318,7 @@ class COHDA:
                         break
 
             t_after_recuction = time.time()
-            print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
+            # print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
@@ -298,7 +326,7 @@ class COHDA:
             sorted_perfs = sorted([(round(ind.objective_values[0], 2),
                                     round(ind.objective_values[1], 2)) for ind in all_solution_points],
                                   key=lambda l: l[0])
-            print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
+            # print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
@@ -545,6 +573,7 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
                 else:
                     # set the negotiation as inactive as no message has arrived
                     negotiation.active = False
+                # print(f'[{self.context.aid}] done processing cohda messages')
 
             self._cohda_tasks.append(self.context.schedule_periodic_task(process_msg_queue,
                                                                          delay=self._check_inbox_interval))
