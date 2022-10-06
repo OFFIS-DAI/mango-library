@@ -194,7 +194,6 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
-        print('Received termination msg')
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
             if neg_id not in self._participant_map:
