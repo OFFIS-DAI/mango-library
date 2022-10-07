@@ -2,14 +2,14 @@ import asyncio
 from copy import deepcopy
 
 import numpy as np
-
-from mango_library.coalition.core import CoalitionParticipantRole, \
-    CoalitionInitiatorRole
-from mango_library.negotiation.termination import NegotiationTerminationRole
 from mango.role.core import RoleAgent
+
+from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
+from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     CohdaNegotiationStarterRole
-from mango_library.negotiation.multiobjective_cohda.data_classes import Target
+from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
+    NegotiationTerminationDetectorRole
 
 
 def get_solution(agents):
@@ -34,9 +34,11 @@ def get_solution(agents):
 async def create_agents(container, targets, possible_schedules,
                         num_candidates, num_iterations,
                         check_msg_queue_interval, num_agents,
-                        pick_fkt = None,
-                        mutate_fkt = None,
-                        schedules_all_equal=False):
+                        pick_fkt=None,
+                        mutate_fkt=None,
+                        schedules_all_equal=False,
+                        use_fixed_ref_point=True,
+                        offsets=None):
     agents = []
     addrs = []
 
@@ -59,15 +61,20 @@ async def create_agents(container, targets, possible_schedules,
             local_acceptable_func=lambda s: True,
             num_solution_points=num_candidates, num_iterations=num_iterations,
             check_inbox_interval=check_msg_queue_interval,
-        pick_func=pick_fkt, mutate_func=mutate_fkt)
+            pick_func=pick_fkt, mutate_func=mutate_fkt, use_fixed_ref_point=use_fixed_ref_point, offsets=None)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
-        a.add_role(NegotiationTerminationRole(i == 0))
+        a.add_role(NegotiationTerminationParticipantRole())
         agents.append(a)
         addrs.append((this_container.addr, a._aid))
 
-    agents[0].add_role(
-        CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
+    if isinstance(container, list):
+        controller_agent = RoleAgent(container[-1])
+    else:
+        controller_agent = RoleAgent(container)
+    controller_agent.add_role(NegotiationTerminationDetectorRole())
+    controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
+
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
     print('Coalition build done')
     agents[0].add_role(
@@ -75,21 +82,13 @@ async def create_agents(container, targets, possible_schedules,
 
     print('Negotiation started')
 
-    return agents, addrs
+    return agents, addrs, controller_agent
 
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
-        while not agent.inbox.empty():
-            await asyncio.sleep(1)
-
-
-async def wait_for_term(agents):
-    await asyncio.sleep(1)
-    for agent in agents:
-        while not agent.inbox.empty() or next(
-                iter(agents[0].roles[2]._weight_map.values())) != 1:
-            await asyncio.sleep(1)
+        while len(agent._agent_context.get_or_create_model(CoalitionModel)._assignments) < 1:
+            await asyncio.sleep(0.1)
 
 
 def determine_deviations(cs, target_params):
