@@ -23,6 +23,8 @@ PICK_FKT = COHDA.pick_all_points
 MUTATE_FKT = COHDA.mutate_with_all_possible
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
+NUM_SIMULATIONS = 1
+
 def target_func_1(cs):
     """
     x ** 2
@@ -45,7 +47,6 @@ SCHEDULE_STEP_SIZE = (SCHEDULE_THRESHOLD * 2) / (NUM_SCHEDULES - 1)
 POSSIBLE_SCHEDULES = []
 for i in range(NUM_SCHEDULES):
     POSSIBLE_SCHEDULES.append(np.array([-SCHEDULE_THRESHOLD + i * SCHEDULE_STEP_SIZE]))
-print(POSSIBLE_SCHEDULES)
 
 async def simulate_schaffer(db_file):
     container = await Container.factory(addr=('127.0.0.2', 5555))
@@ -116,16 +117,17 @@ async def simulate_schaffer(db_file):
             data_schedules.append(tuple([aid] + single_point_schedules))
         data_schedules = np.array(data_schedules, dtype=dtype_schedules)
 
+        solution_points = final_memory.solution_candidate.solution_points
 
         general_group = f.create_group('General infos')
         general_group.create_dataset('general_info', data=data_general)
         general_group.create_dataset('targets', data=data_targets)
         general_group.create_dataset('schedules', data=data_schedules)
-
-
+        results_group = f.create_group('Results')
+        this_simulation_group
+        results_group.create_dataset('solution_point_1', solution_points[0].cluster_schedule)
 
     print('final Candidate', final_memory.solution_candidate)
-
 
     await container.shutdown()
 
