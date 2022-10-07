@@ -1,11 +1,13 @@
 import asyncio
+from copy import deepcopy
 import time
 import numpy as np
+from typing import List
 import h5py
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, COHDA, CohdaNegotiationStarterRole
-from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
+from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, NegotiationTerminationDetectorRole
 from mango.core.container import Container
 from mango.role.core import RoleAgent
@@ -71,7 +73,7 @@ async def simulate_schaffer(db_file):
     controller_agent = RoleAgent(container)
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
-    await asyncio.wait_for(wait_for_coalition_built(agents + [controller_agent]), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
 
     print('Coalition build done')
     start_time = time.time()
@@ -124,12 +126,59 @@ async def simulate_schaffer(db_file):
         general_group.create_dataset('targets', data=data_targets)
         general_group.create_dataset('schedules', data=data_schedules)
         results_group = f.create_group('Results')
-        this_simulation_group
         results_group.create_dataset('solution_point_1', solution_points[0].cluster_schedule)
 
     print('final Candidate', final_memory.solution_candidate)
 
     await container.shutdown()
+
+async def simulate(*, num_agents: int, possible_schedules: List[List[List[float]]], targets: List[Target],
+                   num_solution_points: int, pick_func, mutat_func, num_iteration: int, check_inbox_interval: float,
+                   schedules_all_equal=False):
+    container = await Container.factory(addr=('127.0.0.2', 5555))
+    agents = []
+    addrs = []
+
+    for i in range(num_agents):
+        a = RoleAgent(container)
+        def provide_schedules(index):
+            if not schedules_all_equal:
+                return deepcopy(lambda: possible_schedules[index])
+            else:
+                return lambda: possible_schedules
+        a.add_role(MultiObjectiveCOHDARole(
+            schedule_provider=lambda: provide_schedules(i),
+            targets=targets,
+            local_acceptable_func=lambda s: True,
+            num_solution_points=num_solution_points, num_iterations=num_iteration,
+            check_inbox_interval=check_inbox_interval,
+            pick_func=pick_func, mutate_func=mutat_func)
+        )
+        a.add_role(CoalitionParticipantRole())
+        a.add_role(NegotiationTerminationParticipantRole())
+        agents.append(a)
+        addrs.append((container.addr, a._aid))
+
+    controller_agent = RoleAgent(container)
+    controller_agent.add_role(NegotiationTerminationDetectorRole())
+    controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
+    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+
+    print('Coalition build done')
+    start_time = time.time()
+    agents[0].add_role(
+        CohdaNegotiationStarterRole(num_solution_points=NUM_SOLUTION_POINTS, target_params=None))
+
+    await wait_for_term(controller_agent)
+
+    end_time = time.time()
+
+    final_memory = next(iter(agents[0].roles[0]._cohda.values()))._memory
+    for a in agents:
+        assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory
+
+    return final_memory, end_time - start_time
+
 
 
 async def wait_for_term(controller_agent):
@@ -139,7 +188,7 @@ async def wait_for_term(controller_agent):
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
-        while not agent.inbox.empty():
+        while len(agent._agent_context.get_or_create_model(CoalitionModel)._assignments) < 1:
             await asyncio.sleep(0.1)
 
 if __name__ == '__main__':
