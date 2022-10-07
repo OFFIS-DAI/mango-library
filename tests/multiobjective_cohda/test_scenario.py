@@ -121,7 +121,7 @@ async def test_maximize_scenario_without_fixed_reference_point():
                                                           use_fixed_ref_point=False,
                                                           offsets=None)
 
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=50)
+    await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print('solution:', solution_dict, '\n')
@@ -132,6 +132,18 @@ async def test_maximize_scenario_without_fixed_reference_point():
         print(f'[{aid}] chosen schedule: {chosen_schedule}.')
         idx = int(aid[-1]) - 1
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+
+    for agent in agents:
+        # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
+        # there has to be a reference point, since there were calculations of it during the negotiation. This
+        # reference point has to be different than the default ones given in the targets to make sure there has been
+        # a calculation
+        assert list(agent.roles[0]._cohda.values())[
+                   0]._selection.sorting_component.hypervolume_indicator.reference_point is not None
+        assert list(agent.roles[0]._cohda.values())[
+            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
+        assert list(agent.roles[0]._cohda.values())[
+            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
 
     # gracefully shutdown
     await c.shutdown()
@@ -167,6 +179,18 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
         print(f'[{aid}] chosen schedule: {chosen_schedule}.')
         idx = int(aid[-1]) - 1
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+
+    for agent in agents:
+        # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
+        # there has to be a reference point, since there were calculations of it during the negotiation. This
+        # reference point has to be different than the default ones given in the targets to make sure there has been
+        # a calculation
+        assert list(agent.roles[0]._cohda.values())[
+                   0]._selection.sorting_component.hypervolume_indicator.reference_point is not None
+        assert list(agent.roles[0]._cohda.values())[
+            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
+        assert list(agent.roles[0]._cohda.values())[
+            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
 
     # gracefully shutdown
     await c.shutdown()

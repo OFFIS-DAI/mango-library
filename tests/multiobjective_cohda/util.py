@@ -61,7 +61,7 @@ async def create_agents(container, targets, possible_schedules,
             local_acceptable_func=lambda s: True,
             num_solution_points=num_candidates, num_iterations=num_iterations,
             check_inbox_interval=check_msg_queue_interval,
-            pick_func=pick_fkt, mutate_func=mutate_fkt, use_fixed_ref_point=use_fixed_ref_point, offsets=None)
+            pick_func=pick_fkt, mutate_func=mutate_fkt, use_fixed_ref_point=use_fixed_ref_point, offsets=offsets)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
