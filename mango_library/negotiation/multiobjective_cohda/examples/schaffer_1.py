@@ -51,41 +51,13 @@ for i in range(NUM_SCHEDULES):
     POSSIBLE_SCHEDULES.append(np.array([-SCHEDULE_THRESHOLD + i * SCHEDULE_STEP_SIZE]))
 
 async def simulate_schaffer(db_file):
-    container = await Container.factory(addr=('127.0.0.2', 5555))
-    agents = []
-    addrs = []
-
-    for i in range(NUM_AGENTS):
-        a = RoleAgent(container)
-        a.add_role(MultiObjectiveCOHDARole(
-            schedule_provider=lambda: POSSIBLE_SCHEDULES,
-            targets=TARGETS,
-            local_acceptable_func=lambda s: True,
-            num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
-            check_inbox_interval=CHECK_INBOX_INTERVAL,
-            pick_func=PICK_FKT, mutate_func=MUTATE_FKT)
+    for _ in range(NUM_SIMULATIONS):
+        final_memory, duration = await simulate(
+            num_agents=NUM_AGENTS,
+            possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=True,
+            targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iteration=NUM_ITERATIONS,
+            check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutat_func=MUTATE_FKT
         )
-        a.add_role(CoalitionParticipantRole())
-        a.add_role(NegotiationTerminationParticipantRole())
-        agents.append(a)
-        addrs.append((container.addr, a._aid))
-
-    controller_agent = RoleAgent(container)
-    controller_agent.add_role(NegotiationTerminationDetectorRole())
-    controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
-    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-
-    print('Coalition build done')
-    start_time = time.time()
-    agents[0].add_role(
-        CohdaNegotiationStarterRole(num_solution_points=NUM_SOLUTION_POINTS, target_params=None))
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
-    end_time = time.time()
-
-    final_memory = next(iter(agents[0].roles[0]._cohda.values()))._memory
-    for a in agents:
-        assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory
 
     # fill database now
     with h5py.File('Testfile.hdf5', 'w') as f:
@@ -110,29 +82,29 @@ async def simulate_schaffer(db_file):
         dtype_schedules = [('aid', 'S100')]
         for i in range(NUM_SCHEDULES):
             dtype_schedules.append((f'schedule_{i}', 'float64'))
-        dtype_schedules = np.dtype(dtype_schedules)
-        data_schedules = []
-        for a in agents:
-            aid = a.aid
-            schedules = a.roles[0]._schedule_provider()
-            single_point_schedules = [s[0] for s in schedules]
-            data_schedules.append(tuple([aid] + single_point_schedules))
-        data_schedules = np.array(data_schedules, dtype=dtype_schedules)
+        # dtype_schedules = np.dtype(dtype_schedules)
+        # data_schedules = []
+        # for a in agents:
+        #     aid = a.aid
+        #     schedules = a.roles[0]._schedule_provider()
+        #     single_point_schedules = [s[0] for s in schedules]
+        #     data_schedules.append(tuple([aid] + single_point_schedules))
+        # data_schedules = np.array(data_schedules, dtype=dtype_schedules)
 
         solution_points = final_memory.solution_candidate.solution_points
 
         general_group = f.create_group('General infos')
         general_group.create_dataset('general_info', data=data_general)
         general_group.create_dataset('targets', data=data_targets)
-        general_group.create_dataset('schedules', data=data_schedules)
+        # general_group.create_dataset('schedules', data=data_schedules)
         results_group = f.create_group('Results')
         results_group.create_dataset('solution_point_1', solution_points[0].cluster_schedule)
 
     print('final Candidate', final_memory.solution_candidate)
+    print('duration:', duration)
 
-    await container.shutdown()
 
-async def simulate(*, num_agents: int, possible_schedules: List[List[List[float]]], targets: List[Target],
+async def simulate(*, num_agents: int, possible_schedules, targets: List[Target],
                    num_solution_points: int, pick_func, mutat_func, num_iteration: int, check_inbox_interval: float,
                    schedules_all_equal=False):
     container = await Container.factory(addr=('127.0.0.2', 5555))
@@ -147,7 +119,7 @@ async def simulate(*, num_agents: int, possible_schedules: List[List[List[float]
             else:
                 return lambda: possible_schedules
         a.add_role(MultiObjectiveCOHDARole(
-            schedule_provider=lambda: provide_schedules(i),
+            schedule_provider=provide_schedules(i),
             targets=targets,
             local_acceptable_func=lambda s: True,
             num_solution_points=num_solution_points, num_iterations=num_iteration,
@@ -163,11 +135,12 @@ async def simulate(*, num_agents: int, possible_schedules: List[List[List[float]
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-
+    await asyncio.sleep(1)
     print('Coalition build done')
     start_time = time.time()
     agents[0].add_role(
         CohdaNegotiationStarterRole(num_solution_points=NUM_SOLUTION_POINTS, target_params=None))
+    print('Goint to wait for term')
 
     await wait_for_term(controller_agent)
 
@@ -177,14 +150,20 @@ async def simulate(*, num_agents: int, possible_schedules: List[List[List[float]
     for a in agents:
         assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory
 
-    return final_memory, end_time - start_time
+    await container.shutdown()
 
+    return final_memory, end_time - start_time
 
 
 async def wait_for_term(controller_agent):
     while len(controller_agent.roles[0]._weight_map.values()) != 1 or list(controller_agent.roles[0]._weight_map.values())[0] != 1:
         await asyncio.sleep(0.1)
+        if len(controller_agent.roles[0]._weight_map.values()) == 1:
+            print(list(controller_agent.roles[0]._weight_map.values())[0])
+        else:
+            print('no weight map')
     print('Terminated!')
+
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
