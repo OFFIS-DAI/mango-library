@@ -3,9 +3,9 @@ from copy import deepcopy
 import numpy as np
 import pytest
 
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 from mango_library.negotiation.multiobjective_cohda.data_classes import SystemConfig, SolutionCandidate, \
     ScheduleSelections, WorkingMemory
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 
 
 def min_perf_func(cluster_schedules, target_params):
@@ -17,7 +17,6 @@ def min_perf_func(cluster_schedules, target_params):
 
 @pytest.fixture
 def initial_working_memory():
-
     sysconf = SystemConfig(
         num_solution_points=2,
         schedule_choices={'1': ScheduleSelections(np.array([[1, 1], [1, 1]]), counter=1),
@@ -27,7 +26,7 @@ def initial_working_memory():
     candidate = SolutionCandidate(
         num_solution_points=2,
         agent_id='1',
-        schedules={'1': np.array([[1,1], [1,1]]), '2': np.array([[1, 1], [1, 1]])},
+        schedules={'1': np.array([[1, 1], [1, 1]]), '2': np.array([[1, 1], [1, 1]])},
         perf=[(1., 1.), (1., 1.)],
         hypervolume=float('-inf'),
     )
@@ -56,7 +55,6 @@ def test_decide(cohda):
         sysconfig=deepcopy(cohda._memory.system_config), candidate=deepcopy(cohda._memory.solution_candidate))
 
     assert new_sys != cohda._memory.system_config
-    # ToDo: discuss in next meeting
     assert np.array_equal(np.array([[0.1, 0.1], [0.1, 0.1]]), new_candidate.schedules['1']) or np.array_equal(
         np.array([[0.1, 0.1], [0.1, 0.1]])
     )
