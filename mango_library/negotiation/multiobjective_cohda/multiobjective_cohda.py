@@ -72,7 +72,9 @@ class COHDA:
                  reference_point: Tuple,
                  num_iterations: int,
                  pick_func: Callable = None,
-                 mutate_func: Callable = None):
+                 mutate_func: Callable = None,
+                 use_fixed_ref_point: bool = True,
+                 offsets: list = None):
         """
 
         :param schedule_provider:
@@ -83,11 +85,11 @@ class COHDA:
         :param num_iterations:
         :param pick_func:
         :param mutate_func
+        :param use_fixed_ref_point
         """
         self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
         self._part_id = part_id
-        self._ref_point = reference_point
         empty_candidate = SolutionCandidate(agent_id=self._part_id,
                                             schedules={},
                                             hypervolume=float('-inf'),
@@ -104,16 +106,24 @@ class COHDA:
         self._pick_func = pick_func if pick_func is not None else self.pick_all_points
         self._mutate_func = mutate_func if mutate_func is not None else self.mutate_with_all_possible
 
-        # create selection for hyper volume calculation
-        self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
-        self._selection.construct_ref_point = self.construct_ref_point
-        self._selection.sorting_component.hypervolume_indicator.reference_point = self._ref_point
+        # if the fixed reference point is used, the method to calculate the reference point from the
+        # hypervolume contribution selection is not used. Otherwise, the reference point will be calculated each
+        # time the population is reduced.
+
+        # Without a given ref point, it is possible to give offsets for the calculation of the reference point.
+        self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False, offsets=offsets)
+
+        if use_fixed_ref_point:
+            self._selection.construct_ref_point = self.construct_ref_point
+            self._selection.sorting_component.hypervolume_indicator.reference_point = reference_point
+            self._ref_point = reference_point
+        else:
+            self._ref_point = None
 
     def construct_ref_point(self, solution_points, offsets=None):
         """
         Method to construct the reference point according to the given solution points.
         """
-        # ToDo: discuss, whether we want to keep this
         # In this case, the reference point is given, but a possible solution calculation could be placed here
         return self._ref_point
 
@@ -255,7 +265,8 @@ class COHDA:
                                                              self._memory.target_params)
 
                     performances = current_candidate.perf
-                    current_candidate.hypervolume = self.get_hypervolume(performances)
+                    current_candidate.hypervolume = self.get_hypervolume(performances,
+                                                                         current_candidate.solution_points)
                 else:
                     current_candidate = self._memory.solution_candidate
 
@@ -321,7 +332,8 @@ class COHDA:
             # print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
-            new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points])
+            new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
+                                                    population=all_solution_points)
 
             sorted_perfs = sorted([(round(ind.objective_values[0], 2),
                                     round(ind.objective_values[1], 2)) for ind in all_solution_points],
@@ -407,7 +419,13 @@ class COHDA:
 
         return sysconf
 
-    def get_hypervolume(self, performances):
+    def get_hypervolume(self, performances, population=None):
+        # TODO discuss
+        if self._selection.sorting_component.reference_point is None:
+            reference_point = self._selection.construct_ref_point(population, self._selection.offsets)
+            self._selection.sorting_component.reference_point = reference_point
+            self._ref_point = reference_point
+
         return self._selection.sorting_component.hypervolume_indicator. \
             assess_non_dom_front(performances)
 
@@ -468,7 +486,7 @@ class COHDA:
             # calculate and set perf
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
-            candidate.hypervolume = self.get_hypervolume(candidate.perf)
+            candidate.hypervolume = self.get_hypervolume(candidate.perf, candidate.solution_points)
 
         return candidate
 
@@ -479,7 +497,8 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
 
     def __init__(self, *, schedule_provider, targets: List[Target], num_solution_points: int,
                  local_acceptable_func=None, check_inbox_interval: float = 0.1,
-                 pick_func=None, mutate_func=None, num_iterations: int = 1, ):
+                 pick_func=None, mutate_func=None, num_iterations: int = 1,
+                 use_fixed_ref_point: bool = True, offsets: list = None):
         super().__init__()
 
         self._schedule_provider = schedule_provider
@@ -487,6 +506,11 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
         self._perf_functions = [target.performance for target in targets]
         self._reference_point = tuple(
             [target.ref_point for target in targets])
+        if self._reference_point is None or not use_fixed_ref_point:
+            self._use_fixed_ref_point = False
+        else:
+            self._use_fixed_ref_point = True
+        self._offsets = offsets
         self._num_solution_points = num_solution_points
         self._cohda = {}
         self._cohda_msg_queues = {}
@@ -510,7 +534,9 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
                      perf_func=self._perf_func,
                      num_iterations=self._num_iterations,
                      pick_func=self._pick_func,
-                     mutate_func=self._mutate_func)
+                     mutate_func=self._mutate_func,
+                     use_fixed_ref_point=self._use_fixed_ref_point,
+                     offsets=self._offsets)
 
     def _perf_func(self, cluster_schedules: List[np.array], target_params) -> List[Tuple]:
         """

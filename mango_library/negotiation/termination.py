@@ -14,19 +14,21 @@ considers itself as inactive.
 """
 import asyncio
 from fractions import Fraction
-from typing import Dict, Any, Union, Tuple, Optional, Set, Tuple
+from typing import Dict, Any, Union, Optional, Set, Tuple
 from uuid import UUID
 
-from ..coalition.core import CoalitionModel
-from .core import NegotiationModel
-from mango.role.api import Role
 from mango.messages.codecs import json_serializable
+from mango.role.api import Role
+
+from .core import NegotiationModel
+from ..coalition.core import CoalitionModel
 
 
 @json_serializable
 class TerminationMessage:
     """Message for sending the remaining weight to the controller
     """
+
     def __init__(self, weight: Fraction, coalition_id: UUID, negotiation_id: UUID) -> None:
         self._weight = weight
         self._coalition_id = coalition_id
@@ -61,6 +63,7 @@ class TerminationMessage:
 class TerminationInformationMessage:
     """Message that informs that a negotiation has terminated the remaining weight to the controller
     """
+
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
 
@@ -92,7 +95,6 @@ class NegotiationTerminationParticipantRole(Role):
                                                      and not isinstance(c, TerminationInformationMessage)),
                                        priority=float('-inf'))
 
-
     def on_send(self, content,
                 receiver_addr: Union[str, Tuple[str, int]], *,
                 receiver_id: Optional[str] = None,
@@ -114,7 +116,6 @@ class NegotiationTerminationParticipantRole(Role):
             if not hasattr(content, 'message_weight') or content.message_weight is None:
                 content.message_weight = self._weight_map[content.negotiation_id] / 2
             self._weight_map[content.negotiation_id] /= 2
-
 
     def handle_msg_start(self, content, _: Dict[str, Any]) -> None:
         """Check whether a coalition related message has been received and manipulate the internal
@@ -170,6 +171,7 @@ class NegotiationTerminationDetectorRole(Role):
     """
 
     """
+
     def __init__(self, on_termination=None):
         super().__init__()
         self._weight_map: Dict[UUID, Fraction] = {}
