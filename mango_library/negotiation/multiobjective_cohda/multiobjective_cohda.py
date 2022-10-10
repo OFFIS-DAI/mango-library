@@ -204,7 +204,6 @@ class COHDA:
         old_candidate = self._memory.solution_candidate
 
         # perceive
-        t_handle_start = time.time()
         sysconf, candidate = self._perceive(messages)
         t_after_perceive = time.time()
         # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
@@ -243,8 +242,7 @@ class COHDA:
                     schedule_choices[self._part_id] = ScheduleSelections(
                         np.array(inital_schedules), self._counter + 1)
                     self._counter += 1
-                    # we need to create a new class of Systemconfig so the updates are
-                    # recognized in handle_cohda_msgs()
+                    # we need to create a new class of Systemconfig so the updates are recognized in handle_cohda_msgs()
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices,
                                                      num_solution_points=num_solution_points)
                 else:
@@ -319,7 +317,9 @@ class COHDA:
 
             if num_unique_solution_points > candidate.num_solution_points:
                 diff = len(all_solution_points) - num_unique_solution_points
-                self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points + diff)
+                # TODO @EFR: the "+ diff" might need to be deleted (?!). I get too many solution points otherwise
+                # self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points + diff)
+                self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
             else:
                 indices = [idx for idx, val in enumerate(all_solution_points) if val in all_solution_points[:idx]]
                 for idx in reversed(indices):
