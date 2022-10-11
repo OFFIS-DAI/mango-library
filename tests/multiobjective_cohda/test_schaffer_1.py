@@ -15,6 +15,8 @@ TIMEOUT = 100
 PICK_FKT = COHDA.pick_all_points
 # PICK_FKT = COHDA.pick_random_point
 MUTATE_FKT = COHDA.mutate_with_all_possible
+
+
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
 
@@ -32,12 +34,12 @@ async def test_schaffer_1():
 
     c_1 = await Container.factory(addr=('127.0.0.2', 5555))
 
-    agents, addrs = await create_agents(
+    agents, addrs, controller_agent = await create_agents(
         container=c_1, targets=targets, possible_schedules=possible_schedules, num_iterations=1,
         num_candidates=NUM_SOLUTION_POINTS, check_msg_queue_interval=0.1, num_agents=NUM_AGENTS, pick_fkt=PICK_FKT,
         mutate_fkt=MUTATE_FKT, schedules_all_equal=True)
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=TIMEOUT)
+    await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
 
     solution = get_solution(agents)
     rounded_perfs = []
@@ -49,8 +51,8 @@ async def test_schaffer_1():
     await c_1.shutdown()
 
 
-async def wait_for_term(agents):
-    for agent in agents:
+async def wait_for_term(controller_agent):
+    while len(controller_agent.roles[0]._weight_map.values()) != 1 or \
+            list(controller_agent.roles[0]._weight_map.values())[0] != 1:
         await asyncio.sleep(0.1)
-        while not agent.inbox.empty() or next(iter(agents[0].roles[2]._weight_map.values())) != 1:
-            await asyncio.sleep(0.1)
+    print('Terminated!')
