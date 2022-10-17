@@ -71,17 +71,21 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
 
         # Schedules dataset
         dtype_schedules = [('aid', 'S100')]
-        max_num_schedules = max([len(s) for s in results[0]['schedules'].values()])
+        schedules_per_agent = results[0]['schedules']
+        max_num_schedules = max([len(s) for s in schedules_per_agent.values()])
+
+        len_of_schedules = len(list(schedules_per_agent.values())[0][0])
         for i in range(max_num_schedules):
-            dtype_schedules.append((f'schedule_{i}', 'float64'))
+            for j in range(len_of_schedules):
+                dtype_schedules.append((f'schedule_{i}[{j}]', 'float64'))
         dtype_schedules = np.dtype(dtype_schedules)
         data_schedules = []
-        schedules_per_agent = results[0]['schedules']
+
         for results_dict in results:
             assert schedules_per_agent == results_dict['schedules']
 
         for aid, sched_list in schedules_per_agent.items():
-            single_point_schedules = [s[0] for s in sched_list]
+            single_point_schedules = [s[pos] for s in sched_list for pos in range(len_of_schedules)]
             missing_schedules = max_num_schedules - len(single_point_schedules)
             data_schedules.append(tuple([aid] + single_point_schedules + [np.nan] * missing_schedules))
         data_schedules = np.array(data_schedules, dtype=dtype_schedules)
