@@ -194,8 +194,7 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
 async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedules_all_equal: bool = False,
                             targets: List[Target], num_solution_points: int, pick_func: Callable, mutate_func: Callable,
                             num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                            num_simulations:int,
-                            ) -> List[Dict[str, Any]]:
+                            num_simulations: int,) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -264,7 +263,11 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
-        controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
+        if topology_creator is not None:
+            controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic='',
+                                                             topology_creator=topology_creator))
+        else:
+            controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic='',))
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         print('Done building a coalition.')
 
@@ -286,8 +289,8 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
         # make sure all working memories are equal
         for a in agents:
-            assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory, 'Working memories of different agents' \
-                                                                                   'are not equal.'
+            assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory, \
+                'Working memories of different agents are not equal.'
 
         # shutdown container
         await container.shutdown()
