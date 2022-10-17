@@ -130,15 +130,15 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
             sim_results_grp.create_dataset('overlay', data=data_neighbors)
 
             # Solution Points datasets
-            dtype_solution_points = np.dtype([
-                ('part_id', 'S100'),
-                ('value', 'float64')
-            ])
+            dtype_solution_points = [('part_id', 'S100')]
+            for i in range(len_of_schedules):
+                dtype_solution_points.append(((f'value_{i}', 'float64')))
+            dtype_solution_points = np.dtype(dtype_solution_points)
 
             for i, solution_point in enumerate(sorted(solution_candidate.solution_points)):
                 data_solution_points = []
                 for part_id, index in solution_point.idx.items():
-                    data_solution_points.append((part_id, solution_point.cluster_schedule[index][0]))
+                    data_solution_points.append((part_id,) + tuple(solution_point.cluster_schedule[index]))
                 data_solution_points = np.array(data_solution_points, dtype=dtype_solution_points)
                 sim_results_grp.create_dataset(f'Solutionpoint_{i}', data=data_solution_points)
 
