@@ -23,8 +23,6 @@ MUTATE_FKT = COHDA.mutate_with_all_possible
 NUM_SIMULATIONS = 1
 
 
-
-
 def g(cs):
     return 1 + 9/29 * cs.sum(axis=0)[1]
 
