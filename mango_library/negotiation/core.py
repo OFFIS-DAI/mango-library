@@ -201,7 +201,7 @@ class NegotiationStarterRole(ProactiveRole):
                 create_acl=True)
 
 
-class NegotiationParticipant(SimpleReactiveRole, ABC):
+class NegotiationParticipantRole(SimpleReactiveRole, ABC):
     """Abstract role for participating a negotiation. Handles the wrapper message and the internal
     agent model about the meta data of the negotiation.
     """

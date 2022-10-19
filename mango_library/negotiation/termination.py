@@ -14,7 +14,7 @@ considers itself as inactive.
 """
 import asyncio
 from fractions import Fraction
-from typing import Dict, Any, Union, Tuple, Optional, Set, Tuple
+from typing import Dict, Any, Union, Optional, Set, Tuple, Callable
 from uuid import UUID
 
 from ..coalition.core import CoalitionModel
@@ -58,8 +58,9 @@ class TerminationMessage:
 
 
 @json_serializable
-class TerminationInformationMessage:
-    """Message that informs that a negotiation has terminated the remaining weight to the controller
+class StopNegotiationMessage:
+    """
+    Message that informs that a negotiation should be stopped.
     """
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
@@ -86,15 +87,11 @@ class NegotiationTerminationParticipantRole(Role):
     def setup(self):
         super().setup()
         self.context.subscribe_send(self, self.on_send)
-        self.context.subscribe_message(self, self.handle_msg_start,
+        self.context.subscribe_message(self, self.handle_neg_msg,
                                        lambda c, _: (hasattr(c, 'negotiation_id')
                                                      and not isinstance(c, TerminationMessage)
-                                                     and not isinstance(c, TerminationInformationMessage)),
+                                                     and not isinstance(c, StopNegotiationMessage)),
                                        priority=float('-inf'))
-
-        self.context.subscribe_message(self, self.on_termination,
-                                       lambda c, _: isinstance(c, TerminationInformationMessage))
-
 
     def on_send(self, content,
                 receiver_addr: Union[str, Tuple[str, int]], *,
@@ -118,16 +115,7 @@ class NegotiationTerminationParticipantRole(Role):
                 content.message_weight = self._weight_map[content.negotiation_id] / 2
             self._weight_map[content.negotiation_id] /= 2
 
-    def on_termination(self, content, _) -> None:
-        """
-
-        :param content:
-        :param _:
-        :return:
-        """
-        print('I am terminated')
-
-    def handle_msg_start(self, content, _: Dict[str, Any]) -> None:
+    def handle_neg_msg(self, content, _: Dict[str, Any]) -> None:
         """Check whether a coalition related message has been received and manipulate the internal
         weight accordingly. Setup a conditional task that checks for termination.
 
@@ -181,16 +169,16 @@ class NegotiationTerminationDetectorRole(Role):
     """
 
     """
-    def __init__(self, on_termination=None):
+    def __init__(self, on_termination: Callable[[UUID], None] = None):
         super().__init__()
         self._weight_map: Dict[UUID, Fraction] = {}
         self._participant_map: Dict[UUID, Set[Tuple[str]]] = {}
-        self._on_termination = on_termination if on_termination is not None else None
+        self._on_termination = self._send_termination_msg if on_termination is None else on_termination
 
     async def _send_termination_msg(self, negotiation_id):
         for agent_addr, agent_id in self._participant_map[negotiation_id]:
             await self.context.send_message(
-                content=TerminationInformationMessage(negotiation_id=negotiation_id),
+                content=StopNegotiationMessage(negotiation_id=negotiation_id),
                 receiver_addr=agent_addr,
                 receiver_id=agent_id,
                 acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
@@ -206,7 +194,6 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
-        print('Received termination msg')
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
             if neg_id not in self._participant_map:
@@ -218,5 +205,4 @@ class NegotiationTerminationDetectorRole(Role):
         else:
             self._weight_map[neg_id] += content.weight
         if self._weight_map[neg_id] == 1:
-            self.context.schedule_instant_task(self._send_termination_msg(neg_id))
-            # del self._weight_map[neg_id]
+            self.context.schedule_instant_task(self._on_termination(neg_id))
