@@ -243,13 +243,12 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
     agent model about the meta data of the negotiation.
     """
 
-    def __init__(self, on_neg_stop: Optional[Callable[[StopNegotiationMessage, dict], Any]] = None):
+    def __init__(self):
         """
 
         :param on_stop:
         """
         super().__init__()
-        self.on_neg_stop = on_neg_stop
 
     def handle_msg(self, content: Union[NegotiationMessage, StopNegotiationMessage],
                    meta: Dict[str, Any]):
