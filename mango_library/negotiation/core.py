@@ -1,12 +1,12 @@
-"""This module implements some reacurring elements of neogtiation processes. Therfore a negotiation
-wrapper for some meta data is provided. Furthermore this module implements roles which can handle
+"""This module implements some reacurring elements of negotiation processes. Therefore, a negotiation
+wrapper for some meta data is provided. Furthermore, this module implements roles which can handle
 this meta data models and store them as central role data.
 
 Role-Models:
 * :class:`NegotiationModel`: Stores information for all currently known negotiations
 
 Messages:
-* :class:`NeogtationMessage`: Wrapper message for negotiation orientied content
+* :class:`NeogtationMessage`: Wrapper message for negotiation oriented content
 
 Roles:
 * :class:`NegotiationStarterRole`: Starts a negotiation
@@ -14,18 +14,22 @@ Roles:
                                    and wraps the real message in the negotiation wrapper message
 """
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Union, Optional, Callable
 from abc import ABC, abstractmethod
 from fractions import Fraction
+import logging
 
 from mango.messages.codecs import json_serializable
 from mango.role.api import ProactiveRole, SimpleReactiveRole
 from mango.util.scheduling import ConditionalTask
 from ..coalition.core import CoalitionAssignment, CoalitionModel
 
+logger = logging.getLogger(__name__)
+
 
 class Negotiation:
-    """Modell for storing the data regarding a concrete negotiation
+    """
+    Model for storing the data regarding a concrete negotiation
     """
 
     def __init__(self, coalition_id: uuid.UUID, negotiation_id: uuid.UUID,
@@ -33,6 +37,7 @@ class Negotiation:
         self._negotiation_id = negotiation_id
         self._coalition_id = coalition_id
         self._active = active
+        self._stopped = False
 
     @property
     def negotiation_id(self) -> uuid.UUID:
@@ -65,6 +70,22 @@ class Negotiation:
         :param is_active: active
         """
         self._active = is_active
+
+    @property
+    def stopped(self) -> bool:
+        """
+        Is seen as stopped
+        :return: True if stopped, False otherwise
+        """
+        return self._active
+
+    @stopped.setter
+    def stopped(self, is_stopped) -> None:
+        """
+        Set is stopped
+        :param is_stopped: stopped
+        """
+        self._stopped = is_stopped
 
 
 class NegotiationModel:
@@ -137,12 +158,29 @@ class NegotiationMessage:
         return self._message
 
 
+@json_serializable
+class StopNegotiationMessage:
+    """
+    Message that informs an agent that a negotiation should be stopped.
+    """
+    def __init__(self, negotiation_id: uuid.UUID) -> None:
+        self._negotiation_id = negotiation_id
+
+    @property
+    def negotiation_id(self) -> uuid.UUID:
+        """Return the negotiation id
+
+        :return: the negotiation id
+        """
+        return self._negotiation_id
+
+
 class NegotiationStarterRole(ProactiveRole):
     """Starting role for a negotiation. Will use a specific negotiation message creator to start
     a negotiation within its coalition.
     """
 
-    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None, send_weight: bool = True)\
+    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None, send_weight: bool = True) \
             -> None:
         super().__init__()
         self._message_creator = message_creator
@@ -188,10 +226,9 @@ class NegotiationStarterRole(ProactiveRole):
         weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
         for neighbor in matched_assignment.neighbors:
             neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
-                                           self._message_creator(matched_assignment))
+                                         self._message_creator(matched_assignment))
             if self._send_weight:
                 neg_msg.message_weight = weight_per_msg
-                print('Going to send init msg with weight:', weight_per_msg)
             await self.context.send_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
@@ -202,32 +239,52 @@ class NegotiationStarterRole(ProactiveRole):
 
 
 class NegotiationParticipantRole(SimpleReactiveRole, ABC):
-    """Abstract role for participating a negotiation. Handles the wrapper message and the internal
+    """Abstract role for participating a negotiation. Handles the wrapper message, the stop message and the internal
     agent model about the meta data of the negotiation.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, on_neg_stop: Optional[Callable[[StopNegotiationMessage, dict], Any]] = None):
+        """
 
-    def handle_msg(self, content: NegotiationMessage, meta: Dict[str, Any]):
+        :param on_stop:
+        """
+        super().__init__()
+        self.on_neg_stop = on_neg_stop
+
+    def handle_msg(self, content: Union[NegotiationMessage, StopNegotiationMessage],
+                   meta: Dict[str, Any]):
         """Handles any NegotiationMessages, updating the internal model of the agent.
 
         :param content: the message
         :param meta: meta
         """
-        if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
-            return
+        if isinstance(content, NegotiationMessage):
+            if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
+                return
 
-        assignment = self.context.get_or_create_model(
-            CoalitionModel).by_id(content.coalition_id)
-        negotiation_model = self.context.get_or_create_model(NegotiationModel)
+            assignment = self.context.get_or_create_model(
+                CoalitionModel).by_id(content.coalition_id)
+            negotiation_model = self.context.get_or_create_model(NegotiationModel)
 
-        if not negotiation_model.exists(content.negotiation_id):
-            negotiation_model.add(content.negotiation_id, Negotiation(
-                content.coalition_id, content.negotiation_id))
+            if not negotiation_model.exists(content.negotiation_id):
+                negotiation_model.add(content.negotiation_id, Negotiation(
+                    content.coalition_id, content.negotiation_id))
 
-        self.handle(content.message, assignment,
-                    negotiation_model.by_id(content.negotiation_id), meta)
+            self.handle(content.message, assignment,
+                        negotiation_model.by_id(content.negotiation_id), meta)
+
+        elif isinstance(content, StopNegotiationMessage):
+
+            # set stopped
+            negotiation_model = self.context.get_or_create_model(NegotiationModel)
+            if not negotiation_model.exists(content.negotiation_id):
+                negotiation_model.add(content.negotiation_id, Negotiation(
+                    content.coalition_id, content.negotiation_id))
+            negotiation_model.by_id(content.negotiation_id).stopped = True
+            self.handle_neg_stop(negotiation=negotiation_model.by_id(content.negotiation_id), meta=meta)
+
+        else:
+            logger.warning(f'NegotiationParticipantRole received unexpected Message of type {type(content)}')
 
     @abstractmethod
     def handle(self, message, assignment: CoalitionAssignment, negotiation: Negotiation, meta: Dict[str, Any]):
@@ -237,6 +294,14 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
         :param assignment: the assignment the negotiations is in
         :param negotiation: the negotiation model
         :param meta: meta data
+        """
+
+    @abstractmethod
+    def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
+        """
+        Behaviour once a StopNegotiationMessage is Received
+        :param negotiation: the corresponding Negotiation object
+        :param meta: meta of the message
         """
 
     async def send_to_neighbors(self, assignment: CoalitionAssignment, negotation: Negotiation, message):
@@ -264,4 +329,4 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
         )
 
     def is_applicable(self, content, meta):
-        return isinstance(content, NegotiationMessage)
+        return isinstance(content, NegotiationMessage) or isinstance(content, StopNegotiationMessage)

@@ -19,6 +19,7 @@ from uuid import UUID
 
 from ..coalition.core import CoalitionModel
 from .core import NegotiationModel
+from mango_library.negotiation.core import StopNegotiationMessage
 from mango.role.api import Role
 from mango.messages.codecs import json_serializable
 
@@ -47,23 +48,6 @@ class TerminationMessage:
         :return: the coalition id
         """
         return self._coalition_id
-
-    @property
-    def negotiation_id(self) -> UUID:
-        """Return the negotiation id
-
-        :return: the negotiation id
-        """
-        return self._negotiation_id
-
-
-@json_serializable
-class StopNegotiationMessage:
-    """
-    Message that informs that a negotiation should be stopped.
-    """
-    def __init__(self, negotiation_id: UUID) -> None:
-        self._negotiation_id = negotiation_id
 
     @property
     def negotiation_id(self) -> UUID:
