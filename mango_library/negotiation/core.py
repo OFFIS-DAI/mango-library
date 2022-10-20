@@ -77,7 +77,7 @@ class Negotiation:
         Is seen as stopped
         :return: True if stopped, False otherwise
         """
-        return self._active
+        return self._stopped
 
     @stopped.setter
     def stopped(self, is_stopped) -> None:
@@ -280,7 +280,9 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
                 negotiation_model.add(content.negotiation_id, Negotiation(
                     content.coalition_id, content.negotiation_id))
             negotiation_model.by_id(content.negotiation_id).stopped = True
-            self.handle_neg_stop(negotiation=negotiation_model.by_id(content.negotiation_id), meta=meta)
+            self.context.schedule_instant_task(
+                self.handle_neg_stop(negotiation=negotiation_model.by_id(content.negotiation_id), meta=meta)
+            )
 
         else:
             logger.warning(f'NegotiationParticipantRole received unexpected Message of type {type(content)}')
@@ -296,7 +298,7 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
         """
 
     @abstractmethod
-    def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
+    async def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
         """
         Behaviour once a StopNegotiationMessage is Received
         :param negotiation: the corresponding Negotiation object

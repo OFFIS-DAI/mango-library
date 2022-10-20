@@ -141,12 +141,14 @@ class NegotiationTerminationParticipantRole(Role):
         # reset weight
         self._weight_map[content.negotiation_id] = Fraction(0, 1)
         # Send weight
+        print(f'[{self.context.addr} Going to send termination msg')
         await self.context.send_message(
             content=TerminationMessage(current_weight, content.coalition_id, content.negotiation_id),
             receiver_addr=coalition.controller_agent_addr,
             receiver_id=coalition.controller_agent_id,
             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
             create_acl=True)
+        print(f'[{self.context.addr} Done sending termination msg')
 
 
 class NegotiationTerminationDetectorRole(Role):
@@ -160,13 +162,16 @@ class NegotiationTerminationDetectorRole(Role):
         self._on_termination = self._send_termination_msg if on_termination is None else on_termination
 
     async def _send_termination_msg(self, negotiation_id):
+        print('Going to send stop negotiation')
         for agent_addr, agent_id in self._participant_map[negotiation_id]:
+            print('agent_addr', agent_addr, 'agent_id', agent_id)
             await self.context.send_message(
                 content=StopNegotiationMessage(negotiation_id=negotiation_id),
                 receiver_addr=agent_addr,
                 receiver_id=agent_id,
                 acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
             )
+        print('Done sending stop negotiation')
 
     def setup(self):
         super().setup()
@@ -178,15 +183,24 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
+        print('Received termination message', TerminationMessage)
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
+            print('meta:', meta)
             if neg_id not in self._participant_map:
                 self._participant_map[neg_id] = set()
-            self._participant_map[neg_id].add((meta['sender_addr'], meta['sender_id']))
+            print('going to add tuple')
+            self._participant_map[neg_id].add((tuple(meta['sender_addr']), meta['sender_id']))
+            print('done adding tupel')
 
+        print('Update weight map')
         if neg_id not in self._weight_map:
             self._weight_map[neg_id] = content.weight
         else:
             self._weight_map[neg_id] += content.weight
+
         if self._weight_map[neg_id] == 1:
+            print('weight map == 1')
             self.context.schedule_instant_task(self._on_termination(neg_id))
+        else:
+            print('weight map:', round(self._weight_map[neg_id], 3))

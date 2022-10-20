@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 @json_serializable
 class CohdaMessage:
     """
-    Message for a COHDa negotiation.
-    Contains the candidate and the working memory of an agent.
+    Message for a COHDA negotiation.
+    Contains the working memory of an agent.
     """
 
     def __init__(self, working_memory: WorkingMemory):
@@ -32,6 +32,25 @@ class CohdaMessage:
         :return: the working memory of the sender
         """
         return self._working_memory
+
+
+@json_serializable
+class CohdaSolution:
+    """
+    Message for a COHDA solution.
+    Contains the candidate of an agent.
+    """
+
+    def __init__(self, solution_candidate: SolutionCandidate):
+        self._solution_candidate = solution_candidate
+
+    @property
+    def solution_candidate(self) -> SolutionCandidate:
+        """Return the solution candidate of the sender agent
+
+        :return: the solution_candidate of the sender
+        """
+        return self._solution_candidate
 
 
 class CohdaNegotiationStarterRole(NegotiationStarterRole):
@@ -90,6 +109,7 @@ class COHDA:
         :param messages: The list of received CohdaMessages
         :return: The message to be sent to the neighbors, None if no message has to be sent
         """
+
         old_sysconf = self._memory.system_config
         old_candidate = self._memory.solution_candidate
 
@@ -322,6 +342,7 @@ class COHDARole(NegotiationParticipantRole):
                      is_local_acceptable=self._is_local_acceptable,
                      part_id=part_id)
 
+
     async def on_stop(self) -> None:
         """
         Will be called once the agent is shutdown
@@ -373,16 +394,21 @@ class COHDARole(NegotiationParticipantRole):
                 self._cohda_tasks[negotiation.negotiation_id] = \
                     self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
 
-    def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
+    async def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
         """
         """
-        print('Received Stop in cohda role')
+        print(f'[{self.context.addr}] handle neg stop')
         if negotiation.negotiation_id in self._cohda_tasks.keys():
+            # wait until current iteration is done
+            while self._cohda[negotiation.negotiation_id].active:
+                await asyncio.sleep(0.05)
+            # cancel task
             task = self._cohda_tasks[negotiation.negotiation_id]
-            task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
-
-
+        # get current solution
+        final_solution = self._cohda[negotiation.negotiation_id]._memory.solution_candidate
+        await self.context.send_message(content=CohdaSolution(final_solution), receiver_addr=meta['sender_id'],
+                                        receiver_id=meta['receiver_id'], create_acl=True)
