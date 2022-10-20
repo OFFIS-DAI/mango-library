@@ -4,12 +4,15 @@ integrate COHDA in the negotiation system and the core COHDA-decider together wi
 from typing import List, Dict, Any, Tuple, Optional, Callable
 import asyncio
 import numpy as np
+import logging
 
 from mango.messages.codecs import json_serializable
-from mango_library.negotiation.core import NegotiationParticipant, NegotiationStarterRole, Negotiation
+from mango_library.negotiation.core import NegotiationParticipantRole, NegotiationStarterRole, Negotiation
 from mango_library.coalition.core import CoalitionAssignment
 from mango_library.negotiation.cohda.data_classes import \
     SolutionCandidate, SystemConfig, WorkingMemory, ScheduleSelection
+
+logger = logging.getLogger(__name__)
 
 
 @json_serializable
@@ -285,7 +288,7 @@ class COHDA:
         return candidate
 
 
-class COHDARole(NegotiationParticipant):
+class COHDARole(NegotiationParticipantRole):
     """Negotiation role for COHDA.
     """
 
@@ -306,7 +309,7 @@ class COHDARole(NegotiationParticipant):
             self._is_local_acceptable = local_acceptable_func
         self._cohda = {}
         self._cohda_msg_queues = {}
-        self._cohda_tasks = []
+        self._cohda_tasks = {}
         self.check_inbox_interval = check_inbox_interval
 
     def create_cohda(self, part_id: str):
@@ -324,7 +327,7 @@ class COHDARole(NegotiationParticipant):
         Will be called once the agent is shutdown
         """
         # cancel all cohda tasks
-        for task in self._cohda_tasks:
+        for task in self._cohda_tasks.values():
             task.cancel()
             try:
                 await task
@@ -337,34 +340,49 @@ class COHDARole(NegotiationParticipant):
                negotiation: Negotiation,
                meta: Dict[str, Any]):
 
-        if negotiation.coalition_id in self._cohda:
-            negotiation.active = True
-            self._cohda_msg_queues[negotiation.coalition_id].append(message)
-        else:
-            self._cohda[negotiation.coalition_id] = self.create_cohda(assignment.part_id)
-            self._cohda_msg_queues[negotiation.coalition_id] = [message]
+        if not negotiation.stopped:
+            if negotiation.negotiation_id in self._cohda:
+                    negotiation.active = True
+                    self._cohda_msg_queues[negotiation.negotiation_id].append(message)
+            else:
+                self._cohda[negotiation.negotiation_id] = self.create_cohda(assignment.part_id)
+                self._cohda_msg_queues[negotiation.negotiation_id] = [message]
 
-            async def process_msg_queue():
-                """
-                Method to evaluate all incoming message of a cohda_message_queue for a certain negotiation
-                """
+                async def process_msg_queue():
+                    """
+                    Method to evaluate all incoming message of a cohda_message_queue for a certain negotiation
+                    """
 
-                if len(self._cohda_msg_queues[negotiation.coalition_id]) > 0:
-                    # get queue
-                    cohda_message_queue, self._cohda_msg_queues[negotiation.coalition_id] = \
-                        self._cohda_msg_queues[negotiation.coalition_id], []
+                    if len(self._cohda_msg_queues[negotiation.negotiation_id]) > 0 and not negotiation.stopped:
+                        # get queue
+                        cohda_message_queue, self._cohda_msg_queues[negotiation.negotiation_id] = \
+                            self._cohda_msg_queues[negotiation.negotiation_id], []
 
-                    message_to_send = self._cohda[negotiation.coalition_id].handle_cohda_msgs(cohda_message_queue)
+                        message_to_send = self._cohda[negotiation.negotiation_id].handle_cohda_msgs(cohda_message_queue)
 
-                    if message_to_send is not None:
-                        await self.send_to_neighbors(assignment, negotiation, message_to_send)
+                        if message_to_send is not None:
+                            await self.send_to_neighbors(assignment, negotiation, message_to_send)
 
+                        else:
+                            # set the negotiation as inactive as the incoming information was known already
+                            negotiation.active = False
                     else:
-                        # set the negotiation as inactive as the incoming information was known already
+                        # set the negotiation as inactive as no message has arrived
                         negotiation.active = False
-                else:
-                    # set the negotiation as inactive as no message has arrived
-                    negotiation.active = False
 
-            self._cohda_tasks.append(self.context.schedule_periodic_task(process_msg_queue,
-                                                                         delay=self.check_inbox_interval))
+                self._cohda_tasks[negotiation.negotiation_id] = \
+                    self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
+
+    def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
+        """
+        """
+        print('Received Stop in cohda role')
+        if negotiation.negotiation_id in self._cohda_tasks.keys():
+            task = self._cohda_tasks[negotiation.negotiation_id]
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+
