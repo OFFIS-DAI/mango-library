@@ -120,6 +120,7 @@ class COHDA:
         else:
             self._ref_point = None
 
+
     def construct_ref_point(self, solution_points, offsets=None):
         """
         Method to construct the reference point according to the given solution points.
@@ -159,10 +160,10 @@ class COHDA:
         """
         schedules = schedule_creator()
         if len(schedules) > 1:
-            point_before_mutation = list(solution_point.cluster_schedule[solution_point.idx[agent_id]])
-            if point_before_mutation in schedules:
-                schedules.remove(point_before_mutation)
+            schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
             new_schedule = random.choice(schedules)
+            while new_schedule == schedule_before:
+                new_schedule = random.choice(schedules)
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
             new_perf = perf_func([new_cs], target_params)[0]

@@ -1,16 +1,17 @@
 import asyncio
+import math
 import numpy as np
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
 
-FILE = 'Testfile.hdf5'
-SIM_NAME = 'Schaffer_1'
-A = 10
+FILE = 'Fonseca_Fleming.hdf5'
+SIM_NAME = 'Fonseca_Fleming'
+
 NUM_AGENTS = 10
-NUM_SCHEDULES = 20
-NUM_SOLUTION_POINTS = 5
+NUM_SCHEDULES = 25
+NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
@@ -19,35 +20,49 @@ PICK_FKT = COHDA.pick_all_points
 MUTATE_FKT = COHDA.mutate_with_all_possible
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 2
+DENOMINATOR = math.sqrt(NUM_AGENTS)
 
 
-def target_func_1(cs):
+def target_func_1(cs: np.array):
     """
-    x ** 2
+    exponent = 0
+    for x_i in cs:
+        exponent += (float(x_i) - 1/math.sqrt(NUM_AGENTS)) ** 2
+    return 1 - math.exp(-exponent)
     """
-    return cs.sum() ** 2
+    exponent = 0
+
+    for x_i in cs:
+        exponent += (float(x_i) - 1 / DENOMINATOR) ** 2
+    return 1 - math.exp(-exponent)
 
 
 def target_func_2(cs):
     """
-    (x - 2) ** 2
+    exponent = 0
+    for x_i in cs:
+        exponent += (float(x_i) + 1/math.sqrt(NUM_AGENTS)) ** 2
+    return 1 - math.exp(-exponent)
+
     """
-    return (cs.sum() - 2) ** 2
+    exponent = 0
+    for x_i in cs:
+        exponent += (float(x_i) + 1 / DENOMINATOR) ** 2
+    return 1 - math.exp(-exponent)
 
 
-TARGET_1 = Target(target_function=target_func_1, ref_point=A ** 2 * 1.1)
-TARGET_2 = Target(target_function=target_func_2, ref_point=(A + 2) ** 2 * 1.1)
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1)
 TARGETS = [TARGET_1, TARGET_2]
 
-SCHEDULE_THRESHOLD = A / NUM_AGENTS
-SCHEDULE_STEP_SIZE = (SCHEDULE_THRESHOLD * 2) / (NUM_SCHEDULES - 1)
-POSSIBLE_SCHEDULES = []
-for schedule_no in range(NUM_SCHEDULES):
-    POSSIBLE_SCHEDULES.append(np.array([-SCHEDULE_THRESHOLD + schedule_no * SCHEDULE_STEP_SIZE]))
+SCHEDULE_STEP_SIZE = 8 / (NUM_SCHEDULES - 1)
+SINGLE_POINT_SCHEDULES = [np.array([-4 + SCHEDULE_STEP_SIZE * i]) for i in range(NUM_SCHEDULES)]
 
+POSSIBLE_SCHEDULES = SINGLE_POINT_SCHEDULES
+print(POSSIBLE_SCHEDULES)
 
-async def simulate_schaffer(name, db_file):
+async def simulate_fonseca(name, db_file):
     results = await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
@@ -64,4 +79,4 @@ async def simulate_schaffer(name, db_file):
 
 
 if __name__ == '__main__':
-    asyncio.run(simulate_schaffer(SIM_NAME, FILE))
+    asyncio.run(simulate_fonseca(SIM_NAME, FILE))
