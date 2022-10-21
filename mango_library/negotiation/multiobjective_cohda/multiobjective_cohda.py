@@ -41,7 +41,7 @@ class CohdaNegotiationStarterRole(NegotiationStarterRole):
     Convienience role for starting a COHDA negotiation
     """
 
-    def __init__(self, target_params, num_solution_points, coalition_model_matcher=None, coalition_uuid=None) -> None:
+    def __init__(self, num_solution_points) -> None:
         """
 
         :param target_params: Parameter that are necessary for the agents to calculate the performance.
@@ -50,13 +50,12 @@ class CohdaNegotiationStarterRole(NegotiationStarterRole):
         :param coalition_uuid:
         """
         super().__init__(
-            lambda assignment:
+            lambda assignment, msg:
             CohdaMessage(WorkingMemory(
-                target_params=target_params,
+                target_params=msg.target_params,
                 system_config=SystemConfig(schedule_choices={}, num_solution_points=num_solution_points),
                 solution_candidate=SolutionCandidate(agent_id=assignment.part_id, schedules={},
-                                                     num_solution_points=num_solution_points))),
-            coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid
+                                                     num_solution_points=num_solution_points)))
         )
 
 

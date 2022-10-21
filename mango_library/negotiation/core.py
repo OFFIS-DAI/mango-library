@@ -14,13 +14,14 @@ Roles:
                                    and wraps the real message in the negotiation wrapper message
 """
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Union
 from abc import ABC, abstractmethod
 from fractions import Fraction
 
 from mango.messages.codecs import json_serializable
 from mango.role.api import ProactiveRole, SimpleReactiveRole
 from mango.util.scheduling import ConditionalTask
+
 from ..coalition.core import CoalitionAssignment, CoalitionModel
 
 
@@ -102,6 +103,25 @@ class NegotiationModel:
 
 
 @json_serializable
+class NegotiationStartMessage:
+    def __init__(self, target_params: dict= None, coalition_id=None, send_weight: bool = True):
+        self._target_params = target_params
+        self._coalition_id = coalition_id
+        self._send_weight = send_weight
+
+    @property
+    def target_params(self) -> dict:
+        return self._target_params
+
+    @property
+    def coalition_id(self):
+        return self._coalition_id
+
+    @property
+    def send_weight(self) -> bool:
+        return self._send_weight
+
+@json_serializable
 class NegotiationMessage:
     """Message wrapper for negotiation messages.
     """
@@ -142,26 +162,21 @@ class NegotiationStarterRole(ProactiveRole):
     a negotiation within its coalition.
     """
 
-    def __init__(self, message_creator, coalition_model_matcher=None, coalition_uuid=None, send_weight: bool = True)\
-            -> None:
+    def __init__(self, message_creator)-> None:
         super().__init__()
         self._message_creator = message_creator
-        self._send_weight = send_weight
 
-        if coalition_uuid is not None:
-            # if id is provided create matcher matching this id when the coalition is looked up
-            self._coalition_model_matcher = lambda coal: coal.coalition_id == coalition_uuid
-        elif coalition_model_matcher is not None:
-            # when a matcher itself is provided use this if no uuid has been provided
-            self._coalition_model_matcher = coalition_model_matcher
-        else:
-            # when nothing has been provided just match the first coalition
-            self._coalition_model_matcher = lambda _: True
         
     def setup(self):
         super().setup()
 
-        self.context.schedule_task(ConditionalTask(self.start(), self.is_startable))
+        self.context.subscribe_message(self, self.handle_negotiation_start_msg,
+                                       lambda c, m: isinstance(c, NegotiationStartMessage))
+        # self.context.schedule_task(ConditionalTask(self.start(), self.is_startable))
+
+    def handle_negotiation_start_msg(self, msg, meta):
+        print("recieved negotiation start message")
+        self.context.schedule_task(ConditionalTask(self.start(msg), self.is_startable))
 
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
@@ -169,27 +184,28 @@ class NegotiationStarterRole(ProactiveRole):
         # check there is an assignment
         return len(coalition_model.assignments.values()) > 0
 
-    def _look_up_assignment(self, all_assignments):
-        for assignment in all_assignments:
-            if self._coalition_model_matcher(assignment):
-                return assignment
+    def _look_up_assignment(self, all_assignments, coalition_id= None):
+        if coalition_id is not None:
+            for assignment in all_assignments:
+                if assignment.coalition_id == coalition_id:
+                    return assignment
         # default to the first one
         return list(all_assignments)[0]
 
-    async def start(self):
+    async def start(self, msg: NegotiationStartMessage):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Assume there is a exactly one coalition
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
+        matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), msg._coalition_id)
         negotiation_uuid = uuid.uuid1()
 
         weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
         for neighbor in matched_assignment.neighbors:
             neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
-                                           self._message_creator(matched_assignment))
-            if self._send_weight:
+                                           self._message_creator(matched_assignment, msg))
+            if msg._send_weight:
                 neg_msg.message_weight = weight_per_msg
             await self.context.send_message(
                 content=neg_msg,
@@ -228,6 +244,7 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
         self.handle(content.message, assignment,
                     negotiation_model.by_id(content.negotiation_id), meta)
 
+
     @abstractmethod
     def handle(self, message, assignment: CoalitionAssignment, negotiation: Negotiation, meta: Dict[str, Any]):
         """Handle the message and execute the specific negotiation step.
@@ -263,4 +280,4 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
         )
 
     def is_applicable(self, content, meta):
-        return isinstance(content, NegotiationMessage)
+        return isinstance(content, NegotiationMessage) or isinstance(content, NegotiationStartMessage)
