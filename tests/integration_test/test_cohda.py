@@ -37,7 +37,7 @@ async def test_coalition_to_cohda_with_termination():
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
 
-    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=8)
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -46,7 +46,7 @@ async def test_coalition_to_cohda_with_termination():
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=3)
+    await asyncio.wait_for(wait_for_term(controller_agent), timeout=5)
 
     # gracefully shutdown
     for a in agents:
@@ -79,7 +79,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     agents.append(controller_agent)
 
-    for i in range(10):
+    for i in range(5):
         c=c_2 if i % 2 == 0 else c_1
         a = RoleAgent(c)
         cohda_role = COHDARole(lambda: s_array[0], lambda s: True)

@@ -223,8 +223,10 @@ class NegotiationStarterRole(ProactiveRole):
         matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
         negotiation_uuid = uuid.uuid1()
 
-        weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
+        weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection'
+
         for neighbor in matched_assignment.neighbors:
+            print('send weight of ', weight_per_msg)
             neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
                                          self._message_creator(matched_assignment))
             if self._send_weight:

@@ -332,6 +332,8 @@ class COHDARole(NegotiationParticipantRole):
         self._cohda_tasks = {}
         self.check_inbox_interval = check_inbox_interval
 
+        self.inactive_counter = 0
+
     def create_cohda(self, part_id: str):
         """
         Create an instance of COHDA.
@@ -363,8 +365,10 @@ class COHDARole(NegotiationParticipantRole):
 
         if not negotiation.stopped:
             if negotiation.negotiation_id in self._cohda:
-                    negotiation.active = True
-                    self._cohda_msg_queues[negotiation.negotiation_id].append(message)
+                if not negotiation.active:
+                    print(f'[{self.context.addr, self.context.aid}] ATTENTION, negotiation was not active and i received a mssage')
+                negotiation.active = True
+                self._cohda_msg_queues[negotiation.negotiation_id].append(message)
             else:
                 self._cohda[negotiation.negotiation_id] = self.create_cohda(assignment.part_id)
                 self._cohda_msg_queues[negotiation.negotiation_id] = [message]
@@ -384,12 +388,16 @@ class COHDARole(NegotiationParticipantRole):
                         if message_to_send is not None:
                             await self.send_to_neighbors(assignment, negotiation, message_to_send)
 
-                        else:
-                            # set the negotiation as inactive as the incoming information was known already
-                            negotiation.active = False
+                        # else:
+                        #     # set the negotiation as inactive as the incoming information was known already
+                        #     print(f'{self.context.addr, self.context.aid} Setting neg active = False -> nothing new in decide')
+                        #     negotiation.active = False
                     else:
                         # set the negotiation as inactive as no message has arrived
-                        negotiation.active = False
+                        print(f'{self.context.addr, self.context.aid} Setting neg active = False -> no new message')
+                        self.inactive_counter += 1
+                        if self.inactive_counter > 4:
+                            negotiation.active = False
 
                 self._cohda_tasks[negotiation.negotiation_id] = \
                     self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
@@ -404,6 +412,7 @@ class COHDARole(NegotiationParticipantRole):
                 await asyncio.sleep(0.05)
             # cancel task
             task = self._cohda_tasks[negotiation.negotiation_id]
+            task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
