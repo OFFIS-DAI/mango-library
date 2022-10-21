@@ -158,13 +158,13 @@ class CoalitionInvite:
     """Message for inviting an agent to a coalition.
     """
 
-    def __init__(self, coalition_id: str, topic: str, details=None):
+    def __init__(self, coalition_id: UUID, topic: str, details=None):
         self._coalition_id = coalition_id
         self._topic = topic
         self._details = details
 
     @property
-    def coalition_id(self) -> str:
+    def coalition_id(self) -> UUID:
         """Return id of the coalition
 
         :return: id of the coalition
