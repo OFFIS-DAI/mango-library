@@ -258,7 +258,7 @@ async def test_complex_scenario():
     pick_fkt = COHDA.pick_all_points
     # pick_fkt = COHDA.pick_random_point
     mutate_fkt = COHDA.mutate_with_all_possible
-    # mutate_fkt = COHDA.mutate_with_one_random
+    mutate_fkt = COHDA.mutate_with_one_random
 
     agents, addrs, controller_agent = await create_agents(container=c_1,
                                                           targets=[target_first, target_second],

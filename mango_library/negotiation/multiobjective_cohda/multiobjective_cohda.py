@@ -317,12 +317,12 @@ class COHDA:
 
             if num_unique_solution_points > candidate.num_solution_points:
                 diff = len(all_solution_points) - num_unique_solution_points
-                if diff < candidate.num_solution_points:
-                    # choose forward-greedy, because if there are less enough unique points than the difference between
-                    # all solution points and the number to reduce to, with "backward-greedy", more solution points
-                    # will be deleted and the number of solution points after reduce_to is smaller than
-                    # candidate.num_solution_points
-                    self._selection.selection_variant = "forward-greedy"
+                # if diff < candidate.num_solution_points:
+                #     # choose forward-greedy, because if there are less enough unique points than the difference between
+                #     # all solution points and the number to reduce to, with "backward-greedy", more solution points
+                #     # will be deleted and the number of solution points after reduce_to is smaller than
+                #     # candidate.num_solution_points
+                #     self._selection.selection_variant = "forward-greedy"
                 self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
                 # reset selection variant
                 self._selection.selection_variant = "auto"
