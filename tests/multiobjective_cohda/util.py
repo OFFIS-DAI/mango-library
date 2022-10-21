@@ -76,7 +76,6 @@ async def create_agents(container, targets, possible_schedules,
     controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic=''))
 
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-    print('Coalition build done')
     agents[0].add_role(
         CohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
 

@@ -508,6 +508,7 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
         super().__init__()
 
         self._schedule_provider = schedule_provider
+        print("schedules:", schedule_provider())
         self._is_local_acceptable = local_acceptable_func if local_acceptable_func is not None else lambda x: True
         self._perf_functions = [target.performance for target in targets]
         self._reference_point = tuple(
