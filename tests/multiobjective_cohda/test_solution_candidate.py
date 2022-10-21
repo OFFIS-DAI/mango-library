@@ -4,10 +4,11 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 import numpy as np
 
 
-def get_hypervolume(performances: List[Tuple[float, ...]]) -> float:
+def get_hypervolume(performances: List[Tuple[float, ...]], population: List = []) -> float:
     """
     This function calculates the hypervolume from a list of performance tuples with a given reference point
     :param performances:
+    :param population
     :return:
     """
     #  ----- START DUMMY ALLERT -----
