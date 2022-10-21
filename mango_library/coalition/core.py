@@ -26,7 +26,7 @@ from mango.role.api import ProactiveRole, Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
 
-NeighborhoodAddress = tuple[str, Union[str, tuple[str, int]], str]
+NeighborhoodAddress = Tuple[str, Union[str, Tuple[str, int]], str]
 
 
 @json_serializable
