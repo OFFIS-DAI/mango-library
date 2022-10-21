@@ -16,6 +16,7 @@ The messages defined in this module:
 The role models defined in this module:
 * :class:`CoalitionModel`: contains all information for all coalitions an agent participates in
 """
+import random
 from uuid import UUID
 import asyncio
 import uuid
@@ -25,6 +26,21 @@ from mango.role.api import ProactiveRole, Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
 
+NeighborhoodAddress = tuple[str, Union[str, tuple[str, int]], str]
+
+
+@json_serializable
+class AgentAddress:
+    """
+    The address of an agent
+    """
+    def __init__(self, host, port, aid, agent_type=None):
+        self.host = host
+        self.port = port
+        self.aid = aid
+        if agent_type is None:
+            agent_type = ""
+        self.agent_type = agent_type
 
 @json_serializable
 class CoalitionAssignment:
@@ -142,13 +158,13 @@ class CoalitionInvite:
     """Message for inviting an agent to a coalition.
     """
 
-    def __init__(self, coalition_id: UUID, topic: str, details=None):
+    def __init__(self, coalition_id: str, topic: str, details=None):
         self._coalition_id = coalition_id
         self._topic = topic
         self._details = details
 
     @property
-    def coalition_id(self) -> UUID:
+    def coalition_id(self) -> str:
         """Return id of the coalition
 
         :return: id of the coalition
@@ -182,18 +198,55 @@ class CoaltitionResponse:
 
     @property
     def accept(self) -> bool:
-        """""Flag whether the coalition is accpeted
+        """""Flag whether the coalition is accepted
 
         :return: true if accepted, false otherwise
         """""
         return self._accept
 
 
-def clique_creator(participants: List[Tuple[str, Union[str, Tuple[str, int]], str]]) -> \
-        Dict[Tuple[str, Union[str, Tuple[str, int]], str],
-             List[Tuple[str, Union[str, Tuple[str, int]], str]]]:
+def small_world_neighborhood_creator(participants: List[NeighborhoodAddress], k=1, w=0.0) -> \
+        Dict[NeighborhoodAddress, List[NeighborhoodAddress]]:
+    """
+    Creates a small world topology
+    :param participants:
+    :param k: connection depth in the ring
+    :param w: probability of random connections
+    :return:
+    """
+    # sort neighbors for testing
+    unit_agents = sorted(participants, key=lambda x: (x.host, x.port, x.aid))
+
+    neighborhood: Dict[NeighborhoodAddress, List[NeighborhoodAddress]] = {}
+
+    # empty neighborhood in the beginning
+    for agent in unit_agents:
+        neighborhood[agent] = []
+
+    # create the ring
+    for index, agent in enumerate(unit_agents):
+        for distance in range(1, k + 1):
+            neighborhood[agent].append(unit_agents[(index - distance)])
+            neighborhood[unit_agents[(index - distance)]].append(agent)
+
+    # create random connections
+    for index, agent in enumerate(unit_agents):
+        if random.random() < w:
+            random_agent = random.choice(unit_agents)
+            if (
+                    random_agent not in neighborhood[agent]
+                    and random_agent != agent
+            ):
+                neighborhood[agent].append(random_agent)
+                neighborhood[random_agent].append(agent)
+    return neighborhood
+
+
+def clique_creator(participants: List[NeighborhoodAddress], **kwargs) -> \
+        Dict[NeighborhoodAddress, List[NeighborhoodAddress]]:
     """Create a clique topology
 
+    :param o:
     :param participants: the list of all participants
 
     :return: a map, mapping every participant to a list of their neighbors
@@ -212,12 +265,30 @@ class CoalitionInitiatorRole(ProactiveRole):
     """
 
     def __init__(self, participants: List, topic: str, details: str,
-                 topology_creator=clique_creator):
+                 topology_creator=clique_creator, topology_creator_kwargs=None,
+                 neighborhood_size: int = None):
         super().__init__()
+
+        if topology_creator_kwargs is None:
+            topology_creator_kwargs = {}
+        self._participants_ready = asyncio.Future()
+        if participants is None:
+            participants = []
+        if neighborhood_size is None:
+            neighborhood_size = len(participants)
+
+        # backwards compatibility:
+        #   only participant and no subscription -> participants ready
+        #   subscription -> wait for subscriptions until neighborhood size is achieved
+        if neighborhood_size == len(participants):
+            self._participants_ready.set_result(True)
+
         self._participants = participants
         self._topic = topic
         self._details = details
         self._topology_creator = topology_creator
+        self._topology_creator_kwargs = topology_creator_kwargs
+        self._neighborhood_size = neighborhood_size
         self._part_to_state = {}
         self._assignments_sent = False
         self._coal_id = None
@@ -225,19 +296,36 @@ class CoalitionInitiatorRole(ProactiveRole):
     def setup(self):
 
         # subscriptions
-        self.context.subscribe_message(self, self.handle_msg,
+        self.context.subscribe_message(self, self.handle_coalition_response,
                                        lambda c, m: isinstance(c, CoaltitionResponse))
+        self.context.subscribe_message(self, self.handle_unit_agent_subscription,
+                                       lambda content, meta: isinstance(content, AgentAddress))
 
         # tasks
         self.context.schedule_task(InstantScheduledTask(
-            self.send_invitiations(self.context)))
+            self.send_invitations(self.context)))
 
-    async def send_invitiations(self, agent_context: RoleContext):
+    def handle_unit_agent_subscription(self, content: AgentAddress, meta):
+        """
+        Adds a new agent to the list of neighbors
+        :param meta:
+        :param content:
+        """
+        agent = ((content.host, content.port), content.aid)
+        self._participants.append(agent)
+
+        if len(self._participants) == self._neighborhood_size:
+            self._participants_ready.set_result(True)
+            self.context.data.neighborhood_confirmed.set_result(True)
+
+    async def send_invitations(self, agent_context: RoleContext):
         """Send invitiations to all wanted participant for the coalition
 
         :param agent_context: the context
         """
         self._coal_id = uuid.uuid1()
+
+        await self._participants_ready
 
         for participant in self._participants:
             await agent_context.send_message(
@@ -248,7 +336,7 @@ class CoalitionInitiatorRole(ProactiveRole):
                               'sender_id': agent_context.aid},
                 create_acl=True)
 
-    def handle_msg(self, content: CoaltitionResponse, meta: Dict[str, Any]) -> None:
+    def handle_coalition_response(self, content: CoaltitionResponse, meta: Dict[str, Any]) -> None:
         """Handle the responses to the invites.
         :param content: the invite response
         :param meta: meta data
@@ -269,7 +357,7 @@ class CoalitionInitiatorRole(ProactiveRole):
                 part_id += 1
                 accepted_participants.append((str(part_id), (part_key[0], part_key[1]), part_key[2]))
 
-        part_to_neighbors = self._topology_creator(accepted_participants)
+        part_to_neighbors = self._topology_creator(accepted_participants, **self._topology_creator_kwargs)
         for part in accepted_participants:
             asyncio.create_task(agent_context.send_message(
                 content=CoalitionAssignment(self._coal_id, part_to_neighbors[part],
