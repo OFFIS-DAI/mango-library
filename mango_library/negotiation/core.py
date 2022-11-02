@@ -104,7 +104,7 @@ class NegotiationModel:
 
 @json_serializable
 class NegotiationStartMessage:
-    def __init__(self, target_params: dict= None, coalition_id=None, send_weight: bool = True):
+    def __init__(self, target_params: dict = None, coalition_id=None, send_weight: bool = True):
         self._target_params = target_params
         self._coalition_id = coalition_id
         self._send_weight = send_weight
@@ -120,6 +120,7 @@ class NegotiationStartMessage:
     @property
     def send_weight(self) -> bool:
         return self._send_weight
+
 
 @json_serializable
 class NegotiationMessage:
@@ -162,11 +163,10 @@ class NegotiationStarterRole(ProactiveRole):
     a negotiation within its coalition.
     """
 
-    def __init__(self, message_creator)-> None:
+    def __init__(self, message_creator) -> None:
         super().__init__()
         self._message_creator = message_creator
 
-        
     def setup(self):
         super().setup()
 
@@ -175,7 +175,6 @@ class NegotiationStarterRole(ProactiveRole):
         # self.context.schedule_task(ConditionalTask(self.start(), self.is_startable))
 
     def handle_negotiation_start_msg(self, msg, meta):
-        print("recieved negotiation start message")
         self.context.schedule_task(ConditionalTask(self.start(msg), self.is_startable))
 
     def is_startable(self):
@@ -184,7 +183,7 @@ class NegotiationStarterRole(ProactiveRole):
         # check there is an assignment
         return len(coalition_model.assignments.values()) > 0
 
-    def _look_up_assignment(self, all_assignments, coalition_id= None):
+    def _look_up_assignment(self, all_assignments, coalition_id=None):
         if coalition_id is not None:
             for assignment in all_assignments:
                 if assignment.coalition_id == coalition_id:
@@ -204,7 +203,7 @@ class NegotiationStarterRole(ProactiveRole):
         weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
         for neighbor in matched_assignment.neighbors:
             neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
-                                           self._message_creator(matched_assignment, msg))
+                                         self._message_creator(matched_assignment, msg))
             if msg._send_weight:
                 neg_msg.message_weight = weight_per_msg
             await self.context.send_message(
@@ -243,7 +242,6 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
 
         self.handle(content.message, assignment,
                     negotiation_model.by_id(content.negotiation_id), meta)
-
 
     @abstractmethod
     def handle(self, message, assignment: CoalitionAssignment, negotiation: Negotiation, meta: Dict[str, Any]):
