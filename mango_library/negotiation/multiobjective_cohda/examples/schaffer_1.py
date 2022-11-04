@@ -5,7 +5,7 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
 
-FILE = 'Testfile.hdf5'
+FILE = 'Schaffer_1.hdf5'
 SIM_NAME = 'Schaffer_1'
 A = 10
 NUM_AGENTS = 10

@@ -6,12 +6,12 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
 
-FILE = 'Ziztler_1.hdf5'
+FILE = 'Zitzler_1.hdf5'
 SIM_NAME = 'Zitzler_1'
 
 NUM_AGENTS = 30
-NUM_SCHEDULES = 11
-NUM_SOLUTION_POINTS = 5
+NUM_SCHEDULES = 50
+NUM_SOLUTION_POINTS = 20
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
