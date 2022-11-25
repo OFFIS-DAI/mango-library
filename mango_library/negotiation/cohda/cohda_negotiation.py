@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import List, Dict, Optional, Tuple, Callable
+from typing import List, Dict, Optional, Tuple, Callable, Any
 from uuid import UUID
 import numpy as np
 
@@ -19,10 +19,12 @@ class COHDANegotiationRole(Role):
     """Negotiation role for COHDA.
     """
 
-    def __init__(self, schedules_provider, local_acceptable_func=None, check_inbox_interval: float = 0.1):
+    def __init__(self, schedules_provider: Callable, perf_func: Callable = None, local_acceptable_func: Callable = None,
+                 check_inbox_interval: float = 0.1):
         """
         Init of COHDARole
         :param schedules_provider: Function that takes not arguments and returns a list of schedules
+        :param perf_func: performance function for the agent. Defaults to deviation_from_target_schedule
         :param local_acceptable_func: Function that takes a schedule as input and returns a boolean indicating,
         if the schedule is locally acceptable or not. Defaults to lambda x: True
         :param check_inbox_interval: Duration of buffering the cohda messages [s]
@@ -30,6 +32,7 @@ class COHDANegotiationRole(Role):
         super().__init__()
 
         self._schedules_provider = schedules_provider
+        self._perf_func = perf_func if perf_func is not None else COHDANegotiation.deviation_to_target_schedule
         if local_acceptable_func is None:
             self._is_local_acceptable = lambda x: True
         else:
@@ -38,8 +41,6 @@ class COHDANegotiationRole(Role):
         self._cohda_msg_queues = {}
         self._cohda_tasks = {}
         self.check_inbox_interval = check_inbox_interval
-
-        self.inactive_counter = 0
 
     def setup(self) -> None:
         super().setup()
@@ -86,17 +87,6 @@ class COHDANegotiationRole(Role):
             logger.warning(f'NegotiationParticipantRole received unexpected Message of type {type(content)}')
 
 
-    def create_cohda(self, part_id: str):
-        """
-        Create an instance of COHDA.
-        :param part_id: participant id
-        :return: COHDA object
-        """
-        return COHDANegotiation(schedule_provider=self._schedules_provider,
-                                is_local_acceptable=self._is_local_acceptable,
-                                part_id=part_id)
-
-
     async def on_stop(self) -> None:
         """
         Will be called once the agent is shutdown
@@ -125,57 +115,58 @@ class COHDANegotiationRole(Role):
         # get coalition_assignment
         coalition_assignment: CoalitionAssignment = self.context.get_or_create_model(
             CoalitionModel).by_id(content.coalition_id)
+
         #get negotiation
         cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
-
         if not cohda_negotiation_model.exists(content.negotiation_id):
             cohda_negotiation_model.add(
-                negotiation_id = content.negotiation_id,
-                assignment=coalition_assignment,
-                COHDANegotiation(
-                content.coalition_id, content.negotiation_id))
+                negotiation_id=content.negotiation_id,
+                cohda_negotiation=COHDANegotiation(
+                    negotiation_id=content.negotiation_id,
+                    coalition_assignment=coalition_assignment,
+                    schedule_provider=self._schedules_provider,
+                    is_local_acceptable=self._is_local_acceptable,
+                    perf_func=self._perf_func
+                ))
+        cohda_negotiation = cohda_negotiation_model.by_id(negotiation_id=content.negotiation_id)
 
-        self.handle_neg_msg(content.message, coalition_assignment,
-                            negotiation_model.by_id(content.negotiation_id), meta)
-
-
-
-
-        if not negotiation.stopped:
-            if negotiation.negotiation_id in self._cohda:
-                if not negotiation.active:
-                    print(f'[{self.context.addr, self.context.aid}] ATTENTION, negotiation was not active and i received a mssage')
-                negotiation.active = True
-                self._cohda_msg_queues[negotiation.negotiation_id].append(message)
+        if not cohda_negotiation.stopped:
+            if content.negotiation_id in self._cohda_msg_queues.keys():
+                cohda_negotiation.active = True
+                self._cohda_msg_queues[content.negotiation_id].append(content.working_memory)
             else:
-                self._cohda[negotiation.negotiation_id] = self.create_cohda(coalition_assignment.part_id)
-                self._cohda_msg_queues[negotiation.negotiation_id] = [message]
+                self._cohda_msg_queues[content.negotiation_id] = [content.working_memory]
 
                 async def process_msg_queue():
                     """
                     Method to evaluate all incoming message of a cohda_message_queue for a certain negotiation
                     """
 
-                    if len(self._cohda_msg_queues[negotiation.negotiation_id]) > 0 and not negotiation.stopped:
+                    if len(self._cohda_msg_queues[content.negotiation_id]) > 0 and not cohda_negotiation.stopped:
                         # get queue
-                        cohda_message_queue, self._cohda_msg_queues[negotiation.negotiation_id] = \
-                            self._cohda_msg_queues[negotiation.negotiation_id], []
+                        cohda_message_queue, self._cohda_msg_queues[content.negotiation_id] = \
+                            self._cohda_msg_queues[content.negotiation_id], []
 
-                        message_to_send = self._cohda[negotiation.negotiation_id].handle_cohda_msgs(cohda_message_queue)
+                        wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
-                        if message_to_send is not None:
-                            await self.send_to_neighbors(coalition_assignment, negotiation, message_to_send)
+                        if wm_to_send is not None:
+                            message = CohdaNegotiationMessage(
+                                negotiation_id=content.negotiation_id,
+                                coalition_id=content.coalition_id,
+                                working_memory=wm_to_send,
+                            )
+                            # send message to all neighbors
+                            for neighbor in coalition_assignment.neighbors:
+                                self.context.schedule_instant_task(self.context.send_message(
+                                    content=message,
+                                    receiver_addr=neighbor[1], receiver_id=neighbor[2],
+                                    acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
+                                    create_acl=True)
+                                )
 
-                        # else:
-                        #     # set the negotiation as inactive as the incoming information was known already
-                        #     print(f'{self.context.addr, self.context.aid} Setting neg active = False -> nothing new in decide')
-                        #     negotiation.active = False
                     else:
                         # set the negotiation as inactive as no message has arrived
-                        print(f'{self.context.addr, self.context.aid} Setting neg active = False -> no new message')
-                        self.inactive_counter += 1
-                        if self.inactive_counter > 4:
-                            negotiation.active = False
+                        cohda_negotiation.active = False
 
                 self._cohda_tasks[negotiation.negotiation_id] = \
                     self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
@@ -222,12 +213,28 @@ class COHDANegotiation:
     """COHDA-decider
     """
 
-    def __init__(self, schedule_provider, is_local_acceptable, part_id: str, perf_func=None):
+    def __init__(self, schedule_provider: Callable, is_local_acceptable: Callable, negotiation_id: UUID,
+                 coalition_assignment: CoalitionAssignment, perf_func=None):
+        """
+        TODO write me
+        :param schedule_provider:
+        :param is_local_acceptable:
+        :param negotiation_id:
+        :param coalition_assignment:
+        :param perf_func:
+        """
+        self._negotiation_id = negotiation_id
+        self._coalition_assignment = coalition_assignment
+        self._part_id = self._coalition_assignment.part_id
+
         self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
-        self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(part_id, {}, float('-inf')))
+        self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(self._part_id, {}, float('-inf')))
         self._counter = 0
-        self._part_id = part_id
+
+        self._stopped = False
+        self._active = True
+
         if perf_func is None:
             self._perf_func = self.deviation_to_target_schedule
         else:
@@ -244,11 +251,43 @@ class COHDANegotiation:
         result = -np.sum(w_diff)
         return float(result)
 
-    def handle_cohda_msgs(self, messages: List[CohdaNegotiationMessage]) -> Optional[CohdaNegotiationMessage]:
+    @property
+    def active(self) -> bool:
+        """Is seen as active
+
+        :return: True if active, False otherwise
         """
-        This called by the COHDARole. It takes a List of COHDA messages, executes perceive, decide, act and returns
-        a CohdaMessage in case the working memory has changed and None otherwise
-        :param messages: The list of received CohdaMessages
+        return self._active
+
+    @active.setter
+    def active(self, is_active) -> None:
+        """Set is active
+
+        :param is_active: active
+        """
+        self._active = is_active
+
+    @property
+    def stopped(self) -> bool:
+        """
+        Is seen as stopped
+        :return: True if stopped, False otherwise
+        """
+        return self._stopped
+
+    @stopped.setter
+    def stopped(self, is_stopped) -> None:
+        """
+        Set is stopped
+        :param is_stopped: stopped
+        """
+        self._stopped = is_stopped
+
+    def handle_cohda_msgs(self, messages: List[WorkingMemory]) -> Optional[WorkingMemory]:
+        """
+        This called by the COHDARole. It takes a List of WorkingMemories, executes perceive, decide, act and returns
+        a new Working Memory in case the working memory has changed and None otherwise
+        :param messages: The list of received WorkingMemories
         :return: The message to be sent to the neighbors, None if no message has to be sent
         """
 
@@ -266,18 +305,18 @@ class COHDANegotiation:
         else:
             return None
 
-    def _perceive(self, messages: List[CohdaNegotiationMessage]) -> Tuple[SystemConfig, SolutionCandidate]:
+    def _perceive(self, working_memories: List[WorkingMemory]) -> Tuple[SystemConfig, SolutionCandidate]:
         """
         Updates the current knowledge
-        :param messages: The List of received CohdaMessages
+        :param messages: The List of received WorkingMemories
         :return: a tuple of SystemConfig, Candidate as a result of perceive
         """
         current_sysconfig = None
         current_candidate = None
-        for message in messages:
+        for new_wm in working_memories:
             if self._memory.target_params is None:
                 # get target parameters if not known
-                self._memory.target_params = message.working_memory.target_params
+                self._memory.target_params = new_wm.target_params
 
             if current_sysconfig is None:
                 if self._part_id not in self._memory.system_config.schedule_choices:
@@ -305,8 +344,8 @@ class COHDANegotiation:
                 else:
                     current_candidate = self._memory.solution_candidate
 
-            new_sysconf = message.working_memory.system_config
-            new_candidate = message.working_memory.solution_candidate
+            new_sysconf = new_wm.system_config
+            new_candidate = new_wm.solution_candidate
 
             # Merge new information into current_sysconfig and current_candidate
             current_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
@@ -354,9 +393,9 @@ class COHDANegotiation:
 
         return sysconfig, current_best_candidate
 
-    def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> CohdaNegotiationMessage:
+    def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> WorkingMemory:
         """
-        Stores the new SystemConfig and SolutionCandidate in Memory and returns the COHDA message that should be sent
+        Stores the new SystemConfig and SolutionCandidate in Memory and returns the new working Memory
         :param new_sysconfig: The SystemConfig as a result from perceive and decide
         :param new_candidate: The SolutionCandidate as a result from perceive and decide
         :return: The COHDA message that should be sent
@@ -364,8 +403,8 @@ class COHDANegotiation:
         # update memory
         self._memory.system_config = new_sysconfig
         self._memory.solution_candidate = new_candidate
-        # return COHDA message
-        return CohdaNegotiationMessage(working_memory=self._memory)
+        # return new Working Memory
+        return self._memory
 
     @staticmethod
     def _merge_sysconfigs(sysconfig_i: SystemConfig, sysconfig_j: SystemConfig):
@@ -456,7 +495,7 @@ class CohdaNegotiationModel:
     """
 
     def __init__(self) -> None:
-        self._negotiations = {}
+        self._negotiations: Dict[UUID, COHDANegotiation] = {}
 
     def by_id(self, negotiation_id: UUID) -> COHDANegotiation:
         """Get a negotiation by id
@@ -474,12 +513,12 @@ class CohdaNegotiationModel:
 
         :return: True if it exists, False otherwise
         """
-        return negotiation_id in self._negotiations
+        return negotiation_id in self._negotiations.keys()
 
-    def add(self, negotiation_id: UUID, assignment: Negotiation):
+    def add(self, negotiation_id: UUID, cohda_negotiation: COHDANegotiation):
         """Add a concrete negotiation
 
         :param negotiation_id: the UUID of the negotiation
-        :param assignment: the assignment for the negotiation
+        :param cohda_negotiation: the cohda negotiation object
         """
-        self._negotiations[negotiation_id] = assignment
+        self._negotiations[negotiation_id] = cohda_negotiation
