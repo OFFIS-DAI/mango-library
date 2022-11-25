@@ -264,7 +264,6 @@ class CoalitionInitiatorRole(ProactiveRole):
             self._assignments_sent = True
 
     def _send_assignments(self, agent_context: RoleContext):
-        print('in send_assignments')
         part_id = 0
         accepted_participants = []
         for agent_addr, agent_id in self._participants:

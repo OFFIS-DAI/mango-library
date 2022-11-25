@@ -366,5 +366,8 @@ class COHDARole(NegotiationParticipant):
                     # set the negotiation as inactive as no message has arrived
                     negotiation.active = False
 
+                print(f'[{self.context.addr, self.context.aid}] Candidate after process_msg: '
+                      f'{self._cohda[negotiation.coalition_id]._memory.solution_candidate}')
+
             self._cohda_tasks.append(self.context.schedule_periodic_task(process_msg_queue,
                                                                          delay=self.check_inbox_interval))
