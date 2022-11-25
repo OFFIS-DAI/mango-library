@@ -157,8 +157,7 @@ class NegotiationStarterRole(ProactiveRole):
         
     def setup(self):
         super().setup()
-
-        self.context.schedule_task(ConditionalTask(self.start(), self.is_startable))
+        self.context.schedule_conditional_task(self.start(), self.is_startable, lookup_delay=0.1)
 
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
