@@ -267,19 +267,16 @@ class CoalitionInitiatorRole(ProactiveRole):
         part_id = 0
         accepted_participants = []
         for agent_addr, agent_id in self._participants:
-            # part_key = part[0][0], part[0][1], part[1]
-            part_key = agent_addr, agent_id
-            if part_key in self._part_to_state and self._part_to_state[part_key]:
+            if (agent_addr, agent_id) in self._part_to_state and self._part_to_state[(agent_addr, agent_id)]:
                 part_id += 1
                 accepted_participants.append((str(part_id), agent_addr, agent_id))
 
         part_to_neighbors = self._topology_creator(accepted_participants)
         for part in accepted_participants:
-
             self.context.schedule_instant_task(agent_context.send_message(
-                content=CoalitionAssignment(self._coal_id, part_to_neighbors[part],
-                                            self._topic, part[0],
-                                            agent_context.aid, agent_context.addr),
+                content=CoalitionAssignment(
+                    coalition_id=self._coal_id,neighbors=part_to_neighbors[part], topic=self._topic, part_id=part[0],
+                    controller_agent_id=agent_context.aid, controller_agent_addr=agent_context.addr),
                 receiver_addr=part[1], receiver_id=part[2],
                 acl_metadata={'sender_addr': agent_context.addr,
                               'sender_id': agent_context.aid},
