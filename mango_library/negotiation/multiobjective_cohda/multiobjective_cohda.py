@@ -16,6 +16,11 @@ from mango_library.negotiation.core import NegotiationParticipant, \
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
     SystemConfig, ScheduleSelections, Target, SolutionPoint
 
+from pymoo.problems import get_problem
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.core.result import Result
+from pymoo.optimize import minimize
+
 
 @json_serializable
 class CohdaMessage:
@@ -120,7 +125,6 @@ class COHDA:
         else:
             self._ref_point = None
 
-
     def construct_ref_point(self, solution_points, offsets=None):
         """
         Method to construct the reference point according to the given solution points.
@@ -171,6 +175,53 @@ class COHDA:
 
         else:
             return [solution_point]
+
+    @staticmethod
+    def mutate_NSGA2(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+            -> List[SolutionPoint]:
+        """
+        Function that mutates a solution point with all possible schedules
+        :param solution_point:
+        :param schedule_creator:
+        :param agent_id:
+        :param perf_func:
+        :param target_params:
+        :return:
+        """
+        # problem, algorithm
+        problem = 'Zitzler_3'
+        ALGORITHM = NSGA2(pop_size=5)
+
+        NUM_AGENTS = 10
+        possible_range = 1 / NUM_AGENTS
+
+        if problem == 'Zitzler_3':
+            p = get_problem('zdt3')
+        elif problem == 'Zitzler_1':
+            p = get_problem('zdt1')
+        else:
+            raise ValueError(f'no Problem Found for {problem}')
+
+        example_cluster_schedule = np.copy(solution_point.cluster_schedule)
+        own_schedule = solution_point[agent_id]
+        example_sum = [sum(l) for l in zip(*example_cluster_schedule)]
+
+        diff_to_upper = [possible_range - own_schedule[i] for i in range(len(own_schedule))]
+        diff_to_lower = own_schedule
+
+        new_xl = [example_sum[i] - diff_to_lower[i] if example_sum[i] - diff_to_lower[i] >= 0 else 0 for i in
+                  range(len(own_schedule))]
+
+        new_xu = [example_sum[i] + diff_to_upper[i] if example_sum[i] + diff_to_upper[i] <= 1 else 1 for i in
+                  range(len(own_schedule))]
+
+        for idx in range(len(new_xl)):
+            p.xl[idx] = new_xl[idx]
+            p.xu[idx] = new_xu[idx]
+
+        result: Result = minimize(p, ALGORITHM)
+
+        return [result.X]
 
     @staticmethod
     def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
@@ -239,7 +290,9 @@ class COHDA:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
                     num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    init_ = self._schedule_provider(num_solution_points)[0]
+                    inital_schedules = [init_ for _ in range(num_solution_points)]
+                    print('initial schedules', inital_schedules)
                     schedule_choices[self._part_id] = ScheduleSelections(
                         np.array(inital_schedules), self._counter + 1)
                     self._counter += 1
@@ -254,7 +307,12 @@ class COHDA:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
                     num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    try:
+                        inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    except Exception as e:
+                        print(e)
+                        exit()
+                    print('initial schedules', inital_schedules)
                     schedules[self._part_id] = np.array(inital_schedules)
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
@@ -318,12 +376,12 @@ class COHDA:
 
             if num_unique_solution_points > candidate.num_solution_points:
                 diff = len(all_solution_points) - num_unique_solution_points
-                # if diff < candidate.num_solution_points:
-                #     # choose forward-greedy, because if there are less enough unique points than the difference between
-                #     # all solution points and the number to reduce to, with "backward-greedy", more solution points
-                #     # will be deleted and the number of solution points after reduce_to is smaller than
-                #     # candidate.num_solution_points
-                #     self._selection.selection_variant = "forward-greedy"
+                if diff < candidate.num_solution_points:
+                    # choose forward-greedy, because if there are less enough unique points than the difference between
+                    # all solution points and the number to reduce to, with "backward-greedy", more solution points
+                    # will be deleted and the number of solution points after reduce_to is smaller than
+                    # candidate.num_solution_points
+                    self._selection.selection_variant = "forward-greedy"
                 self._selection.reduce_to(population=all_solution_points, number=candidate.num_solution_points)
                 # reset selection variant
                 self._selection.selection_variant = "auto"

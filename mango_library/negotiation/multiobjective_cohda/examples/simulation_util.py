@@ -6,15 +6,21 @@ import h5py
 from copy import deepcopy
 import time
 
-
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole,\
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     CohdaNegotiationStarterRole
 from mango.core.container import Container
 from mango.role.core import RoleAgent
+from pymoo.algorithms.moo.nsga2 import NSGA2
+from pymoo.core.result import Result
+from pymoo.optimize import minimize
+from pymoo.problems import get_problem
+
+# pop_size
+
 
 
 def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Target], n_solution_points: int,
@@ -143,10 +149,163 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
                 sim_results_grp.create_dataset(f'Solutionpoint_{i}', data=data_solution_points)
 
 
+async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num_solution_points: int,
+                                  pick_func: Callable, mutate_func: Callable,
+                                  num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
+                                  num_simulations: int, ) -> List[Dict[str, Any]]:
+    """
+    Function that will execute a multi-objective simulation and return a dict consisting of the results.
+    :param num_agents: The number of agents
+        if schedules_all_equal == True, the parameter should be a list of schedules which will then be
+            assigned to all agents
+        if schedules_all_equal == False, the parameter should be a list of lists of schedules. List i will then be
+        assigned to agent i. So len(possible_schedules) should be equal to num_agents.
+    :param schedules_all_equal: See above
+    :param targets: The List of targets as defined in multiobjective_cohda.data_classes.Target
+    :param num_solution_points: Number of solution points to describe the pareto frong
+    :param pick_func: The pick function that all agents will use
+    :param mutate_func: The mutate function that all agents will use
+    :param num_iterations: The number of iterations that all agents will execute in decide()
+    :param check_inbox_interval: The interval which the agents use to interpret new messages
+    :param topology_creator: The method that the CoalitionInitiator uses to connect the neighbors. If it is not
+            provided, the default method within the CoalitionInitiatorRole is taken
+            see: .coalition.core.CoalitionInitiatorRole
+    :param num_simulations: The number of simulations to execute
+    :return: A List of dictionaries, each of which is structured as follows:
+        'final_memory': WorkingMemory,
+        'duration': float,
+        'schedules': Dict[str, List[np.array]],
+        'overlay': Dict[str, List[str]]
+    """
+    # problem, algorithm
+    results = []
+    possible_range = 1 / num_agents
+
+    if topology_creator is None:
+        # if no topology creator is defined, use a small world ring topology
+        def build_small_world_ring_topology(unit_agents: List, k=1, w=0.3) -> dict:
+            """
+            Builds a small world ring topology with neighbors in a distance of k and with random neighbors with the
+            probability w
+            :param unit_agents:
+            :param k: maximum distance of connections in the ring
+            :param w: probability of random connections
+            """
+            neighborhood: Dict = {}
+
+            for agent in unit_agents:
+                neighborhood[agent] = []
+
+            # create the ring
+            for index, agent in enumerate(unit_agents):
+                for distance in range(1, k + 1):
+                    neighborhood[agent].append(unit_agents[(index - distance)])
+                    neighborhood[unit_agents[(index - distance)]].append(agent)
+
+            # create a random connections
+            for index, agent in enumerate(unit_agents):
+                if random.random() < w:
+                    random_agent = random.choice(unit_agents)
+                    if (
+                            random_agent not in neighborhood[agent]
+                            and random_agent != agent
+                    ):
+                        neighborhood[agent].append(random_agent)
+                        neighborhood[random_agent].append(agent)
+            return neighborhood
+
+        topology_creator = build_small_world_ring_topology
+    for _ in range(num_simulations):
+        container = await Container.factory(addr=('127.0.0.2', 5555))
+        agents = []  # Instance of agents
+        addrs = []  # Tuples of addr, aid
+
+        schedules_per_agent = {}  # will be filled and returned (for storing in database)
+        overlay = {}  # # will be filled and returned (for storing in database)
+
+        # create agents for negotiation
+        for i in range(num_agents):
+            a = RoleAgent(container)
+
+            def provide_schedules(num_solution_points):
+                # only called in first step
+                p = get_problem('zdt3')
+
+                for idx in range(len(p.xl)):
+                    p.xu[idx] = possible_range
+                ALGORITHM = NSGA2(pop_size=num_solution_points)
+                result: Result = minimize(p, ALGORITHM)
+                # multiple solution points could be possible
+                own_solution = result.X.tolist()[0]
+                for idx, x in enumerate(own_solution):
+                    diff = (possible_range * (num_agents - 1))
+                    own_solution[idx] = x - diff
+                return [own_solution]
+
+            a.add_role(MultiObjectiveCOHDARole(
+                schedule_provider=provide_schedules,
+                targets=targets,
+                local_acceptable_func=lambda s: True,
+                num_solution_points=num_solution_points, num_iterations=num_iterations,
+                check_inbox_interval=check_inbox_interval,
+                pick_func=pick_func, mutate_func=mutate_func)
+            )
+
+            a.add_role(CoalitionParticipantRole())
+            a.add_role(NegotiationTerminationParticipantRole())
+            agents.append(a)
+            addrs.append((container.addr, a.aid))
+
+        # Controller agent will be a different agent, that is not part of the negotiation
+        # Its tasks are creating a coalition and detecting the termination
+        controller_agent = RoleAgent(container)
+        controller_agent.add_role(NegotiationTerminationDetectorRole())
+        controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic='',
+                                                         topology_creator=topology_creator))
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        print('Done building a coalition.')
+
+        # fill the overlay dictionary
+        for a in agents:
+            assignment = next(iter(a._agent_context.get_or_create_model(CoalitionModel)._assignments.values()))
+            overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
+
+        # start the negotiation
+        start_time = time.time()
+        agents[0].add_role(
+            CohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
+        await wait_for_term(controller_agent)
+        end_time = time.time()
+        print('Negotiation terminated.')
+
+        # get final memory of first agent
+        final_memory = next(iter(agents[0].roles[0]._cohda.values()))._memory
+
+        # make sure all working memories are equal
+        for a in agents:
+            assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory, \
+                'Working memories of different agents are not equal.'
+
+        # shutdown container
+        await container.shutdown()
+
+        # append results
+        results.append(
+            {
+                'final_memory': final_memory,
+                'duration': end_time - start_time,
+                'schedules': schedules_per_agent,
+                'overlay': overlay,
+            }
+        )
+
+    return results
+
+
 async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedules_all_equal: bool = False,
                             targets: List[Target], num_solution_points: int, pick_func: Callable, mutate_func: Callable,
                             num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                            num_simulations: int,) -> List[Dict[str, Any]]:
+                            num_simulations: int, ) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents

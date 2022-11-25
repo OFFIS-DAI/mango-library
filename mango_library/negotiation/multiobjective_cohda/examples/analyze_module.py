@@ -3,7 +3,8 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
+from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution, \
+    get_solution_certain_range
 from evoalgos.selection import HyperVolumeContributionSelection
 
 def get_performance_metrics(approximated_front, reference_front, reference_point, p, inside_exponent, minimize):
@@ -205,7 +206,7 @@ def create_reference_front(problem, number_of_points):
 if __name__ == '__main__':
 
     PROBLEM = "Zitzler_1"
-    # PROBLEM = "Zitzler_3"
+    PROBLEM = "Zitzler_3"
     REFERENCE_POINT = (1.1, 1.1)
     P = 2
     INSIDE_EXPONENT = False
@@ -227,7 +228,7 @@ if __name__ == '__main__':
     reference_front = create_reference_front(PROBLEM, 500)
 
     # create front with central approach
-    central_front = get_solution(PROBLEM)
+    central_front = get_solution_certain_range(PROBLEM)
 
     # calculate and print metrics
     metrics_approximated_front = get_performance_metrics(np.array(approximated_front), np.array(reference_front),
