@@ -158,21 +158,7 @@ class NegotiationMessage:
         return self._message
 
 
-@json_serializable
-class StopNegotiationMessage:
-    """
-    Message that informs an agent that a negotiation should be stopped.
-    """
-    def __init__(self, negotiation_id: uuid.UUID) -> None:
-        self._negotiation_id = negotiation_id
 
-    @property
-    def negotiation_id(self) -> uuid.UUID:
-        """Return the negotiation id
-
-        :return: the negotiation id
-        """
-        return self._negotiation_id
 
 
 class NegotiationStarterRole(ProactiveRole):
@@ -274,18 +260,6 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
             self.handle(content.message, assignment,
                         negotiation_model.by_id(content.negotiation_id), meta)
 
-        elif isinstance(content, StopNegotiationMessage):
-
-            # set stopped
-            negotiation_model = self.context.get_or_create_model(NegotiationModel)
-            if not negotiation_model.exists(content.negotiation_id):
-                negotiation_model.add(content.negotiation_id, Negotiation(
-                    content.coalition_id, content.negotiation_id))
-            negotiation_model.by_id(content.negotiation_id).stopped = True
-            self.context.schedule_instant_task(
-                self.handle_neg_stop(negotiation=negotiation_model.by_id(content.negotiation_id), meta=meta)
-            )
-
         else:
             logger.warning(f'NegotiationParticipantRole received unexpected Message of type {type(content)}')
 
@@ -332,4 +306,4 @@ class NegotiationParticipantRole(SimpleReactiveRole, ABC):
         )
 
     def is_applicable(self, content, meta):
-        return isinstance(content, NegotiationMessage) or isinstance(content, StopNegotiationMessage)
+        return isinstance(content, NegotiationMessage)
