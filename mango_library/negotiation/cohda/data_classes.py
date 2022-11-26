@@ -14,7 +14,7 @@ class SolutionCandidate:
     Model for a solution candidate in COHDA.
     """
 
-    def __init__(self, agent_id: str, schedules: Dict[str, np.array], perf: Optional[float]) -> None:
+    def __init__(self, agent_id: str, schedules: Dict[str, np.array], perf: Optional[float] = None) -> None:
         self._agent_id = agent_id
         self._schedules = schedules
         self._perf = perf

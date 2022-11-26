@@ -1,16 +1,15 @@
 import asyncio
 import logging
-from typing import List, Dict, Optional, Tuple, Callable, Any
+from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
 import numpy as np
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaStopNegotiationMessage
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaStopNegotiationMessage, \
+    CohdaSolutionRequestMessage, CohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
 from mango.role.api import Role
-
-from mango_library.negotiation.core import NegotiationModel
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +36,6 @@ class COHDANegotiationRole(Role):
             self._is_local_acceptable = lambda x: True
         else:
             self._is_local_acceptable = local_acceptable_func
-        self._cohda = {}
         self._cohda_msg_queues = {}
         self._cohda_tasks = {}
         self.check_inbox_interval = check_inbox_interval
@@ -47,45 +45,8 @@ class COHDANegotiationRole(Role):
         self.context.subscribe_message(self, self.handle_neg_msg, lambda c, _: isinstance(c, CohdaNegotiationMessage))
         self.context.subscribe_message(self, self.handle_neg_stop,
                                        lambda c, _: isinstance(c, CohdaStopNegotiationMessage))
-        # self.context.subscribe_message(self, self.handle_neg_stop,
-        #                                lambda c, _: isinstance(c, CohdaRequestSolutionMessage))
-
-    def handle_msg(self, content, meta: Dict[str, Any]) -> None:
-        """Handles NegotiationMessage, StopNegotiationMessage, RequestSolutionMessage
-
-          :param content: the message
-          :param meta: meta
-          """
-        if isinstance(content, NegotiationMessage):
-            if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
-                return
-
-            assignment = self.context.get_or_create_model(
-                CoalitionModel).by_id(content.coalition_id)
-            negotiation_model = self.context.get_or_create_model(NegotiationModel)
-
-            if not negotiation_model.exists(content.negotiation_id):
-                negotiation_model.add(content.negotiation_id, Negotiation(
-                    content.coalition_id, content.negotiation_id))
-
-            self.handle_neg_msg(content.message, assignment,
-                        negotiation_model.by_id(content.negotiation_id), meta)
-
-        elif isinstance(content, StopNegotiationMessage):
-
-            # set stopped
-            negotiation_model = self.context.get_or_create_model(NegotiationModel)
-            if not negotiation_model.exists(content.negotiation_id):
-                negotiation_model.add(content.negotiation_id, Negotiation(
-                    content.coalition_id, content.negotiation_id))
-            negotiation_model.by_id(content.negotiation_id).stopped = True
-            self.context.schedule_instant_task(
-                self.handle_neg_stop(negotiation=negotiation_model.by_id(content.negotiation_id), meta=meta)
-            )
-
-        else:
-            logger.warning(f'NegotiationParticipantRole received unexpected Message of type {type(content)}')
-
+        self.context.subscribe_message(self, self.handle_solution_request,
+                                       lambda c, _: isinstance(c, CohdaSolutionRequestMessage))
 
     async def on_stop(self) -> None:
         """
@@ -116,14 +77,13 @@ class COHDANegotiationRole(Role):
         coalition_assignment: CoalitionAssignment = self.context.get_or_create_model(
             CoalitionModel).by_id(content.coalition_id)
 
-        #get negotiation
+        # get negotiation
         cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
         if not cohda_negotiation_model.exists(content.negotiation_id):
             cohda_negotiation_model.add(
                 negotiation_id=content.negotiation_id,
                 cohda_negotiation=COHDANegotiation(
-                    negotiation_id=content.negotiation_id,
-                    coalition_assignment=coalition_assignment,
+                    part_id=coalition_assignment.part_id,
                     schedule_provider=self._schedules_provider,
                     is_local_acceptable=self._is_local_acceptable,
                     perf_func=self._perf_func
@@ -168,65 +128,68 @@ class COHDANegotiationRole(Role):
                         # set the negotiation as inactive as no message has arrived
                         cohda_negotiation.active = False
 
-                self._cohda_tasks[negotiation.negotiation_id] = \
+                self._cohda_tasks[content.negotiation_id] = \
                     self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
 
-    async def send_to_neighbors(self, assignment: CoalitionAssignment, negotation: Negotiation, message):
-        """Send a message to all neighbors
-
-        :param assignment: the coalition you want to use the neighbors of
-        :param negotation: the negotiation message
-        :param message: the message you want to send
-        """
-        for neighbor in assignment.neighbors:
-            await self.context.send_message(
-                content=NegotiationMessage(negotation.coalition_id, negotation.negotiation_id, message),
-                receiver_addr=neighbor[1], receiver_id=neighbor[2],
-                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-                create_acl=True)
-
-    async def handle_neg_stop(self, negotiation: Negotiation, meta: Dict[str, Any]):
+    async def handle_neg_stop(self, content: CohdaStopNegotiationMessage, meta: Dict):
         """
         """
         print(f'[{self.context.addr}] handle neg stop')
-        if negotiation.negotiation_id in self._cohda_tasks.keys():
-            # wait until current iteration is done
-            while self._cohda[negotiation.negotiation_id].active:
-                await asyncio.sleep(0.05)
-            # cancel task
-            task = self._cohda_tasks[negotiation.negotiation_id]
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-        # get current solution
-        final_solution = self._cohda[negotiation.negotiation_id]._memory.solution_candidate
-        await self.context.send_message(content=CohdaSolution(final_solution), receiver_addr=meta['sender_id'],
-                                        receiver_id=meta['receiver_id'], create_acl=True)
+        if content.negotiation_id in self._cohda_tasks.keys():
+            # get negotiation
+            cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
+            if not cohda_negotiation_model.exists(content.negotiation_id):
+                logger.warning(f'Received a stop message for a negotation with id {content.negotiation_id} '
+                               'but no such negotiation is running.')
+                return
+            cohda_negotiation = cohda_negotiation_model.by_id(content.negotiation_id)
+            cohda_negotiation.stopped = True
 
-        async def handle_solution_request(negotiation, meta):
+            # wait until current iteration is done
+            self.context.schedule_conditional_task(self.stop_cohda_task(content.negotiation_id),
+                                                   condition_func=lambda: cohda_negotiation.active,
+                                                   lookup_delay=0.05)
+
+    async def stop_cohda_task(self, negotiation_id):
+        # cancel task
+        task = self._cohda_tasks[negotiation_id]
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
             pass
+
+    async def handle_solution_request(self, content: CohdaSolutionRequestMessage, meta):
+        print(f'[{self.context.addr}] handle solution request')
+        # get negotiation
+        cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
+        if not cohda_negotiation_model.exists(content.negotiation_id):
+            logger.warning(f'Received a solution request message for a negotation with id {content.negotiation_id} '
+                           'but no such negotiation exists.')
+            return
+        cohda_negotiation = cohda_negotiation_model.by_id(content.negotiation_id)
+        # get current solution
+        final_solution = cohda_negotiation._memory.solution_candidate
+        self.context.schedule_instant_task(
+            self.context.send_message(content=CohdaSolutionMessage(final_solution), receiver_addr=meta['sender_id'],
+                                      receiver_id=meta['receiver_id'], create_acl=True)
+        )
 
 
 class COHDANegotiation:
     """COHDA-decider
     """
 
-    def __init__(self, schedule_provider: Callable, is_local_acceptable: Callable, negotiation_id: UUID,
-                 coalition_assignment: CoalitionAssignment, perf_func=None):
+    def __init__(self, schedule_provider: Callable, is_local_acceptable: Callable,
+                 part_id: str, perf_func=None):
         """
         TODO write me
         :param schedule_provider:
         :param is_local_acceptable:
-        :param negotiation_id:
-        :param coalition_assignment:
+        :param part_id:
         :param perf_func:
         """
-        self._negotiation_id = negotiation_id
-        self._coalition_assignment = coalition_assignment
-        self._part_id = self._coalition_assignment.part_id
-
+        self._part_id = part_id
         self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
         self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(self._part_id, {}, float('-inf')))
@@ -308,7 +271,7 @@ class COHDANegotiation:
     def _perceive(self, working_memories: List[WorkingMemory]) -> Tuple[SystemConfig, SolutionCandidate]:
         """
         Updates the current knowledge
-        :param messages: The List of received WorkingMemories
+        :param working_memories: The List of received WorkingMemories
         :return: a tuple of SystemConfig, Candidate as a result of perceive
         """
         current_sysconfig = None

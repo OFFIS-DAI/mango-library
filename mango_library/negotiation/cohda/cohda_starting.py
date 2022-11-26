@@ -4,7 +4,8 @@ from fractions import Fraction
 from mango.role.api import ProactiveRole
 
 from mango_library.coalition.core import CoalitionModel
-from mango_library.negotiation.core import NegotiationMessage
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
+from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
 
 
 class CohdaNegotiationStarterRole(ProactiveRole):
@@ -36,15 +37,6 @@ class CohdaNegotiationStarterRole(ProactiveRole):
             # when nothing has been provided just match the first coalition
             self._coalition_model_matcher = lambda _: True
 
-        # super().__init__(
-        #     lambda assignment:
-        #     CohdaMessage(WorkingMemory(target_params=target_params, system_config=SystemConfig({}),
-        #                                solution_candidate=SolutionCandidate(
-        #                                    agent_id=assignment.part_id, schedules={}, perf=float('-inf')
-        #                                ))),
-        #     coalition_model_matcher=coalition_model_matcher, coalition_uuid=coalition_uuid
-        # )
-
     def setup(self):
         super().setup()
         self.context.schedule_conditional_task(self.start(), self.is_startable)
@@ -70,6 +62,7 @@ class CohdaNegotiationStarterRole(ProactiveRole):
     async def start(self):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
+
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
@@ -78,20 +71,27 @@ class CohdaNegotiationStarterRole(ProactiveRole):
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
 
+        empty_wm = WorkingMemory(
+                target_params=self._target_params,
+                system_config=SystemConfig({}),
+                solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
+            )
+
+        neg_msg = CohdaNegotiationMessage(
+            working_memory=empty_wm,
+            negotiation_id=negotiation_uuid,
+            coalition_id=matched_assignment.coalition_id
+        )
         # send message to all neighbors
         for neighbor in matched_assignment.neighbors:
-            neg_msg = NegotiationMessage(matched_assignment.coalition_id, negotiation_uuid,
-                                         self._message_creator(matched_assignment))
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            await self.context.send_message(
+            self.context.schedule_instant_task(self.context.send_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
                 acl_metadata={'sender_addr': self.context.addr,
                               'sender_id': self.context.aid},
-                create_acl=True)
-
-
-
+                create_acl=True))
+        print('All messages sent')

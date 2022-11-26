@@ -79,6 +79,23 @@ class CohdaStopNegotiationMessage:
 
 
 @json_serializable
+class CohdaSolutionRequestMessage:
+    """
+    Message that asks the agent for its current SolutionCandidate regarding a specific negotiation
+    """
+    def __init__(self, negotiation_id: UUID) -> None:
+        self._negotiation_id = negotiation_id
+
+    @property
+    def negotiation_id(self) -> UUID:
+        """Return the negotiation id
+
+        :return: the negotiation id
+        """
+        return self._negotiation_id
+
+
+@json_serializable
 class CohdaSolutionMessage:
     """
     Message for a COHDA solution.
