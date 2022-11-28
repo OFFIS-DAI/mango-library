@@ -81,19 +81,18 @@ class NegotiationTerminationParticipantRole(Role):
     coalition related message send.
     """
 
-    def __init__(self, negotiation_model_class=CohdaNegotiationModel, negotiation_message_class=CohdaNegotiationMessage):
+    def __init__(self, negotiation_model_class=CohdaNegotiationModel,
+                 negotiation_message_class=CohdaNegotiationMessage):
         super().__init__()
         self._negotiation_message_class = negotiation_message_class
-        self._negotiation_model = self.context.get_or_create_model(negotiation_model_class)
+        self._negotiation_model_class = negotiation_model_class
+        self._negotiation_model = None  # will be defined in setup(), once the context exists
         self._weight_map: Dict[UUID, Fraction] = {}
         self._termination_check_tasks: Dict[UUID, asyncio.Task] = {}
 
-    async def print_weight_map(self):
-        for v in self._weight_map.values():
-            print(f'{self.context.addr, self.context.aid} weight map: {v}')
-
     def setup(self):
         super().setup()
+        self._negotiation_model = self.context.get_or_create_model(self._negotiation_model_class)
         self.context.subscribe_send(self, self.on_send)
         self.context.subscribe_message(self, self.handle_neg_msg,
                                        lambda c, _: isinstance(c, self._negotiation_message_class),
@@ -115,6 +114,7 @@ class NegotiationTerminationParticipantRole(Role):
         :param mqtt_kwargs: Args for MQTT. Defaults to None.
         """
         if isinstance(content, self._negotiation_message_class):
+
             if content.negotiation_id not in self._weight_map:
                 self._weight_map[content.negotiation_id] = Fraction(0, 1)
             if not hasattr(content, 'message_weight') or content.message_weight is None:
@@ -132,7 +132,6 @@ class NegotiationTerminationParticipantRole(Role):
             self._weight_map[content.negotiation_id] += content.message_weight
         else:
             self._weight_map[content.negotiation_id] = content.message_weight
-        print(f'{self.context.addr, self.context.aid} Received neg msg with weight {content.message_weight}')
 
         coalition_assignment: CoalitionAssignment = \
             self.context.get_or_create_model(CoalitionModel).by_id(content.coalition_id)
@@ -144,9 +143,6 @@ class NegotiationTerminationParticipantRole(Role):
             Function that checks whether the negotiation has 'probably' terminated.
             :return: boolean
             """
-            print(f'[{self.context.addr, self.context.aid}]Check weight: neg_active?',
-                  self._negotiation_model.by_id(content.negotiation_id).active, 'weight map:',
-                  self._weight_map[content.negotiation_id])
             return (not self._negotiation_model.by_id(negotiation_id=content.negotiation_id).active and
                     self._weight_map[content.negotiation_id] != 0)
 
@@ -170,14 +166,12 @@ class NegotiationTerminationParticipantRole(Role):
         # reset weight
         self._weight_map[content.negotiation_id] = Fraction(0, 1)
         # Send weight
-        print(f'[{self.context.addr, self.context.aid}] Going to send termination msg with weight {current_weight}')
-        self.context.schedule_instant_task(self.context.send_acl_message(
+        await(self.context.send_acl_message(
             content=TerminationMessage(current_weight, content.coalition_id, content.negotiation_id),
             receiver_addr=termination_detector[0],
             receiver_id=termination_detector[1],
             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}
         ))
-        print(f'[{self.context.addr, self.context.aid}] Done sending termination msg')
 
 
 class NegotiationTerminationDetectorRole(Role):
@@ -189,30 +183,32 @@ class NegotiationTerminationDetectorRole(Role):
         self._weight_map: Dict[UUID, Fraction] = {}
         self._participant_map: Dict[UUID, Set[Tuple[Tuple, str]]] = {}
         self._on_termination = on_termination if on_termination is not None else self._send_stop_and_inform
-        self._aggregator = aggregator if aggregator is not None else self.context.addr, self.context.aid
-
-    async def _send_stop_and_inform(self, negotiation_id):
-        # send stopNegotiationMessage first
-        for agent_addr, agent_id in self._participant_map[negotiation_id]:
-            self.context.schedule_instant_task(self.context.send_acl_message(
-                content=StopNegotiationMessage(negotiation_id=negotiation_id),
-                receiver_addr=agent_addr,
-                receiver_id=agent_id,
-                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-            ))
-
-        # now send message to aggregator
-        if self._aggregator:
-            self.context.schedule_instant_task(self.context.send_acl_message(
-                content=InformAboutTerminationMessage(negotiation_id=negotiation_id),
-                receiver_addr=self._aggregator[0],
-                receiver_id=self._aggregator[1],
-                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-            ))
+        self._aggregator = aggregator
 
     def setup(self):
         super().setup()
         self.context.subscribe_message(self, self.handle_term_msg, lambda c, _: isinstance(c, TerminationMessage))
+        if self._aggregator is None:
+            self._aggregator = (self.context.addr, self.context.aid)
+
+    async def _send_stop_and_inform(self, negotiation_id):
+        # send stopNegotiationMessage first
+        for agent_addr, agent_id in self._participant_map[negotiation_id]:
+            await self.context.send_acl_message(
+                content=StopNegotiationMessage(negotiation_id=negotiation_id),
+                receiver_addr=agent_addr,
+                receiver_id=agent_id,
+                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
+            )
+
+        # now send message to aggregator
+        if self._aggregator:
+            await self.context.send_acl_message(
+                content=InformAboutTerminationMessage(negotiation_id=negotiation_id),
+                receiver_addr=self._aggregator[0],
+                receiver_id=self._aggregator[1],
+                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
+            )
 
     def handle_term_msg(self, content: TerminationMessage, meta: Dict[str, Any]) -> None:
         """Handle the termination message.
@@ -220,24 +216,16 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
-        print('Received termination message from', meta['sender_addr'], meta['sender_id'], 'with weight', content.weight)
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
-            print('meta:', meta)
             if neg_id not in self._participant_map:
                 self._participant_map[neg_id] = set()
             self._participant_map[neg_id].add((tuple(meta['sender_addr']), meta['sender_id']))
 
-        print('Update weight map')
         if neg_id not in self._weight_map:
-            print('new weight map')
             self._weight_map[neg_id] = content.weight
         else:
-            print('known weight map')
             self._weight_map[neg_id] += content.weight
 
         if self._weight_map[neg_id] == 1:
-            print('weight map == 1')
             self.context.schedule_instant_task(self._on_termination(neg_id))
-        else:
-            print('weight map:', round(self._weight_map[neg_id], 3))

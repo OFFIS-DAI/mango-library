@@ -94,4 +94,3 @@ class CohdaNegotiationStarterRole(ProactiveRole):
                 acl_metadata={'sender_addr': self.context.addr,
                               'sender_id': self.context.aid},
                 create_acl=True))
-        print('All messages sent')

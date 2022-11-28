@@ -1,14 +1,15 @@
-
+import asyncio
 import pytest
+import numpy as np
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 import mango.messages.codecs
-from mango_library.negotiation.cohda.cohda import *
+from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiationRole, CohdaNegotiationModel
+from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole,\
     NegotiationTerminationDetectorRole
-from mango_library.coalition.core import *
+from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
 import mango_library.negotiation.util as util
-import asyncio
 
 
 @pytest.mark.asyncio
@@ -26,7 +27,8 @@ async def test_coalition_to_cohda_with_termination():
 
     for i in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
+        cohda_role = COHDANegotiationRole(schedules_provider=lambda: s_array[0],
+                                          local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
@@ -54,7 +56,10 @@ async def test_coalition_to_cohda_with_termination():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1, f'Too many Tasks are running{asyncio.all_tasks()}'
-    assert np.array_equal(next(iter(agents[1].roles[0]._cohda.values()))._memory.solution_candidate.schedules['1'],
+    cohda_negotiation = \
+        list(agents[1]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
+    assert np.array_equal(cluster_schedule[0],
                           [11, 11, 11, 11, 11])
     assert next(iter(controller_agent.roles[0]._weight_map.values())) == 1
 
@@ -82,7 +87,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
     for i in range(5):
         c=c_2 if i % 2 == 0 else c_1
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
+        cohda_role = COHDANegotiationRole(lambda: s_array[0], lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
@@ -111,15 +116,20 @@ async def test_coalition_to_cohda_with_termination_different_container():
     await c_2.shutdown()
 
     assert len(asyncio.all_tasks()) == 1, f'Too many Tasks are running{asyncio.all_tasks()}'
-    assert np.array_equal(next(iter(agents[1].roles[0]._cohda.values()))._memory.solution_candidate.schedules['1'],
+    cohda_negotiation = \
+        list(agents[1]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
+    assert np.array_equal(cluster_schedule[0],
                           [11, 11, 11, 11, 11])
     assert next(iter(controller_agent.roles[0]._weight_map.values())) == 1
 
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination_long_scenario():
     # create containers
-
     c = await Container.factory(addr=('127.0.0.2', 5555))
+    controller_agent = RoleAgent(c)
+    controller_agent.add_role(NegotiationTerminationDetectorRole())
+
     s_array = [[1], [0]]
     n_agents = 40
     agents = []
@@ -128,14 +138,14 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
     # create agents
     for i in range(n_agents):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array)
+        cohda_role = COHDANegotiationRole(lambda: s_array)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         agents.append(a)
         addrs.append((c.addr, a._aid))
 
-    agents[0].add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
+    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
 
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
 
@@ -150,7 +160,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    await asyncio.wait_for(wait_for_term(agents), timeout=15)
+    await asyncio.wait_for(wait_for_term(controller_agent), timeout=25)
 
     for agent in agents:
         if list(agent.roles[2]._weight_map.values())[0] != 0:
@@ -162,10 +172,13 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
+    cohda_negotiation = \
+        list(agents[1]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
+
     assert np.array_equal(
-        next(iter(agents[0].roles[0]._cohda.values()))._memory.solution_candidate.cluster_schedule.sum(axis=0),
-        [n_agents//2])
-    assert next(iter(agents[0].roles[2]._weight_map.values())) == 1
+        cluster_schedule.sum(axis=0), [n_agents//2])
+    assert next(iter(controller_agent.roles[0]._weight_map.values())) == 1
 
 
 async def wait_for_coalition_built(agents):

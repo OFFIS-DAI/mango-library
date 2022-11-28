@@ -18,14 +18,14 @@ class COHDANegotiationRole(Role):
     """Negotiation role for COHDA.
     """
 
-    def __init__(self, schedules_provider: Callable, perf_func: Callable = None, local_acceptable_func: Callable = None,
+    def __init__(self, schedules_provider: Callable, local_acceptable_func: Callable = None, perf_func: Callable = None,
                  check_inbox_interval: float = 0.1):
         """
         Init of COHDARole
         :param schedules_provider: Function that takes not arguments and returns a list of schedules
-        :param perf_func: performance function for the agent. Defaults to deviation_from_target_schedule
         :param local_acceptable_func: Function that takes a schedule as input and returns a boolean indicating,
         if the schedule is locally acceptable or not. Defaults to lambda x: True
+        :param perf_func: performance function for the agent. Defaults to deviation_from_target_schedule
         :param check_inbox_interval: Duration of buffering the cohda messages [s]
         """
         super().__init__()
@@ -110,18 +110,16 @@ class COHDANegotiationRole(Role):
                         wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                         if wm_to_send is not None:
-                            message = CohdaNegotiationMessage(
-                                negotiation_id=content.negotiation_id,
-                                coalition_id=content.coalition_id,
-                                working_memory=wm_to_send,
-                            )
                             # send message to all neighbors
                             for neighbor in coalition_assignment.neighbors:
-                                self.context.schedule_instant_task(self.context.send_message(
-                                    content=message,
+                                self.context.schedule_instant_task(self.context.send_acl_message(
+                                    content=CohdaNegotiationMessage(
+                                        negotiation_id=content.negotiation_id,
+                                        coalition_id=content.coalition_id,
+                                        working_memory=wm_to_send,
+                                    ),
                                     receiver_addr=neighbor[1], receiver_id=neighbor[2],
-                                    acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-                                    create_acl=True)
+                                    acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid})
                                 )
 
                     else:
@@ -134,7 +132,6 @@ class COHDANegotiationRole(Role):
     async def handle_neg_stop(self, content: StopNegotiationMessage, meta: Dict):
         """
         """
-        print(f'[{self.context.addr}] handle neg stop')
         if content.negotiation_id in self._cohda_tasks.keys():
             # get negotiation
             cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
@@ -160,7 +157,6 @@ class COHDANegotiationRole(Role):
             pass
 
     async def handle_solution_request(self, content: CohdaSolutionRequestMessage, meta):
-        print(f'[{self.context.addr}] handle solution request')
         # get negotiation
         cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
         if not cohda_negotiation_model.exists(content.negotiation_id):
