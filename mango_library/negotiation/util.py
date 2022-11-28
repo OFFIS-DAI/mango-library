@@ -6,9 +6,9 @@ from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, Co
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
 
-from mango_library.negotiation.cohda.cohda import CohdaMessage, CohdaSolution
-from mango_library.negotiation.core import NegotiationMessage, StopNegotiationMessage
-from mango_library.negotiation.termination import TerminationMessage
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionMessage,\
+    CohdaSolutionRequestMessage
+from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage, InformAboutTerminationMessage
 
 
 def get_np_serializer():
@@ -66,10 +66,11 @@ cohda_serializers = [
     SystemConfig.__serializer__,
     SolutionCandidate.__serializer__,
     WorkingMemory.__serializer__,
-    CohdaMessage.__serializer__,
-    CohdaSolution.__serializer__,
-    NegotiationMessage.__serializer__,
-    StopNegotiationMessage.__serializer__,
+    CohdaNegotiationMessage.__serializer__,
+    CohdaSolutionRequestMessage.__serializer__,
+    CohdaSolutionMessage.__serializer__,
     TerminationMessage.__serializer__,
     get_fraction_serializer,
+    StopNegotiationMessage.__serializer__,
+    InformAboutTerminationMessage.__serializer__,
 ]

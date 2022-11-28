@@ -5,8 +5,8 @@ from uuid import UUID
 import numpy as np
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaStopNegotiationMessage, \
-    CohdaSolutionRequestMessage, CohdaSolutionMessage
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionRequestMessage,\
+    CohdaSolutionMessage, StopNegotiationMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
 from mango.role.api import Role
@@ -44,7 +44,7 @@ class COHDANegotiationRole(Role):
         super().setup()
         self.context.subscribe_message(self, self.handle_neg_msg, lambda c, _: isinstance(c, CohdaNegotiationMessage))
         self.context.subscribe_message(self, self.handle_neg_stop,
-                                       lambda c, _: isinstance(c, CohdaStopNegotiationMessage))
+                                       lambda c, _: isinstance(c, StopNegotiationMessage))
         self.context.subscribe_message(self, self.handle_solution_request,
                                        lambda c, _: isinstance(c, CohdaSolutionRequestMessage))
 
@@ -131,7 +131,7 @@ class COHDANegotiationRole(Role):
                 self._cohda_tasks[content.negotiation_id] = \
                     self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
 
-    async def handle_neg_stop(self, content: CohdaStopNegotiationMessage, meta: Dict):
+    async def handle_neg_stop(self, content: StopNegotiationMessage, meta: Dict):
         """
         """
         print(f'[{self.context.addr}] handle neg stop')
@@ -139,7 +139,7 @@ class COHDANegotiationRole(Role):
             # get negotiation
             cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
             if not cohda_negotiation_model.exists(content.negotiation_id):
-                logger.warning(f'Received a stop message for a negotation with id {content.negotiation_id} '
+                logger.warning(f'Received a stop message for a negotiation with id {content.negotiation_id} '
                                'but no such negotiation is running.')
                 return
             cohda_negotiation = cohda_negotiation_model.by_id(content.negotiation_id)

@@ -62,7 +62,7 @@ class CohdaNegotiationMessage:
 
 
 @json_serializable
-class CohdaStopNegotiationMessage:
+class StopNegotiationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
