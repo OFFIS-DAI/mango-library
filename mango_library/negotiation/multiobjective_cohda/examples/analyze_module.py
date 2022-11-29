@@ -3,16 +3,18 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution, \
-    get_solution_certain_range
+from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
 from evoalgos.selection import HyperVolumeContributionSelection
+
 
 def get_performance_metrics(approximated_front, reference_front, reference_point, p, inside_exponent, minimize):
     performance_metrics = {}
     performance_metrics["HV"] = calculate_hypervolume(approximated_front, reference_point)
     performance_metrics["GD"] = calculate_generational_distance(approximated_front, reference_front, p, inside_exponent)
-    performance_metrics["IGD"] = calculate_inverted_generational_distance(approximated_front, reference_front, p, inside_exponent)
-    performance_metrics["Delta_p"] = calculate_averaged_hausdorff_distance(approximated_front, reference_front, p, inside_exponent)
+    performance_metrics["IGD"] = calculate_inverted_generational_distance(approximated_front, reference_front, p,
+                                                                          inside_exponent)
+    performance_metrics["Delta_p"] = calculate_averaged_hausdorff_distance(approximated_front, reference_front, p,
+                                                                           inside_exponent)
     performance_metrics["C(A,B)"] = calculate_two_set_coverage(approximated_front, reference_front, minimize)
     performance_metrics["C(B,A)"] = calculate_two_set_coverage(reference_front, approximated_front, minimize)
     performance_metrics["Delta"] = calculate_delta_indicator(approximated_front, reference_front)
@@ -30,6 +32,8 @@ Since it uses the nadir point as a reference, the HV calculation does not depend
 Pareto front. One of the main advantages of hypervolume is that it is able to capture in a single number both the 
 closeness of the solutions to the optimal set and, to some extent, the spread of the solutions across objective 
 space."""
+
+
 def calculate_hypervolume(approximated_front, reference_point):
     selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
     selection.sorting_component.hypervolume_indicator.reference_point = reference_point
@@ -48,6 +52,8 @@ by GD.
 - some versions consider division by number of points inside the exponent 1/p, some outside
 - see https://mlopez-ibanez.github.io/eaf/reference/igd.html
 """
+
+
 def calculate_generational_distance(approximated_front, reference_front, p, inside_exponent):
     af_size, rf_size = len(approximated_front), len(reference_front)
     gd = 0
@@ -55,9 +61,9 @@ def calculate_generational_distance(approximated_front, reference_front, p, insi
         dist_min = min([np.linalg.norm(approximated_front[i] - reference_front[j]) for j in range(0, rf_size)])
         gd += dist_min ** p
     if inside_exponent:
-        return (gd / af_size) ** (1/p)
+        return (gd / af_size) ** (1 / p)
     else:
-        return (gd ** (1/p)) / af_size
+        return (gd ** (1 / p)) / af_size
 
 
 """The inverted generational distance (IGD) was proposed as an improvement over the GD based on the very simple idea 
@@ -69,6 +75,8 @@ obtained approximation front A (i.e., convergence to the Pareto front and divers
 
 - same as for gd
 """
+
+
 def calculate_inverted_generational_distance(approximated_front, reference_front, p, inside_exponent):
     af_size, rf_size = len(approximated_front), len(reference_front)
     igd = 0
@@ -76,14 +84,16 @@ def calculate_inverted_generational_distance(approximated_front, reference_front
         dist_min = min([np.linalg.norm(reference_front[i] - approximated_front[j]) for j in range(0, af_size)])
         igd += dist_min ** p
     if inside_exponent:
-        return (igd / rf_size) ** (1/p)
+        return (igd / rf_size) ** (1 / p)
     else:
-        return (igd ** (1/p)) / rf_size
+        return (igd ** (1 / p)) / rf_size
 
 
 """The averaged Hausdorff distance (∆p) was proposed as an attempt to address potential drawbacks of the IGD. It is 
 defined as an averaged Hausdorff distance metric, controlled by the parameter p. In particular, larger values of p
 mean stronger penalties for outliers."""
+
+
 def calculate_averaged_hausdorff_distance(approximated_front, reference_front, p, inside_exponent):
     delta_p = max(calculate_generational_distance(approximated_front, reference_front, p, inside_exponent),
                   calculate_inverted_generational_distance(approximated_front, reference_front, p, inside_exponent))
@@ -101,12 +111,16 @@ d_f = Euklidean distance between first point of approximated front and first poi
 d_l = Euklidean distance between last point of approximated front and last point of reference front
 d_bar = average of all Euklidean distances between consecutive solutions
 """
+
+
 def calculate_delta_indicator(approximated_front, reference_front):
     af_size = len(approximated_front)
     d_f = np.linalg.norm(approximated_front[0] - reference_front[0])
     d_l = np.linalg.norm(approximated_front[-1] - reference_front[-1])
-    d_bar = (sum([np.linalg.norm(approximated_front[i] - approximated_front[i+1]) for i in range(0, af_size-1)])) / af_size
-    d_sum = sum([abs(np.linalg.norm(approximated_front[i] - approximated_front[i+1]) - d_bar) for i in range(0, af_size-1)])
+    d_bar = (sum([np.linalg.norm(approximated_front[i] - approximated_front[i + 1]) for i in
+                  range(0, af_size - 1)])) / af_size
+    d_sum = sum(
+        [abs(np.linalg.norm(approximated_front[i] - approximated_front[i + 1]) - d_bar) for i in range(0, af_size - 1)])
     delta = (d_f + d_l + d_sum) / (d_f + d_l + ((af_size - 1) * d_bar))
     return delta
 
@@ -118,6 +132,8 @@ zero for this metric indicates that the solutions in the approximate front are e
 d_i_list = list of Euklidean distances between point i in approximated front and closest point j in reference front
 d_bar = mean of all d_i
 """
+
+
 def calculate_spacing(approximated_front, reference_front):
     af_size = len(approximated_front)
     rf_size = len(reference_front)
@@ -134,6 +150,8 @@ def calculate_spacing(approximated_front, reference_front):
 """Coverage of two sets (C) metric compares the quality of two non-dominated sets. If C(A, B) = 1, all the candidate 
 solutions in B are dominated by or equal to at least one solution in A. If C(A, B) = 0, no candidate solutions in B is 
 covered by any solution in A."""
+
+
 def calculate_two_set_coverage(front_A, front_B, minimize):
     covered_solutions = 0
     for point_B in front_B:
@@ -164,6 +182,8 @@ def dominates(point_A, point_B, minimize):
 
 
 """ Create reference fronts for different optimization problems"""
+
+
 def create_reference_front(problem, number_of_points):
     performances = []
     values = []
@@ -183,7 +203,7 @@ def create_reference_front(problem, number_of_points):
 
         for x in values:
             f1 = x
-            f2 = 1 - math.sqrt(x/1) - (x/1) * math.sin(10 * math.pi * x)
+            f2 = 1 - math.sqrt(x / 1) - (x / 1) * math.sin(10 * math.pi * x)
             performances.append([f1, f2])
 
     elif problem == "Zitzler_1":
@@ -205,7 +225,7 @@ def create_reference_front(problem, number_of_points):
 
 if __name__ == '__main__':
 
-    PROBLEM = "Zitzler_1"
+    # PROBLEM = "Zitzler_1"
     PROBLEM = "Zitzler_3"
     REFERENCE_POINT = (1.1, 1.1)
     P = 2
@@ -214,7 +234,7 @@ if __name__ == '__main__':
 
     path = os.path.dirname(__file__)
 
-    results = h5py.File(path+'/'+PROBLEM+'.hdf5', 'r')
+    results = h5py.File(path + '/' + PROBLEM + '_pymoo.hdf5', 'r')
 
     # get approximated front from database
     performances = np.array(results.get('Results').get('Results_0').get('performances'))
@@ -224,19 +244,31 @@ if __name__ == '__main__':
         f2 = float(performance_tuple[1])
         approximated_front.append([f1, f2])
 
+    # get approximated front from old database
+    results_old = h5py.File(path + '/' + PROBLEM + '_pymoo.hdf5', 'r')
+    performances_old = np.array(results_old.get('Results').get('Results_0').get('performances'))
+    approximated_front_old = []
+    for performance_tuple_ in performances_old:
+        f1 = float(performance_tuple_[0])
+        f2 = float(performance_tuple_[1])
+        approximated_front_old.append([f1, f2])
+
     # create reference front
     reference_front = create_reference_front(PROBLEM, 500)
 
     # create front with central approach
-    central_front = get_solution_certain_range(PROBLEM)
+    central_front = get_solution(PROBLEM)
 
     # calculate and print metrics
     metrics_approximated_front = get_performance_metrics(np.array(approximated_front), np.array(reference_front),
                                                          REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
+    metrics_approximated_front_old = get_performance_metrics(np.array(approximated_front_old),
+                                                             np.array(reference_front),
+                                                             REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
     metrics_central_front = get_performance_metrics(np.array(central_front), np.array(reference_front),
-                                                         REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
+                                                    REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
     metrics_reference_front = get_performance_metrics(np.array(reference_front), np.array(reference_front),
-                                                         REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
+                                                      REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
 
     print("MO-COHDA", metrics_approximated_front)
     print("Central", metrics_central_front)

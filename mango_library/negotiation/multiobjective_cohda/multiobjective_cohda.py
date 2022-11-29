@@ -188,40 +188,16 @@ class COHDA:
         :param target_params:
         :return:
         """
-        # problem, algorithm
-        problem = 'Zitzler_3'
-        ALGORITHM = NSGA2(pop_size=5)
-
-        NUM_AGENTS = 10
-        possible_range = 1 / NUM_AGENTS
-
-        if problem == 'Zitzler_3':
-            p = get_problem('zdt3')
-        elif problem == 'Zitzler_1':
-            p = get_problem('zdt1')
-        else:
-            raise ValueError(f'no Problem Found for {problem}')
-
-        example_cluster_schedule = np.copy(solution_point.cluster_schedule)
-        own_schedule = solution_point[agent_id]
-        example_sum = [sum(l) for l in zip(*example_cluster_schedule)]
-
-        diff_to_upper = [possible_range - own_schedule[i] for i in range(len(own_schedule))]
-        diff_to_lower = own_schedule
-
-        new_xl = [example_sum[i] - diff_to_lower[i] if example_sum[i] - diff_to_lower[i] >= 0 else 0 for i in
-                  range(len(own_schedule))]
-
-        new_xu = [example_sum[i] + diff_to_upper[i] if example_sum[i] + diff_to_upper[i] <= 1 else 1 for i in
-                  range(len(own_schedule))]
-
-        for idx in range(len(new_xl)):
-            p.xl[idx] = new_xl[idx]
-            p.xu[idx] = new_xu[idx]
-
-        result: Result = minimize(p, ALGORITHM)
-
-        return [result.X]
+        new_solution_points = []
+        # num_solution_points could be set
+        new_schedules = schedule_creator(solution_point=solution_point, agent_id=agent_id)
+        for new_schedule in new_schedules:
+            new_cs = np.copy(solution_point.cluster_schedule)
+            new_cs[solution_point.idx[agent_id]] = new_schedule
+            new_perf = perf_func([new_cs], target_params)[0]
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, performance=new_perf,
+                                                 idx=solution_point.idx))
+        return new_solution_points
 
     @staticmethod
     def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
@@ -290,9 +266,10 @@ class COHDA:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
                     num_solution_points = message.working_memory.system_config.num_solution_points
-                    init_ = self._schedule_provider(num_solution_points)[0]
-                    inital_schedules = [init_ for _ in range(num_solution_points)]
-                    print('initial schedules', inital_schedules)
+                    # TODO discuss
+                    # inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    inital_schedules = self._schedule_provider(num_of_solution_points=num_solution_points)
+                    print(f' {self._part_id} found initial schedules')
                     schedule_choices[self._part_id] = ScheduleSelections(
                         np.array(inital_schedules), self._counter + 1)
                     self._counter += 1
@@ -306,13 +283,11 @@ class COHDA:
                 if self._part_id not in self._memory.solution_candidate.schedules:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
+                    # TODO discuss
                     num_solution_points = message.working_memory.system_config.num_solution_points
-                    try:
-                        inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
-                    except Exception as e:
-                        print(e)
-                        exit()
-                    print('initial schedules', inital_schedules)
+                    # inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    inital_schedules = self._schedule_provider(num_of_solution_points=num_solution_points)
+                    print(f' {self._part_id} found initial schedules')
                     schedules[self._part_id] = np.array(inital_schedules)
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()

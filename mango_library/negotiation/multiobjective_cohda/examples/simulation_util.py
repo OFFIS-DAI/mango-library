@@ -19,8 +19,8 @@ from pymoo.core.result import Result
 from pymoo.optimize import minimize
 from pymoo.problems import get_problem
 
-# pop_size
 
+# pop_size
 
 
 def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Target], n_solution_points: int,
@@ -227,20 +227,33 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         for i in range(num_agents):
             a = RoleAgent(container)
 
-            def provide_schedules(num_solution_points):
-                # only called in first step
+            def provide_schedules(solution_point=None, agent_id=None, num_of_solution_points=1):
                 p = get_problem('zdt3')
+                # first step
+                algorithm = NSGA2(pop_size=num_of_solution_points)
+
+                if solution_point is None:
+                    example_sum = [0. for _ in range(len(p.xl))]
+                else:
+                    example_cluster_schedule = np.copy(solution_point.cluster_schedule)
+                    own_schedule = solution_point.cluster_schedule[solution_point.idx[agent_id]]
+                    example_sum = [sum(l) for l in zip(*example_cluster_schedule)]
+                    example_sum = [example_sum[i] - own_schedule[i] for i in range(len(example_sum))]
 
                 for idx in range(len(p.xl)):
-                    p.xu[idx] = possible_range
-                ALGORITHM = NSGA2(pop_size=num_solution_points)
-                result: Result = minimize(p, ALGORITHM)
-                # multiple solution points could be possible
-                own_solution = result.X.tolist()[0]
-                for idx, x in enumerate(own_solution):
-                    diff = (possible_range * (num_agents - 1))
-                    own_solution[idx] = x - diff
-                return [own_solution]
+                    p.xl[idx] = example_sum[idx]
+                    p.xu[idx] = example_sum[idx] + possible_range
+
+                result: Result = minimize(p, algorithm)
+                solution = result.X.tolist()
+                if not all(item == 0 for item in example_sum):
+                    for first_idx, sol_point in enumerate(solution):
+                        for idx, single_val in enumerate(sol_point):
+                            correct_value = example_sum[idx] + single_val
+                            solution[first_idx][idx] = correct_value
+
+                solution = [np.asarray(sol) for sol in solution]
+                return solution
 
             a.add_role(MultiObjectiveCOHDARole(
                 schedule_provider=provide_schedules,
@@ -256,6 +269,7 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
             agents.append(a)
             addrs.append((container.addr, a.aid))
 
+            schedules_per_agent[a.aid] = provide_schedules()
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)
