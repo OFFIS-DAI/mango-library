@@ -227,30 +227,45 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         for i in range(num_agents):
             a = RoleAgent(container)
 
-            def provide_schedules(solution_point=None, agent_id=None, num_of_solution_points=1):
+            def provide_schedules(solution_point=None, agent_id=None):
                 p = get_problem('zdt3')
-                # first step
-                algorithm = NSGA2(pop_size=num_of_solution_points)
+                algorithm = NSGA2(pop_size=num_solution_points)
 
                 if solution_point is None:
                     example_sum = [0. for _ in range(len(p.xl))]
                 else:
-                    example_cluster_schedule = np.copy(solution_point.cluster_schedule)
-                    own_schedule = solution_point.cluster_schedule[solution_point.idx[agent_id]]
-                    example_sum = [sum(l) for l in zip(*example_cluster_schedule)]
-                    example_sum = [example_sum[i] - own_schedule[i] for i in range(len(example_sum))]
+                    # determine the sum of the cluster schedule
+                    cluster_schedule = np.copy(solution_point.cluster_schedule)
+                    # determine the schedule of the agent from the cluster schedule
+                    agent_schedule = solution_point.cluster_schedule[solution_point.idx[agent_id]]
+                    example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
+                    # abstract the partition of the agent from the overall sum
+                    example_sum = [example_sum[idx] - agent_schedule[idx] for idx in range(len(example_sum))]
+                    # assert that there is no entry below 0 or above 1 in the sum
+                    assert all(0 <= x <= 1 for x in example_sum)
 
                 for idx in range(len(p.xl)):
+                    # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
+                    # without the partition of the current agent. Therefore, the solution without the agent is
+                    # considered. The new partition of the agent will be added after the optimisation.
                     p.xl[idx] = example_sum[idx]
                     p.xu[idx] = example_sum[idx] + possible_range
 
+                # assert that the lower and upper limits between 0 and 1
+                assert all(0 <= x <= 1 for x in p.xl)
+                assert all(0 <= x <= 1 for x in p.xu)
+
+                # minimize problem
                 result: Result = minimize(p, algorithm)
                 solution = result.X.tolist()
-                if not all(item == 0 for item in example_sum):
-                    for first_idx, sol_point in enumerate(solution):
-                        for idx, single_val in enumerate(sol_point):
-                            correct_value = example_sum[idx] + single_val
-                            solution[first_idx][idx] = correct_value
+
+                # extract the actual partition of the current agent by determining what is contained in the solution
+                # additionally to the previously calculated sum of the current cluster schedule
+                for first_idx, sol_point in enumerate(solution):
+                    for idx, single_val in enumerate(sol_point):
+                        correct_value = float(single_val) - float(example_sum[idx])
+                        assert 0 <= correct_value <= possible_range
+                        solution[first_idx][idx] = correct_value
 
                 solution = [np.asarray(sol) for sol in solution]
                 return solution
