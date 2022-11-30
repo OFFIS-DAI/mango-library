@@ -1,17 +1,11 @@
 import asyncio
-from typing import List, Callable, Dict, Any
-import numpy as np
 import random
-import h5py
-from copy import deepcopy
 import time
+from copy import deepcopy
+from typing import List, Callable, Dict, Any
 
-from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
-from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
-    NegotiationTerminationDetectorRole
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
-    CohdaNegotiationStarterRole
+import h5py
+import numpy as np
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -19,8 +13,12 @@ from pymoo.core.result import Result
 from pymoo.optimize import minimize
 from pymoo.problems import get_problem
 
-
-# pop_size
+from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
+from mango_library.negotiation.multiobjective_cohda.data_classes import Target
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
+    CohdaNegotiationStarterRole
+from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
+    NegotiationTerminationDetectorRole
 
 
 def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Target], n_solution_points: int,
@@ -152,7 +150,7 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
 async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num_solution_points: int,
                                   pick_func: Callable, mutate_func: Callable,
                                   num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                                  num_simulations: int, ) -> List[Dict[str, Any]]:
+                                  num_simulations: int) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
