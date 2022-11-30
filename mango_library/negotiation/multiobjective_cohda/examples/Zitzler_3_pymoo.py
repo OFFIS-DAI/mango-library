@@ -13,7 +13,7 @@ from pymoo.problems import get_problem
 FILE = 'Zitzler_3_pymoo.hdf5'
 SIM_NAME = 'Zitzler_3'
 
-NUM_AGENTS = 5
+NUM_AGENTS = 10
 NUM_SCHEDULES = 30
 NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
@@ -32,9 +32,7 @@ def target_func_1(cs):
     """
 
     output = p.evaluate(cs, ALGORITHM)
-    solution_tuple = output[0]
-    result_target_1 = solution_tuple[0][0]
-
+    result_target_1 = output[0][0]
     return result_target_1
 
 
@@ -42,9 +40,7 @@ def target_func_2(cs):
     """
     """
     output = p.evaluate(cs, ALGORITHM)
-    solution_tuple = output[0]
-    result_target_2 = solution_tuple[0][1]
-
+    result_target_2 = output[0][1]
     return result_target_2
 
 

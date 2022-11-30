@@ -16,11 +16,6 @@ from mango_library.negotiation.core import NegotiationParticipant, \
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
     SystemConfig, ScheduleSelections, Target, SolutionPoint
 
-from pymoo.problems import get_problem
-from pymoo.algorithms.moo.nsga2 import NSGA2
-from pymoo.core.result import Result
-from pymoo.optimize import minimize
-
 
 @json_serializable
 class CohdaMessage:
