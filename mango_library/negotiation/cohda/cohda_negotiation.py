@@ -6,7 +6,7 @@ import numpy as np
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionRequestMessage,\
-    CohdaSolutionMessage, StopNegotiationMessage
+    CohdaProposedSolutionMessage, StopNegotiationMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
 from mango.role.api import Role
@@ -167,8 +167,10 @@ class COHDANegotiationRole(Role):
         # get current solution
         final_solution = cohda_negotiation._memory.solution_candidate
         self.context.schedule_instant_task(
-            self.context.send_message(content=CohdaSolutionMessage(final_solution), receiver_addr=meta['sender_id'],
-                                      receiver_id=meta['receiver_id'], create_acl=True)
+            self.context.send_acl_message(content=CohdaProposedSolutionMessage(
+                solution_candidate=final_solution, negotiation_id=content.negotiation_id
+            ),
+                receiver_addr=meta['sender_id'], receiver_id=meta['receiver_id'])
         )
 
 

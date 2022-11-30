@@ -96,14 +96,15 @@ class CohdaSolutionRequestMessage:
 
 
 @json_serializable
-class CohdaSolutionMessage:
+class CohdaProposedSolutionMessage:
     """
     Message for a COHDA solution.
     Contains the candidate of an agent.
     """
 
-    def __init__(self, solution_candidate: SolutionCandidate):
+    def __init__(self, solution_candidate: SolutionCandidate, negotiation_id: UUID):
         self._solution_candidate = solution_candidate
+        self._negotiation_id = negotiation_id
 
     @property
     def solution_candidate(self) -> SolutionCandidate:
@@ -112,3 +113,39 @@ class CohdaSolutionMessage:
         :return: the solution_candidate of the sender
         """
         return self._solution_candidate
+
+    @property
+    def negotiation_id(self) -> UUID:
+        """Return the negotiation_id of the corresponding solution
+
+        :return: the negotiation_id
+        """
+        return self._negotiation_id
+
+
+@json_serializable
+class CohdaFinalSolutionMessage:
+    """
+    Message for a final COHDA solution.
+    Contains the final candidate agter aggregation.
+    """
+
+    def __init__(self, solution_candidate: SolutionCandidate, negotiation_id: UUID):
+        self._solution_candidate = solution_candidate
+        self._negotiation_id = negotiation_id
+
+    @property
+    def solution_candidate(self) -> SolutionCandidate:
+        """Return the solution candidate of the sender agent
+
+        :return: the solution_candidate of the sender
+        """
+        return self._solution_candidate
+
+    @property
+    def negotiation_id(self) -> UUID:
+        """Return the negotiation_id of the corresponding solution
+
+        :return: the negotiation_id
+        """
+        return self._negotiation_id
