@@ -14,7 +14,7 @@ considers itself as inactive.
 """
 import asyncio
 from fractions import Fraction
-from typing import Dict, Any, Union, Optional, Set, Tuple, Callable
+from typing import Dict, Any, Union, Optional, Set, Tuple, Callable, List
 from uuid import UUID
 
 from .cohda.cohda_negotiation import CohdaNegotiationModel
@@ -64,8 +64,9 @@ class InformAboutTerminationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
-    def __init__(self, negotiation_id: UUID) -> None:
+    def __init__(self, negotiation_id: UUID, participants: List[Tuple]) -> None:
         self._negotiation_id = negotiation_id
+        self._participants = participants
 
     @property
     def negotiation_id(self) -> UUID:
@@ -74,6 +75,14 @@ class InformAboutTerminationMessage:
         :return: the negotiation id
         """
         return self._negotiation_id
+
+    @property
+    def participants(self) -> List[Tuple]:
+        """Return the list of participants as tuple (addr, aid)
+
+        :return: the participants
+        """
+        return self._participants
 
 
 class NegotiationTerminationParticipantRole(Role):
@@ -202,7 +211,7 @@ class NegotiationTerminationDetectorRole(Role):
             )
 
         # now send message to aggregator
-        if self._aggregator:
+        if self._aggregator is not None:
             await self.context.send_acl_message(
                 content=InformAboutTerminationMessage(negotiation_id=negotiation_id),
                 receiver_addr=self._aggregator[0],
