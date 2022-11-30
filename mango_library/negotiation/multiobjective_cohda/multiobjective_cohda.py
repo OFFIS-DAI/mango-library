@@ -232,22 +232,18 @@ class COHDA:
         old_candidate = self._memory.solution_candidate
 
         # perceive
-        print(f'{self._part_id} in perceive')
         sysconf, candidate = self._perceive(messages)
         t_after_perceive = time.time()
         # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
-            print(f'{self._part_id} in decide')
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
             t_after_decide = time.time()
             # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
-            print(f'{self._part_id} in act')
             return_msg = self._act(new_sysconfig=sysconf, new_candidate=candidate)
             t_after_act = time.time()
             # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
-            print(f'{self._part_id} step done')
             return return_msg
         else:
             return None
@@ -275,7 +271,6 @@ class COHDA:
                     initial_schedules = [initial_schedules[n % num_initial_schedules] for n in
                                          range(num_solution_points)]
 
-                    print(f' {self._part_id} found initial schedules')
                     schedule_choices[self._part_id] = ScheduleSelections(
                         np.array(initial_schedules), self._counter + 1)
                     self._counter += 1
@@ -383,7 +378,6 @@ class COHDA:
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
-                print(f'Agent {self._part_id} found a better solution: {new_hyper_volume}')
                 idx = solution_points_to_mutate[0].idx
                 new_schedule_dict = {aid: [] for aid in idx.keys()}
                 new_perf = []
