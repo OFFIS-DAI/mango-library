@@ -1,14 +1,14 @@
 import uuid
 from fractions import Fraction
 
-from mango.role.api import ProactiveRole
+from mango.role.api import Role
 
 from mango_library.coalition.core import CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
 
 
-class CohdaNegotiationStarterRole(ProactiveRole):
+class CohdaNegotiationStarterRole(Role):
     """
     Convenience role for starting a COHDA negotiation
     """
@@ -77,20 +77,20 @@ class CohdaNegotiationStarterRole(ProactiveRole):
                 solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
             )
 
-        neg_msg = CohdaNegotiationMessage(
-            working_memory=empty_wm,
-            negotiation_id=negotiation_uuid,
-            coalition_id=matched_assignment.coalition_id
-        )
         # send message to all neighbors
         for neighbor in matched_assignment.neighbors:
+            neg_msg = CohdaNegotiationMessage(
+                working_memory=empty_wm,
+                negotiation_id=negotiation_uuid,
+                coalition_id=matched_assignment.coalition_id
+            )
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_task(self.context.send_message(
+            self.context.schedule_instant_task(self.context.send_acl_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
                 acl_metadata={'sender_addr': self.context.addr,
-                              'sender_id': self.context.aid},
-                create_acl=True))
+                              'sender_id': self.context.aid}
+            ))
