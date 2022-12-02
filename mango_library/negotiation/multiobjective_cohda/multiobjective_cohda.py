@@ -146,7 +146,7 @@ class COHDA:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with one random schedule
@@ -165,14 +165,13 @@ class COHDA:
                 new_schedule = random.choice(schedules)
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            return [SolutionPoint(cluster_schedule=new_cs, performance=new_perf, idx=solution_point.idx)]
+            return [SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx)]
 
         else:
             return [solution_point]
 
     @staticmethod
-    def mutate_NSGA2(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_NSGA2(solution_point: SolutionPoint, schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
@@ -189,13 +188,12 @@ class COHDA:
         for new_schedule in new_schedules:
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, performance=new_perf,
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                      idx=solution_point.idx))
         return new_solution_points
 
     @staticmethod
-    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
@@ -211,8 +209,7 @@ class COHDA:
         for new_schedule in possible_schedules:
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, performance=new_perf,
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                      idx=solution_point.idx))
         return new_solution_points
 
@@ -329,8 +326,11 @@ class COHDA:
             for solution_point in solution_points_to_mutate:
                 # add new solution points to list of all solution points
                 new_solution_points = self._mutate_func(
-                    solution_point=solution_point, agent_id=self._part_id, perf_func=self._perf_func,
-                    target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
+                    solution_point=solution_point, agent_id=self._part_id, schedule_creator=self._schedule_provider)
+
+                for new_point in new_solution_points:
+                    new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
+                    new_point.performance = new_perf
 
                 all_solution_points.extend(new_solution_points)
 
