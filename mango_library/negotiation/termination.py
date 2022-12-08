@@ -104,8 +104,7 @@ class NegotiationTerminationParticipantRole(Role):
         self._negotiation_model = self.context.get_or_create_model(self._negotiation_model_class)
         self.context.subscribe_send(self, self.on_send)
         self.context.subscribe_message(self, self.handle_neg_msg,
-                                       lambda c, _: isinstance(c, self._negotiation_message_class),
-                                       priority=float('-inf'))
+                                       lambda c, _: isinstance(c, self._negotiation_message_class))
 
     def on_send(self, content,
                 receiver_addr: Union[str, Tuple[str, int]], *,
@@ -187,18 +186,20 @@ class NegotiationTerminationDetectorRole(Role):
     """
 
     """
-    def __init__(self, on_termination: Callable = None, aggregator: Tuple = None):
+    def __init__(self, on_termination: Callable = None, aggregator_addr=None, aggregator_id: str = None):
         super().__init__()
         self._weight_map: Dict[UUID, Fraction] = {}
         self._participant_map: Dict[UUID, Set[Tuple[Tuple, str]]] = {}
         self._on_termination = on_termination if on_termination is not None else self._send_stop_and_inform
-        self._aggregator = aggregator
+        self._aggregator_addr = aggregator_addr
+        self._aggregator_id = aggregator_id
 
     def setup(self):
         super().setup()
         self.context.subscribe_message(self, self.handle_term_msg, lambda c, _: isinstance(c, TerminationMessage))
-        if self._aggregator is None:
-            self._aggregator = (self.context.addr, self.context.aid)
+        if self._aggregator_addr is None and self._aggregator_id is None:
+            self._aggregator_addr = self.context.addr
+            self._aggregator_id = self.context.aid
 
     async def _send_stop_and_inform(self, negotiation_id):
         # send stopNegotiationMessage first
@@ -211,11 +212,12 @@ class NegotiationTerminationDetectorRole(Role):
             )
 
         # now send message to aggregator
-        if self._aggregator is not None:
+        if self._aggregator_addr is not None and self._aggregator_id is not None:
             await self.context.send_acl_message(
-                content=InformAboutTerminationMessage(negotiation_id=negotiation_id),
-                receiver_addr=self._aggregator[0],
-                receiver_id=self._aggregator[1],
+                content=InformAboutTerminationMessage(negotiation_id=negotiation_id,
+                                                      participants=list(self._participant_map[negotiation_id])),
+                receiver_addr=self._aggregator_addr,
+                receiver_id=self._aggregator_id,
                 acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
             )
 
