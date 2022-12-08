@@ -1,4 +1,3 @@
-from uuid import UUID
 import numpy as np
 import pytest
 
@@ -38,6 +37,7 @@ agg_candidate = SolutionCandidate(agent_id='Aggregation',
                                   },
                                   perf=float('-inf'))
 
+
 @pytest.mark.parametrize('candidates, expected',
                          [
                              ([candidate_1, candidate_2], candidate_2),
@@ -49,12 +49,5 @@ agg_candidate = SolutionCandidate(agent_id='Aggregation',
                              ([candidate_3, candidate_4], agg_candidate),
                          ])
 def test_aggregate_solution(candidates, expected):
-    neg_id = UUID(int=1)
-    agg_role = CohdaSolutionAggregationRole()
-    agg_role.open_solution_requests[neg_id] = {}
-    counter = 0
-    for c in candidates:
-        agg_role.open_solution_requests[neg_id][(counter, counter)] = c
-        counter += 1
-    solution = agg_role.aggregate_solution(negotiation_id=neg_id)
+    solution = CohdaSolutionAggregationRole.aggregate_solution(candidates)
     assert solution == expected
