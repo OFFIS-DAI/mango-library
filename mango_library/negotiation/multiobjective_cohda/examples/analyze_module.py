@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import os
 from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
 from evoalgos.selection import HyperVolumeContributionSelection
+from pymoo.problems import get_problem
 
 
 def get_performance_metrics(approximated_front, reference_front, reference_point, p, inside_exponent, minimize):
@@ -220,12 +221,14 @@ def create_reference_front(problem, number_of_points):
             f2 = 1 - math.sqrt(f1)
             performances.append([f1, f2])
 
+    else:
+        p_front = get_problem(problem, 1).pareto_front()
+        return p_front
+
     return np.array(performances)
 
 
 if __name__ == '__main__':
-
-    # PROBLEM = "Zitzler_1"
     PROBLEM = "Zitzler_3"
     REFERENCE_POINT = (1.1, 1.1)
     P = 2
@@ -235,13 +238,13 @@ if __name__ == '__main__':
     path = os.path.dirname(__file__)
 
     # get approximated front from database
-    results_without_pymoo = h5py.File(path + '/' + PROBLEM + '.hdf5', 'r')
-    performances_without_pymoo = np.array(results_without_pymoo.get('Results').get('Results_0').get('performances'))
-    approximated_front_without_pymoo = []
-    for performance_tuple in performances_without_pymoo:
-        f1 = float(performance_tuple[0])
-        f2 = float(performance_tuple[1])
-        approximated_front_without_pymoo.append([f1, f2])
+    # results_without_pymoo = h5py.File(path + '/' + PROBLEM + '.hdf5', 'r')
+    # performances_without_pymoo = np.array(results_without_pymoo.get('Results').get('Results_0').get('performances'))
+    # approximated_front_without_pymoo = []
+    # for performance_tuple in performances_without_pymoo:
+    #     f1 = float(performance_tuple[0])
+    #     f2 = float(performance_tuple[1])
+    #     approximated_front_without_pymoo.append([f1, f2])
 
     # get approximated front from old database
     results_pymoo = h5py.File(path + '/' + PROBLEM + '_pymoo.hdf5', 'r')
@@ -259,9 +262,9 @@ if __name__ == '__main__':
     central_front = get_solution(PROBLEM)
 
     # calculate and print metrics
-    metrics_approximated_front = get_performance_metrics(np.array(approximated_front_without_pymoo),
-                                                         np.array(reference_front),
-                                                         REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
+    # metrics_approximated_front = get_performance_metrics(np.array(approximated_front_without_pymoo),
+    #                                                      np.array(reference_front),
+    #                                                      REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
     metrics_approximated_front_pymoo = get_performance_metrics(np.array(approximated_front_pymoo),
                                                                np.array(reference_front),
                                                                REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
@@ -269,8 +272,8 @@ if __name__ == '__main__':
                                                     REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
     metrics_reference_front = get_performance_metrics(np.array(reference_front), np.array(reference_front),
                                                       REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
-
-    print("MO-COHDA without pymoo", metrics_approximated_front)
+    #
+    # print("MO-COHDA without pymoo", metrics_approximated_front)
     print("MO-COHDA with pymoo", metrics_approximated_front_pymoo)
     print("Central", metrics_central_front)
     print("Reference Front", metrics_reference_front)
