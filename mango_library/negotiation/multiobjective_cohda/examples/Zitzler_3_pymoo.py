@@ -13,7 +13,7 @@ from pymoo.problems import get_problem
 FILE = 'Zitzler_3_pymoo.hdf5'
 SIM_NAME = 'Zitzler_3'
 
-NUM_AGENTS = 10
+NUM_AGENTS = 5
 NUM_SCHEDULES = 30
 NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
