@@ -222,7 +222,7 @@ def create_reference_front(problem, number_of_points):
             performances.append([f1, f2])
 
     else:
-        p_front = get_problem(problem, 1).pareto_front()
+        p_front = get_problem(problem).pareto_front()
         return p_front
 
     return np.array(performances)
