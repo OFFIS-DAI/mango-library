@@ -109,38 +109,47 @@ class COHDANegotiationRole(Role):
                 self._cohda_msg_queues[content.negotiation_id].append(content.working_memory)
             else:
                 self._cohda_msg_queues[content.negotiation_id] = [content.working_memory]
+                self._cohda_tasks[content.negotiation_id] = self.context.schedule_periodic_task(
+                    self.get_process_msg_queue_coro(
+                            cohda_negotiation=cohda_negotiation, negotiation_id=content.negotiation_id,
+                            coalition_assignment=coalition_assignment),
+                    delay=self.check_inbox_interval)
 
-                async def process_msg_queue():
-                    """
-                    Method to evaluate all incoming message of a cohda_message_queue for a certain negotiation
-                    """
+    def get_process_msg_queue_coro(self, cohda_negotiation, coalition_assignment: CoalitionAssignment,
+                                negotiation_id: UUID):
+        """
+        Method that returns a coroutine that process a message queue of a specific COHDA negotiation.
+        :param cohda_negotiation: the COHDANegotiation instance
+        :param coalition_assignment: the corresponding coalition assignment
+        :param negotiation_id: the corresponding negotiation ID
+        :return: a coroutine without arguments that can be scheduled as periodoc task
+        """
+        async def process_msg():
+            if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
+                # get queue
+                cohda_message_queue, self._cohda_msg_queues[negotiation_id] = \
+                    self._cohda_msg_queues[negotiation_id], []
 
-                    if len(self._cohda_msg_queues[content.negotiation_id]) > 0 and not cohda_negotiation.stopped:
-                        # get queue
-                        cohda_message_queue, self._cohda_msg_queues[content.negotiation_id] = \
-                            self._cohda_msg_queues[content.negotiation_id], []
+                wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
-                        wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
+                if wm_to_send is not None:
+                    # send message to all neighbors
+                    for neighbor in coalition_assignment.neighbors:
+                        self.context.schedule_instant_task(self.context.send_acl_message(
+                            content=CohdaNegotiationMessage(
+                                negotiation_id=negotiation_id,
+                                coalition_id=coalition_assignment.coalition_id,
+                                working_memory=wm_to_send,
+                            ),
+                            receiver_addr=neighbor[1], receiver_id=neighbor[2],
+                            acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid})
+                        )
 
-                        if wm_to_send is not None:
-                            # send message to all neighbors
-                            for neighbor in coalition_assignment.neighbors:
-                                self.context.schedule_instant_task(self.context.send_acl_message(
-                                    content=CohdaNegotiationMessage(
-                                        negotiation_id=content.negotiation_id,
-                                        coalition_id=content.coalition_id,
-                                        working_memory=wm_to_send,
-                                    ),
-                                    receiver_addr=neighbor[1], receiver_id=neighbor[2],
-                                    acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid})
-                                )
+            else:
+                # set the negotiation as inactive as no message has arrived
+                cohda_negotiation.active = False
+        return process_msg
 
-                    else:
-                        # set the negotiation as inactive as no message has arrived
-                        cohda_negotiation.active = False
-
-                self._cohda_tasks[content.negotiation_id] = \
-                    self.context.schedule_periodic_task(process_msg_queue, delay=self.check_inbox_interval)
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """ Is called once a StopNegotiationMessage arrived
