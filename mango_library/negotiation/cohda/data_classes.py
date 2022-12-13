@@ -2,7 +2,7 @@
 Module that holds the data classes necessary for a COHDA negotiation
 """
 
-from typing import Dict, Callable, Optional
+from typing import Dict, Optional
 import numpy as np
 
 from mango.messages.codecs import json_serializable

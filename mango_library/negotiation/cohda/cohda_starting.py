@@ -17,8 +17,8 @@ class CohdaNegotiationStarterRole(Role):
     def __init__(self, target_params, coalition_model_matcher=None, coalition_uuid=None, send_weight=True) -> None:
         """
 
-        :param target_params: Parameter that are necessary for the agents to calculate the performance.
-        Could be e.g. the target schedule.
+        :param target_params: Parameter that are necessary for the agents to calculate the performance. Could be e.g.
+        the target schedule
         :param coalition_model_matcher:
         :param coalition_uuid:
         :param send_weight

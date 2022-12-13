@@ -127,7 +127,7 @@ class CohdaProposedSolutionMessage:
 class CohdaFinalSolutionMessage:
     """
     Message for a final COHDA solution.
-    Contains the final candidate agter aggregation.
+    Contains the final candidate after aggregation.
     """
 
     def __init__(self, solution_candidate: SolutionCandidate, negotiation_id: UUID):

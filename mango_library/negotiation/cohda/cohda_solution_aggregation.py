@@ -73,10 +73,9 @@ class CohdaSolutionAggregationRole(Role):
             ))
 
     def handle_cohda_solution(self, content: CohdaProposedSolutionMessage, meta):
-        """
-        Is called, once a CohdaProposedSolutionMessage arrives.
+        """Is called, once a CohdaProposedSolutionMessage arrives.
         It will first add the proposed solution to the open_solution_requests.
-        In case all proposed solutions have arrived, it will start the aggregation.
+        In case all proposed solutions have arrived, it will start the aggregation
         :param content: The CohdaProposedSolutionMessage
         :param meta: The meta dict
         """
@@ -121,7 +120,7 @@ class CohdaSolutionAggregationRole(Role):
         """
         Aggregates potentially different SolutionCandidates to one SolutionCandidate
         :param candidates: List of proposed Solution Candidates
-        :return: The final SOlutionCandidate
+        :return: The final SolutionCandidate
         """
         current_best_candidate = None
 
@@ -131,7 +130,7 @@ class CohdaSolutionAggregationRole(Role):
                 current_best_candidate = candidate
             else:
                 # run merge candidates.
-                # If participant list differs, create a new SolutionCandidate with all particpiants and set performance
+                # If participant list differs, create a new SolutionCandidate with all participants and set performance
                 # to float('-inf').
                 # This is necessary, as we don't know the performance function at this place
                 current_best_candidate = COHDANegotiation._merge_candidates(

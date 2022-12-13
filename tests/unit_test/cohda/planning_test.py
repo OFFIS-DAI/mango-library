@@ -7,7 +7,6 @@ import uuid
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation, COHDANegotiationRole, \
     CohdaNegotiationModel
 from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
@@ -47,7 +46,7 @@ def test_cohda_selection_multi():
 def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, wms: List[WorkingMemory],
                   expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
     cohda = COHDANegotiation(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
-                  is_local_acceptable=lambda s: True, part_id='1')
+                             is_local_acceptable=lambda s: True, part_id='1')
     cohda._memory.system_config = old_sysconfig
     cohda._memory.solution_candidate = old_candidate
     new_sysconfig, new_candidate = cohda._perceive(working_memories=wms)

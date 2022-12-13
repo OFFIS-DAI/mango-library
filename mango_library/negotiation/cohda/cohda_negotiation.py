@@ -116,13 +116,13 @@ class COHDANegotiationRole(Role):
                     delay=self.check_inbox_interval)
 
     def get_process_msg_queue_coro(self, cohda_negotiation, coalition_assignment: CoalitionAssignment,
-                                negotiation_id: UUID):
+                                   negotiation_id: UUID):
         """
         Method that returns a coroutine that process a message queue of a specific COHDA negotiation.
         :param cohda_negotiation: the COHDANegotiation instance
         :param coalition_assignment: the corresponding coalition assignment
         :param negotiation_id: the corresponding negotiation ID
-        :return: a coroutine without arguments that can be scheduled as periodoc task
+        :return: a coroutine without arguments that can be scheduled as periodic task
         """
         async def process_msg():
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
@@ -150,7 +150,6 @@ class COHDANegotiationRole(Role):
                 cohda_negotiation.active = False
         return process_msg
 
-
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """ Is called once a StopNegotiationMessage arrived
         """
@@ -172,8 +171,8 @@ class COHDANegotiationRole(Role):
 
     async def stop_cohda_task(self, negotiation_id):
         """
-        Will stop the process message task of a certatin negotiation
-        :param negotiation_id: Id of the negotiation
+        Will stop the process message task of a certain negotiation
+        :param negotiation_id: ID of the negotiation
         """
         # cancel task
         task = self._cohda_tasks[negotiation_id]
@@ -192,7 +191,7 @@ class COHDANegotiationRole(Role):
         # get negotiation
         cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
         if not cohda_negotiation_model.exists(content.negotiation_id):
-            logger.warning(f'Received a solution request message for a negotation with id {content.negotiation_id} '
+            logger.warning(f'Received a solution request message for a negotiation with id {content.negotiation_id} '
                            'but no such negotiation exists.')
             return
         cohda_negotiation = cohda_negotiation_model.by_id(content.negotiation_id)
@@ -211,7 +210,7 @@ class COHDANegotiationRole(Role):
 
     def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, _):
         """
-        Is calles once a CohdaFinalSolutionMessage arrives
+        Is called once a CohdaFinalSolutionMessage arrives
         :param content: The CohdaFinalSolutionMessage
         :param _: Meta dict
         :return:
@@ -222,7 +221,7 @@ class COHDANegotiationRole(Role):
         part_id = self.context.get_or_create_model(CohdaNegotiationModel).by_id(neg_id)._part_id
         # get individual schedule from final candidate
         final_schedule = final_candidate.schedules[part_id]
-        # add final schdule to CohdaSolutionModel
+        # add final schedule to CohdaSolutionModel
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
 
 
@@ -234,10 +233,10 @@ class COHDANegotiation:
                  part_id: str, perf_func=None):
         """
         Init of the CohdaNegotiation
-        :param schedule_provider: Function that takes no argumets and provides a list of possible schedules
+        :param schedule_provider: Function that takes no arguments and provides a list of possible schedules
         :param is_local_acceptable: Function that defines whether a schedule is locally acceptable or not
         :param part_id: the part_id of the agent
-        :param perf_func: The performane function, that takes one numpy array and target_params
+        :param perf_func: The performance function, that takes one numpy array and target_params
         as input and returns a float
         """
         self._part_id = part_id
@@ -248,7 +247,7 @@ class COHDANegotiation:
         self._counter = 0   # counter for ScheduleSelections
 
         self._stopped = False   # is Ture once a StopNegotiationMessage is received for this negotiation
-        # self._active is False once an iteration of the process_messge_queue function has not received any message
+        # self._active is False once an iteration of the process_message_queue function has not received any message
         self._active = True
 
         if perf_func is None:
@@ -260,11 +259,10 @@ class COHDANegotiation:
 
     @staticmethod
     def deviation_to_target_schedule(cluster_schedule: np.array, target_parameters) -> float:
-        """
-        Default Performance function for a cohda negotiation.
+        """Default Performance function for a cohda negotiation
         :param cluster_schedule: The cluster schedule to be evaluated
         :param target_parameters: The target parameters. In this case we expect a Tuple of target_schedule, weights
-        :return: The perfomane
+        :return: The performance
         """
         if cluster_schedule.size == 0:
             # we have no schedules, so return worst possible performance
@@ -288,7 +286,6 @@ class COHDANegotiation:
     @active.setter
     def active(self, is_active) -> None:
         """Set is active
-
         :param is_active: active
         """
         self._active = is_active
@@ -326,7 +323,7 @@ class COHDANegotiation:
 
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
-            # something changed in perceive so we do decide and anct
+            # something changed in perceive so we do decide and act
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
             # act
             return self._act(new_sysconfig=sysconf, new_candidate=candidate)
@@ -354,7 +351,7 @@ class COHDANegotiation:
                     schedule_choices[self._part_id] = ScheduleSelection(
                         np.array(self._schedule_provider()[0]), self._counter + 1)
                     self._counter += 1
-                    # we need to create a new class of Systemconfig so the updates are
+                    # we need to create a new instance of SystemConfig so the updates are
                     # recognized in handle_cohda_msgs()
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
                 else:
@@ -440,7 +437,7 @@ class COHDANegotiation:
         """
         Merge *sysconf_i* and *sysconf_j* and return the result.
 
-        Returns a merged systemconfig. If the sysconfig_i remains unchanged, the same instance of sysconfig_i is
+        Returns a merged SystemConfig. If the sysconfig_i remains unchanged, the same instance of sysconfig_i is
         returned, otherwise a new object is created.
         """
 
@@ -453,7 +450,7 @@ class COHDANegotiation:
         modified = False
 
         for i, a in enumerate(sorted(key_set_i | key_set_j)):
-            # An a might be in key_set_i, key_set_j or in both!
+            # An "a" might be in key_set_i, key_set_j or in both!
             if a in key_set_i and \
                     (a not in key_set_j or sysconfig_i_schedules[a].counter >= sysconfig_j_schedules[a].counter):
                 # Use data of sysconfig_i
@@ -528,25 +525,20 @@ class CohdaNegotiationModel:
 
     def by_id(self, negotiation_id: UUID) -> COHDANegotiation:
         """Get a negotiation by id
-
         :param negotiation_id: id of the negotiation
-
         :return: the negotiation
         """
         return self._negotiations[negotiation_id]
 
     def exists(self, negotiation_id: UUID) -> bool:
         """Checks whether a negotiation exists
-
         :param negotiation_id: id of the negotiation
-
         :return: True if it exists, False otherwise
         """
         return negotiation_id in self._negotiations.keys()
 
     def add(self, negotiation_id: UUID, cohda_negotiation: COHDANegotiation):
         """Add a concrete negotiation
-
         :param negotiation_id: the UUID of the negotiation
         :param cohda_negotiation: the cohda negotiation object
         """
@@ -559,25 +551,20 @@ class CohdaSolutionModel:
 
     def by_id(self, negotiation_id: UUID) -> np.array:
         """Get a solution of a negotiation by id
-
         :param negotiation_id: id of the negotiation
-
         :return: the negotiation
         """
         return self._final_schedules[negotiation_id]
 
     def exists(self, negotiation_id: UUID) -> bool:
         """Checks whether a final schedule exists
-
         :param negotiation_id: id of the negotiation
-
         :return: True if it exists, False otherwise
         """
         return negotiation_id in self._final_schedules.keys()
 
     def add(self, negotiation_id: UUID, final_schedule: np.array):
         """Add a concrete negotiation solution
-
         :param negotiation_id: the UUID of the negotiation
         :param final_schedule: the final schedule for the agent
         """
