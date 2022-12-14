@@ -5,9 +5,11 @@ import base64
 from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
-from mango_library.negotiation.cohda.cohda import CohdaMessage
-from mango_library.negotiation.core import NegotiationMessage
-from mango_library.negotiation.termination import TerminationMessage
+
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage,\
+    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage
+from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage,\
+    InformAboutTerminationMessage
 
 
 def get_np_serializer():
@@ -55,9 +57,8 @@ def deserialize_fraction(obj):
     return fractions.Fraction(obj)
 
 
-extra_serializers = [
+cohda_serializers = [
     get_np_serializer,
-
     get_uuid_serializer,
     CoalitionInvite.__serializer__,
     CoaltitionResponse.__serializer__,
@@ -66,8 +67,12 @@ extra_serializers = [
     SystemConfig.__serializer__,
     SolutionCandidate.__serializer__,
     WorkingMemory.__serializer__,
-    CohdaMessage.__serializer__,
-    NegotiationMessage.__serializer__,
+    CohdaNegotiationMessage.__serializer__,
+    CohdaSolutionRequestMessage.__serializer__,
+    CohdaProposedSolutionMessage.__serializer__,
     TerminationMessage.__serializer__,
     get_fraction_serializer,
+    StopNegotiationMessage.__serializer__,
+    InformAboutTerminationMessage.__serializer__,
+    CohdaFinalSolutionMessage.__serializer__,
 ]

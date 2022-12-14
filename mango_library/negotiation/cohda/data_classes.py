@@ -2,7 +2,7 @@
 Module that holds the data classes necessary for a COHDA negotiation
 """
 
-from typing import Dict, Callable, Optional
+from typing import Dict, Optional
 import numpy as np
 
 from mango.messages.codecs import json_serializable
@@ -14,7 +14,7 @@ class SolutionCandidate:
     Model for a solution candidate in COHDA.
     """
 
-    def __init__(self, agent_id: str, schedules: Dict[str, np.array], perf: Optional[float]) -> None:
+    def __init__(self, agent_id: str, schedules: Dict[str, np.array], perf: Optional[float] = None) -> None:
         self._agent_id = agent_id
         self._schedules = schedules
         self._perf = perf

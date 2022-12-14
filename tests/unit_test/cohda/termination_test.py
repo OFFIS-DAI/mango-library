@@ -1,21 +1,14 @@
 
 import fractions
-from typing import Any, Dict
 import uuid
-from unittest import mock
-from mango.role.core import  RoleAgent
 from mango.messages.codecs import JSON
-from mango.role.api import SimpleReactiveRole
-import pytest
-from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
-from mango_library.negotiation.core import Negotiation, NegotiationModel
-from mango_library.negotiation.termination import NegotiationTerminationRole, TerminationMessage
-from mango_library.negotiation.util import extra_serializers
+from mango_library.negotiation.termination import TerminationMessage
+from mango_library.negotiation.util import cohda_serializers
 
 
 def test_serialization():
     codec = JSON()
-    for serializer in extra_serializers:
+    for serializer in cohda_serializers:
         codec.add_serializer(*serializer())
     my_data = TerminationMessage(coalition_id=uuid.uuid1(), negotiation_id=uuid.uuid1(), weight=fractions.Fraction(1, 2))
 
