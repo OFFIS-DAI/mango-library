@@ -120,7 +120,6 @@ class COHDA:
         else:
             self._ref_point = None
 
-
     def construct_ref_point(self, solution_points, offsets=None):
         """
         Method to construct the reference point according to the given solution points.
@@ -147,7 +146,7 @@ class COHDA:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with one random schedule
@@ -166,14 +165,35 @@ class COHDA:
                 new_schedule = random.choice(schedules)
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            return [SolutionPoint(cluster_schedule=new_cs, performance=new_perf, idx=solution_point.idx)]
+            return [SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx)]
 
         else:
             return [solution_point]
 
     @staticmethod
-    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_NSGA2(solution_point: SolutionPoint, schedule_creator, agent_id) \
+            -> List[SolutionPoint]:
+        """
+        Function that mutates a solution point with all possible schedules
+        :param solution_point:
+        :param schedule_creator:
+        :param agent_id:
+        :param perf_func:
+        :param target_params:
+        :return:
+        """
+        new_solution_points = []
+        # num_solution_points could be set
+        new_schedules = schedule_creator(solution_point=solution_point, agent_id=agent_id)
+        for new_schedule in new_schedules:
+            new_cs = np.copy(solution_point.cluster_schedule)
+            new_cs[solution_point.idx[agent_id]] = new_schedule
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
+                                                     idx=solution_point.idx))
+        return new_solution_points
+
+    @staticmethod
+    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
@@ -189,8 +209,7 @@ class COHDA:
         for new_schedule in possible_schedules:
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, performance=new_perf,
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                      idx=solution_point.idx))
         return new_solution_points
 
@@ -234,39 +253,41 @@ class COHDA:
                 # get target parameters if not known
                 self._memory.target_params = message.working_memory.target_params
 
-            if current_sysconfig is None:
+            if current_sysconfig is None or current_candidate is None:
                 if self._part_id not in self._memory.system_config.schedule_choices:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
                     num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    initial_schedules = self._schedule_provider()
+                    num_initial_schedules = len(initial_schedules)
+                    initial_schedules = [initial_schedules[n % num_initial_schedules] for n in
+                                         range(num_solution_points)]
+
                     schedule_choices[self._part_id] = ScheduleSelections(
-                        np.array(inital_schedules), self._counter + 1)
+                        np.array(initial_schedules), self._counter + 1)
                     self._counter += 1
                     # we need to create a new class of Systemconfig so the updates are recognized in handle_cohda_msgs()
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices,
                                                      num_solution_points=num_solution_points)
+
+                    if self._part_id not in self._memory.solution_candidate.schedules:
+                        # if you have not yet selected any schedule in the sysconfig, choose any to start with
+                        schedules = self._memory.solution_candidate.schedules
+                        schedules[self._part_id] = np.array(initial_schedules)
+                        # we need to create a new class of SolutionCandidate so the updates are
+                        # recognized in handle_cohda_msgs()
+                        current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
+                                                              num_solution_points=num_solution_points)
+                        current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
+                                                                 self._memory.target_params)
+
+                        performances = current_candidate.perf
+                        current_candidate.hypervolume = self.get_hypervolume(performances,
+                                                                             current_candidate.solution_points)
                 else:
                     current_sysconfig = self._memory.system_config
 
-            if current_candidate is None:
-                if self._part_id not in self._memory.solution_candidate.schedules:
-                    # if you have not yet selected any schedule in the sysconfig, choose any to start with
-                    schedules = self._memory.solution_candidate.schedules
-                    num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
-                    schedules[self._part_id] = np.array(inital_schedules)
-                    # we need to create a new class of SolutionCandidate so the updates are
-                    # recognized in handle_cohda_msgs()
-                    current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
-                                                          num_solution_points=num_solution_points)
-                    current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
-                                                             self._memory.target_params)
-
-                    performances = current_candidate.perf
-                    current_candidate.hypervolume = self.get_hypervolume(performances,
-                                                                         current_candidate.solution_points)
-                else:
+                if current_candidate is None:
                     current_candidate = self._memory.solution_candidate
 
             new_sysconf = message.working_memory.system_config
@@ -305,8 +326,11 @@ class COHDA:
             for solution_point in solution_points_to_mutate:
                 # add new solution points to list of all solution points
                 new_solution_points = self._mutate_func(
-                    solution_point=solution_point, agent_id=self._part_id, perf_func=self._perf_func,
-                    target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
+                    solution_point=solution_point, agent_id=self._part_id, schedule_creator=self._schedule_provider)
+
+                for new_point in new_solution_points:
+                    new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
+                    new_point.performance = new_perf
 
                 all_solution_points.extend(new_solution_points)
 
