@@ -199,6 +199,7 @@ class NegotiationStarterRole(ProactiveRole):
         # Assume there is a exactly one coalition
         matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), msg._coalition_id)
         negotiation_uuid = uuid.uuid1()
+        print(f"negotiation_id: {negotiation_uuid}")
 
         weight_per_msg = Fraction(1, len(matched_assignment.neighbors))  # relevant for termination detection
         for neighbor in matched_assignment.neighbors:
