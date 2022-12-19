@@ -174,7 +174,7 @@ class NegotiationTerminationParticipantRole(Role):
         # reset weight
         self._weight_map[content.negotiation_id] = Fraction(0, 1)
         # Send weight
-        await(self.context.send_acl_message(
+        self.context.schedule_instant_task(self.context.send_acl_message(
             content=TerminationMessage(current_weight, content.coalition_id, content.negotiation_id),
             receiver_addr=termination_detector[0],
             receiver_id=termination_detector[1],
@@ -204,22 +204,22 @@ class NegotiationTerminationDetectorRole(Role):
     async def _send_stop_and_inform(self, negotiation_id):
         # send stopNegotiationMessage first
         for agent_addr, agent_id in self._participant_map[negotiation_id]:
-            await self.context.send_acl_message(
+            self.context.schedule_instant_task(self.context.send_acl_message(
                 content=StopNegotiationMessage(negotiation_id=negotiation_id),
                 receiver_addr=agent_addr,
                 receiver_id=agent_id,
                 acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-            )
+            ))
 
         # now send message to aggregator
         if self._aggregator_addr is not None and self._aggregator_id is not None:
-            await self.context.send_acl_message(
+            self.context.schedule_instant_task(self.context.send_acl_message(
                 content=InformAboutTerminationMessage(negotiation_id=negotiation_id,
                                                       participants=list(self._participant_map[negotiation_id])),
                 receiver_addr=self._aggregator_addr,
                 receiver_id=self._aggregator_id,
                 acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid},
-            )
+            ))
 
     def handle_term_msg(self, content: TerminationMessage, meta: Dict[str, Any]) -> None:
         """Handle the termination message.
