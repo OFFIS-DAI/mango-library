@@ -144,10 +144,16 @@ class COHDANegotiationRole(Role):
                             receiver_addr=neighbor[1], receiver_id=neighbor[2],
                             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid})
                         )
+                print(f'[mango-library] [{self.context.addr, self.context.aid}]:'
+                      f' Finished process message. Performance of current candidate:'
+                      f'{cohda_negotiation._memory.solution_candidate.perf}')
 
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
+                print(f'[mango-library] [{self.context.addr, self.context.aid}]:'
+                      f' Finished process message. No new messages. Negotiation is now considered as not active.')
+
         return process_msg
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
