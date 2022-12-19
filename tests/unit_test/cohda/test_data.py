@@ -1,10 +1,15 @@
-from mango_library.negotiation.cohda.cohda import *
+import uuid
+
+from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation
+from mango_library.negotiation.cohda.data_classes import SystemConfig, ScheduleSelection, SolutionCandidate, \
+    WorkingMemory
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
 
 
 def create_cohda_object(schedule_provider, part_id, memory_target_params, is_local_acceptable=lambda x: True, counter=0,
                         perf_func=None):
 
-    cohda_object = COHDA(schedule_provider=schedule_provider,
+    cohda_object = COHDANegotiation(schedule_provider=schedule_provider,
                          is_local_acceptable=is_local_acceptable,
                          part_id=part_id, perf_func=perf_func)
     cohda_object._memory.target_params = memory_target_params
@@ -63,30 +68,30 @@ test_decide_params = [
 
 test_perceive_params = [
                              (SystemConfig({}), SolutionCandidate(agent_id='1', perf=None, schedules={}),
-                              [CohdaMessage(working_memory=WorkingMemory(
+                              [WorkingMemory(
                                   target_params=([1, 1, 1], [1, 1, 1]),
                                   system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2], 1)}),
                                   solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2]},
                                                                        agent_id='2', perf=-3)
-                              ))],
+                              )],
                               SystemConfig({'2': ScheduleSelection([0, 0, 2], 1),
                                             '1': ScheduleSelection([0, 1, 2], 1)}),
                               SolutionCandidate(schedules={'2': [0, 0, 2], '1': [0, 1, 2]}, agent_id='1', perf=-4)
                               ),
 
                              (SystemConfig({}), SolutionCandidate(agent_id='1', perf=None, schedules={}),
-                              [CohdaMessage(working_memory=WorkingMemory(
+                              [WorkingMemory(
                                   target_params=([1, 1, 1], [1, 1, 1]),
                                   system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2], 1)}),
                                   solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2]},
                                                                        agent_id='2', perf=-3)
-                              )),
-                                  CohdaMessage(working_memory=WorkingMemory(
+                              ),
+                                  WorkingMemory(
                                       target_params=([1, 1, 1], [1, 1, 1]),
                                       system_config=SystemConfig({'3': ScheduleSelection([1, 0, 2], 1)}),
                                       solution_candidate=SolutionCandidate(schedules={'3': [1, 0, 2]}, agent_id='3',
                                                                            perf=-2)
-                                  ))],
+                                  )],
                               SystemConfig({'3': ScheduleSelection([1, 0, 2], 1),
                                             '2': ScheduleSelection([0, 0, 2], 1),
                                             '1': ScheduleSelection([0, 1, 2], 1)}),
@@ -95,19 +100,19 @@ test_perceive_params = [
                               ),
 
                              (SystemConfig({}), SolutionCandidate(agent_id='1', perf=None, schedules={}),
-                              [CohdaMessage(working_memory=WorkingMemory(
+                              [WorkingMemory(
                                   target_params=([1, 1, 1], [1, 1, 1]),
                                   system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2], 1)}),
                                   solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2]},
                                                                        agent_id='2', perf=-3)
-                              )),
-                                  CohdaMessage(working_memory=WorkingMemory(
+                              ),
+                                  WorkingMemory(
                                       target_params=([1, 1, 1], [1, 1, 1]),
                                       system_config=SystemConfig({'2': ScheduleSelection([1, 1, 1], 2),
                                                                   '3': ScheduleSelection([1, 0, 2], 1)}),
                                       solution_candidate=SolutionCandidate(schedules={'3': [1, 0, 2], '2': [1, 1, 1]},
                                                                            agent_id='3', perf=-3)
-                                  ))],
+                                  )],
                               SystemConfig({'3': ScheduleSelection([1, 0, 2], 1),
                                             '2': ScheduleSelection([1, 1, 1], 2),
                                             '1': ScheduleSelection([0, 1, 2], 1)}),
@@ -117,19 +122,19 @@ test_perceive_params = [
 
                              (SystemConfig(schedule_choices={'1': ScheduleSelection([2, 2, 2], 1)}),
                               SolutionCandidate(agent_id='1', perf=-3, schedules={'1': [2, 2, 2]}),
-                              [CohdaMessage(working_memory=WorkingMemory(
+                              [WorkingMemory(
                                   target_params=([1, 1, 1], [1, 1, 1]),
                                   system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2], 1)}),
                                   solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2]},
                                                                        agent_id='2', perf=-3)
-                              )),
-                                  CohdaMessage(working_memory=WorkingMemory(
+                              ),
+                                  WorkingMemory(
                                       target_params=([1, 1, 1], [1, 1, 1]),
                                       system_config=SystemConfig({'2': ScheduleSelection([1, 1, 1], 2),
                                                                   '3': ScheduleSelection([1, 0, 2], 1)}),
                                       solution_candidate=SolutionCandidate(schedules={'3': [1, 0, 2], '2': [1, 1, 1]},
                                                                            agent_id='3', perf=-3)
-                                  ))],
+                                  )],
                               SystemConfig({'3': ScheduleSelection([1, 0, 2], 1),
                                             '2': ScheduleSelection([1, 1, 1], 2),
                                             '1': ScheduleSelection([2, 2, 2], 1)}),
