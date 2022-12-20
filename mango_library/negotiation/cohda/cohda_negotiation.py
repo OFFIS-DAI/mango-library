@@ -23,7 +23,9 @@ class COHDANegotiationRole(Role):
                  check_inbox_interval: float = 0.1):
         """
         Init of COHDANegotiationRole
-        :param schedules_provider: Function that takes no arguments and returns a list of schedules
+        :param schedules_provider: Function that takes either no arguments or "candidate" as an argument or
+        "system_config" as an argument or "candidate" and "system_config" as arguments and
+        provides a list of possible schedules
         :param local_acceptable_func: Function that takes a schedule as input and returns a boolean indicating,
         if the schedule is locally acceptable or not. Defaults to lambda x: True
         :param perf_func: performance function for the agent. Defaults to deviation_from_target_schedule
@@ -234,7 +236,9 @@ class COHDANegotiation:
                  part_id: str, perf_func=None):
         """
         Init of the CohdaNegotiation
-        :param schedule_provider: Function that takes no arguments and provides a list of possible schedules
+        :param schedule_provider: Function that takes either no arguments or "candidate" as an argument or
+        "system_config" as an argument or "candidate" and "system_config" as arguments and
+        provides a list of possible schedules
         :param is_local_acceptable: Function that defines whether a schedule is locally acceptable or not
         :param part_id: the part_id of the agent
         :param perf_func: The performance function, that takes one numpy array and target_params
@@ -242,7 +246,7 @@ class COHDANegotiation:
         """
         self._part_id = part_id
 
-        def complete_schedule_provider(system_config: Optional[SystemConfig], candidate: Optional[SolutionCandidate]):
+        def complete_schedule_provider(system_config: SystemConfig, candidate: SolutionCandidate):
             schedule_provider_args = inspect.signature(schedule_provider).parameters.keys()
             args = {}
             if 'candidate' in schedule_provider_args:
@@ -360,8 +364,9 @@ class COHDANegotiation:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
                     schedule_choices[self._part_id] = ScheduleSelection(
-                        np.array(self._schedule_provider(candidate=None,
-                                                         system_config=None)[0]), self._counter + 1)
+                        np.array(self._schedule_provider(candidate=self._memory.solution_candidate,
+                                                         system_config=self._memory.system_config)[0]),
+                        self._counter + 1)
                     self._counter += 1
                     # we need to create a new instance of SystemConfig so the updates are
                     # recognized in handle_cohda_msgs()
@@ -373,8 +378,8 @@ class COHDANegotiation:
                 if self._part_id not in self._memory.solution_candidate.schedules:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
-                    schedules[self._part_id] = self._schedule_provider(candidate=None,
-                                                         system_config=None)[0]
+                    schedules[self._part_id] = self._schedule_provider(candidate=self._memory.solution_candidate,
+                                                         system_config=self._memory.system_config)[0]
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
                     current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)

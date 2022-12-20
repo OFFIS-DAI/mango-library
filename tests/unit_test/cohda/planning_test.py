@@ -186,7 +186,7 @@ def test_schedule_provider_with_additional_parameters():
         cohda_negotiation = COHDANegotiation(schedule_provider=schedule_provider, is_local_acceptable=lambda _: True,
                                              part_id='1')
         s, c = cohda_negotiation._perceive(working_memories=init_wms)
-        assert not received
+        assert received
         cohda_negotiation._decide(s, c)
         assert received
 
