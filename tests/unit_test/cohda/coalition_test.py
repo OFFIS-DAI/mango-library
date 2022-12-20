@@ -65,6 +65,21 @@ def test_serialize_coalition_assignment():
     assert my_data.topic == decoded.topic
 
 
+def test_colition_initiator_with_str_as_addr():
+    c_init_role = CoalitionInitiatorRole(participants=[('agent_addr_0', 'Agent0'),
+                                                       ('agent_addr_1', 'Agent0'),
+                                                       (('localhost', 5555), 'Agent0'),
+                                                       ], topic='', details='')
+
+    msg = CoaltitionResponse(accept=True)
+    c_init_role.handle_coalition_response_msg(content=msg, meta={'sender_addr': 'agent_addr_0',
+                                                                 'sender_id': 'Agent0'})
+    assert ('agent_addr_0', 'Agent0') in c_init_role._part_to_state.keys()
+    c_init_role.handle_coalition_response_msg(content=msg, meta={'sender_addr': ['localhost', 5555],
+                                                                 'sender_id': 'Agent0'})
+    assert (('localhost', 5555), 'Agent0') in c_init_role._part_to_state.keys()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("num_part", [1, 2, 3, 4, 5])
 async def test_build_coalition(num_part):
