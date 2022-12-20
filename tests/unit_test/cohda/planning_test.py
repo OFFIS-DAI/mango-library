@@ -142,37 +142,20 @@ async def test_optimize_simple_test_case():
 def test_schedule_provider_with_additional_parameters():
     s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
     schedule_providers = []
-    received = None
 
     def schedule_provider_c(candidate):
-        nonlocal received
-        if candidate is not None:
-            assert isinstance(candidate, SolutionCandidate)
-            received = True
-        else:
-            received = False
-
+        assert isinstance(candidate, SolutionCandidate)
         return s_array[0]
     schedule_providers.append(schedule_provider_c)
 
     def schedule_provider_s(system_config):
-        nonlocal received
-        if system_config is not None:
-            assert isinstance(system_config, SystemConfig)
-            received = True
-        else:
-            received = False
+        assert isinstance(system_config, SystemConfig)
         return s_array[0]
     schedule_providers.append(schedule_provider_s)
 
     def schedule_provider_s_c(system_config, candidate):
-        nonlocal received
-        if system_config is not None and candidate is not None:
-            assert isinstance(system_config, SystemConfig)
-            assert isinstance(candidate, SolutionCandidate)
-            received = True
-        else:
-            received = False
+        assert isinstance(system_config, SystemConfig)
+        assert isinstance(candidate, SolutionCandidate)
         return s_array[0]
     schedule_providers.append(schedule_provider_s_c)
 
@@ -186,9 +169,7 @@ def test_schedule_provider_with_additional_parameters():
         cohda_negotiation = COHDANegotiation(schedule_provider=schedule_provider, is_local_acceptable=lambda _: True,
                                              part_id='1')
         s, c = cohda_negotiation._perceive(working_memories=init_wms)
-        assert received
         cohda_negotiation._decide(s, c)
-        assert received
 
 
 @pytest.mark.asyncio
