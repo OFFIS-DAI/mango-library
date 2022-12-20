@@ -242,18 +242,14 @@ class COHDANegotiation:
         """
         self._part_id = part_id
 
-        print('start defining')
-        def complete_schedule_provider(system_config: SystemConfig, candidate: SolutionCandidate):
-            print('Calling perf func')
+        def complete_schedule_provider(system_config: Optional[SystemConfig], candidate: Optional[SolutionCandidate]):
             schedule_provider_args = inspect.signature(schedule_provider).parameters.keys()
             args = {}
             if 'candidate' in schedule_provider_args:
                 args['candidate'] = candidate
             if 'system_config' in schedule_provider_args:
                 args['system_config'] = system_config
-            print('args', args)
             return schedule_provider(**args)
-        print('done defining')
 
         self._schedule_provider = complete_schedule_provider
 
@@ -363,10 +359,9 @@ class COHDANegotiation:
                 if self._part_id not in self._memory.system_config.schedule_choices:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
-                    print('Going to call schedule provider')
                     schedule_choices[self._part_id] = ScheduleSelection(
-                        np.array(self._schedule_provider(candidate=current_candidate,
-                                                         system_config=current_sysconfig)[0]), self._counter + 1)
+                        np.array(self._schedule_provider(candidate=None,
+                                                         system_config=None)[0]), self._counter + 1)
                     self._counter += 1
                     # we need to create a new instance of SystemConfig so the updates are
                     # recognized in handle_cohda_msgs()
@@ -378,8 +373,8 @@ class COHDANegotiation:
                 if self._part_id not in self._memory.solution_candidate.schedules:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
-                    schedules[self._part_id] = self._schedule_provider(candidate=current_candidate,
-                                                         system_config=current_sysconfig)[0]
+                    schedules[self._part_id] = self._schedule_provider(candidate=None,
+                                                         system_config=None)[0]
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
                     current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)
