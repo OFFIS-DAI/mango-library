@@ -225,7 +225,7 @@ class CoalitionInitiatorRole(ProactiveRole):
     def setup(self):
 
         # subscriptions
-        self.context.subscribe_message(self, self.handle_msg,
+        self.context.subscribe_message(self, self.handle_coalition_response_msg,
                                        lambda c, m: isinstance(c, CoaltitionResponse))
 
         # tasks
@@ -240,21 +240,26 @@ class CoalitionInitiatorRole(ProactiveRole):
         self._coal_id = uuid.uuid1()
 
         for participant in self._participants:
-            await agent_context.send_message(
+            await agent_context.send_acl_message(
                 content=CoalitionInvite(self._coal_id, self._topic),
                 receiver_addr=participant[0],
                 receiver_id=participant[1],
                 acl_metadata={'sender_addr': agent_context.addr,
-                              'sender_id': agent_context.aid},
-                create_acl=True)
+                              'sender_id': agent_context.aid}
+            )
 
-    def handle_msg(self, content: CoaltitionResponse, meta: Dict[str, Any]) -> None:
+    def handle_coalition_response_msg(self, content: CoaltitionResponse, meta: Dict[str, Any]) -> None:
         """Handle the responses to the invites.
         :param content: the invite response
         :param meta: meta data
         """
-        self._part_to_state[(meta['sender_addr'][0], meta['sender_addr'][1],
-                             meta['sender_id'])] = content.accept
+
+        sender_addr = meta['sender_addr']
+        sender_id = meta['sender_id']
+        if isinstance(sender_addr, list):
+            sender_addr = tuple(sender_addr)
+
+        self._part_to_state[(sender_addr, sender_id)] = content.accept
 
         if len(self._part_to_state) == len(self._participants) and not self._assignments_sent:
             self._send_assignments(self.context)
@@ -263,22 +268,21 @@ class CoalitionInitiatorRole(ProactiveRole):
     def _send_assignments(self, agent_context: RoleContext):
         part_id = 0
         accepted_participants = []
-        for part in self._participants:
-            part_key = part[0][0], part[0][1], part[1]
-            if part_key in self._part_to_state and self._part_to_state[part_key]:
+        for agent_addr, agent_id in self._participants:
+            if (agent_addr, agent_id) in self._part_to_state and self._part_to_state[(agent_addr, agent_id)]:
                 part_id += 1
-                accepted_participants.append((str(part_id), (part_key[0], part_key[1]), part_key[2]))
+                accepted_participants.append((str(part_id), agent_addr, agent_id))
 
         part_to_neighbors = self._topology_creator(accepted_participants)
         for part in accepted_participants:
-            asyncio.create_task(agent_context.send_message(
+            self.context.schedule_instant_task(agent_context.send_acl_message(
                 content=CoalitionAssignment(self._coal_id, part_to_neighbors[part],
                                             self._topic, part[0],
                                             agent_context.aid, agent_context.addr),
                 receiver_addr=part[1], receiver_id=part[2],
                 acl_metadata={'sender_addr': agent_context.addr,
-                              'sender_id': agent_context.aid},
-                create_acl=True))
+                              'sender_id': agent_context.aid}
+            ))
 
 
 class CoalitionParticipantRole(Role):
