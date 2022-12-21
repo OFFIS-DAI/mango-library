@@ -6,7 +6,7 @@ import numpy as np
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionRequestMessage, \
-    CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage
+    CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
 from mango.role.api import Role
@@ -208,11 +208,11 @@ class COHDANegotiationRole(Role):
             ),
         )
 
-    def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, _):
+    def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, meta):
         """
         Is called once a CohdaFinalSolutionMessage arrives
         :param content: The CohdaFinalSolutionMessage
-        :param _: Meta dict
+        :param meta: Meta dict
         :return:
         """
         final_candidate = content.solution_candidate
@@ -223,6 +223,12 @@ class COHDANegotiationRole(Role):
         final_schedule = final_candidate.schedules[part_id]
         # add final schedule to CohdaSolutionModel
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
+        # reply with a confirmation
+        self.context.schedule_instant_task(
+            self.context.send_acl_message(content=ConfirmCohdaSolutionMessage(neg_id),
+                                          receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                                          acl_metadata={'sender_id': self.context.aid})
+        )
 
 
 class COHDANegotiation:

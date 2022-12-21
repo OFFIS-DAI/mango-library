@@ -4,7 +4,7 @@ from typing import Dict, Tuple, Optional, List
 from mango.role.api import Role
 
 from mango_library.negotiation.cohda.cohda_messages import CohdaSolutionRequestMessage, CohdaProposedSolutionMessage, \
-    CohdaFinalSolutionMessage
+    CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import SolutionCandidate
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation
 from mango_library.negotiation.termination import InformAboutTerminationMessage
@@ -26,6 +26,8 @@ class CohdaSolutionAggregationRole(Role):
         super().__init__()
         self.cohda_solutions: Dict[UUID, SolutionCandidate] = {}    # holds teh final solutions
         self._open_solution_requests: Dict[UUID, Dict[Tuple, Optional[SolutionCandidate]]] = {}  # holds open requests
+        self._open_confirmations: Dict[UUID, List[Tuple]] = {}
+        self._confirmed_cohda_solutions: List[UUID] = []
 
     def setup(self):
         super().setup()
@@ -33,6 +35,8 @@ class CohdaSolutionAggregationRole(Role):
                                        message_condition=lambda c, _: isinstance(c, InformAboutTerminationMessage))
         self.context.subscribe_message(self, self.handle_cohda_solution,
                                        message_condition=lambda c, _: isinstance(c, CohdaProposedSolutionMessage))
+        self.context.subscribe_message(self, self.handle_solution_confirmation,
+                                       message_condition=lambda c, _: isinstance(c, ConfirmCohdaSolutionMessage))
 
     def handle_inform_about_term(self, content: InformAboutTerminationMessage, _):
         """
@@ -106,11 +110,12 @@ class CohdaSolutionAggregationRole(Role):
             final_solution = self.aggregate_solution(list(self._open_solution_requests[negotiation_id].values()))
             # store the result
             self.cohda_solutions[negotiation_id] = final_solution
+            self._open_confirmations[negotiation_id] = list(self._open_solution_requests[negotiation_id].keys())
             # inform all participants
             for agent_addr, agent_id in self._open_solution_requests[negotiation_id].keys():
                 self.context.schedule_instant_task(self.context.send_acl_message(
                     content=CohdaFinalSolutionMessage(solution_candidate=final_solution, negotiation_id=negotiation_id),
-                    receiver_addr=agent_addr, receiver_id=agent_id
+                    receiver_addr=agent_addr, receiver_id=agent_id, acl_metadata={'sender_id': self.context.aid}
                 ))
             # delete negotiation_id from open requests dict
             del self._open_solution_requests[negotiation_id]
@@ -138,3 +143,33 @@ class CohdaSolutionAggregationRole(Role):
                     perf_func=lambda *_: float('-inf'), target_params=None)
 
         return current_best_candidate
+
+    def handle_solution_confirmation(self, content: ConfirmCohdaSolutionMessage, meta):
+        neg_id = content.negotiation_id
+
+        # check if neg_id is expected and if you can extract sender information
+        if neg_id not in self._open_confirmations.keys():
+            logger.warning(f'Received a solution confirmation with strange neg_id {neg_id}')
+            return
+        if 'sender_addr' not in meta or 'sender_id' not in meta:
+            logger.warning('Cannot identify of sender of a ConfirmCohdaSolutionMessage')
+            return
+
+        # get sender information
+        sender_addr = meta['sender_addr']
+        if isinstance(sender_addr, list):
+            sender_addr = tuple(sender_addr)
+        agent_key = sender_addr, meta['sender_id']
+
+        # check if you expect a rply from this agent
+        if agent_key not in self._open_confirmations[neg_id]:
+            logger.warning(f'Received a ConfirmCohdaSolutionMessage from {agent_key}, but don\'t'
+                           f'expect any from this agent')
+            return
+
+        self._open_confirmations[neg_id].remove(agent_key)
+
+        if len(self._open_confirmations[neg_id]) == 0:
+            # all confirmations received
+            del self._open_confirmations[neg_id]
+            self._confirmed_cohda_solutions.append(neg_id)
