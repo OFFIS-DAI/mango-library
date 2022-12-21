@@ -10,7 +10,8 @@ from mango.role.core import RoleAgent
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation, COHDANegotiationRole, \
     CohdaNegotiationModel
 from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
-from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
+from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate, \
+    ScheduleSelection
 from test_data import test_decide_params, test_perceive_params
 import asyncio
 
@@ -136,6 +137,39 @@ async def test_optimize_simple_test_case():
         list(agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
     assert np.array_equal(cohda_negotiation._memory.solution_candidate.schedules['0'],
                           np.array([11, 11, 11, 11, 11]))
+
+
+def test_schedule_provider_with_additional_parameters():
+    s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
+    schedule_providers = []
+
+    def schedule_provider_c(candidate):
+        assert isinstance(candidate, SolutionCandidate)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_c)
+
+    def schedule_provider_s(system_config):
+        assert isinstance(system_config, SystemConfig)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_s)
+
+    def schedule_provider_s_c(system_config, candidate):
+        assert isinstance(system_config, SystemConfig)
+        assert isinstance(candidate, SolutionCandidate)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_s_c)
+
+    init_wms = [WorkingMemory(
+        target_params=([1, 1, 1, 1, 1], [1, 1, 1, 1, 1]),
+        system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2, 2, 2], 1)}),
+        solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2, 2, 2]},
+                                             agent_id='2', perf=-3)
+    )]
+    for schedule_provider in schedule_providers:
+        cohda_negotiation = COHDANegotiation(schedule_provider=schedule_provider, is_local_acceptable=lambda _: True,
+                                             part_id='1')
+        s, c = cohda_negotiation._perceive(working_memories=init_wms)
+        cohda_negotiation._decide(s, c)
 
 
 @pytest.mark.asyncio
