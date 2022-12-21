@@ -31,7 +31,10 @@ async def test_coalition_to_cohda_with_termination():
 
     for i in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDANegotiationRole(schedules_provider=lambda: s_array[0],
+        def schedules_provider(candidate):
+            print('This is the candidate', candidate)
+            return s_array[0]
+        cohda_role = COHDANegotiationRole(schedules_provider=schedules_provider,
                                           local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
