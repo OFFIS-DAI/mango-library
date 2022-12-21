@@ -3,7 +3,7 @@ integrate COHDA in the negotiation system and the core COHDA-decider together wi
 """
 import asyncio
 import random
-import time
+# import time
 from typing import Dict, List, Any, Tuple, Callable, Optional
 
 import numpy as np
@@ -146,71 +146,71 @@ class COHDA:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id) \
+    def mutate_with_one_random(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
-        Function that mutates a solution point with one random schedule
-        :param solution_point:
+        Function that mutates each solution point with one random schedule that is different from the original
+        :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :param perf_func:
-        :param target_params:
         :return:
         """
         schedules = schedule_creator()
         if len(schedules) > 1:
-            schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
-            new_schedule = random.choice(schedules)
-            while new_schedule == schedule_before:
+            new_solution_points = []
+            for solution_point in solution_points:
+                schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
                 new_schedule = random.choice(schedules)
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_schedule
-            return [SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx)]
+                while new_schedule == schedule_before:
+                    new_schedule = random.choice(schedules)
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
+            return new_solution_points
 
         else:
-            return [solution_point]
+            return solution_points
 
     @staticmethod
-    def mutate_NSGA2(solution_point: SolutionPoint, schedule_creator, agent_id) \
+    def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
-        :param solution_point:
+        :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :param perf_func:
-        :param target_params:
         :return:
         """
         new_solution_points = []
-        # num_solution_points could be set
-        new_schedules = schedule_creator(solution_point=solution_point, agent_id=agent_id)
-        for new_schedule in new_schedules:
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
-                                                     idx=solution_point.idx))
+        # TODO @EFR here I have just iterated over each solution point, you could also optimize all
+        #  solution points at once
+        for solution_point in solution_points:
+            new_schedules = schedule_creator(solution_point=solution_point, agent_id=agent_id)
+            for new_schedule in new_schedules:
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
+                                                         idx=solution_point.idx))
         return new_solution_points
 
     @staticmethod
-    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id) \
+    def mutate_with_all_possible(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
-        :param solution_point:
+        :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :param perf_func:
-        :param target_params:
         :return:
         """
         possible_schedules = schedule_creator()
         new_solution_points = []
-        for new_schedule in possible_schedules:
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
-                                                     idx=solution_point.idx))
+        for solution_point in solution_points:
+            for new_schedule in possible_schedules:
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
+                                                         idx=solution_point.idx))
         return new_solution_points
 
     def handle_cohda_msgs(self, messages: List[CohdaMessage]) -> Optional[CohdaMessage]:
@@ -225,16 +225,16 @@ class COHDA:
 
         # perceive
         sysconf, candidate = self._perceive(messages)
-        t_after_perceive = time.time()
+        # t_after_perceive = time.time()
         # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
-            t_after_decide = time.time()
+            # t_after_decide = time.time()
             # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
             return_msg = self._act(new_sysconfig=sysconf, new_candidate=candidate)
-            t_after_act = time.time()
+            # t_after_act = time.time()
             # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
             return return_msg
         else:
@@ -309,7 +309,7 @@ class COHDA:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
-        t_start_decide = time.time()
+        # t_start_decide = time.time()
         current_best_candidate = candidate
 
         for iteration in range(self._num_iterations):
@@ -323,18 +323,18 @@ class COHDA:
             solution_points_to_mutate = self._pick_func(solution_points=candidate_from_sysconfig.solution_points)
 
             # execute mutate for all solution points
-            for solution_point in solution_points_to_mutate:
-                # add new solution points to list of all solution points
-                new_solution_points = self._mutate_func(
-                    solution_point=solution_point, agent_id=self._part_id, schedule_creator=self._schedule_provider)
+            # add new solution points to list of all solution points
+            new_solution_points = self._mutate_func(
+                solution_points=solution_points_to_mutate, agent_id=self._part_id,
+                schedule_creator=self._schedule_provider)
 
-                for new_point in new_solution_points:
-                    new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
-                    new_point.performance = new_perf
+            for new_point in new_solution_points:
+                new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
+                new_point.performance = new_perf
 
-                all_solution_points.extend(new_solution_points)
+            all_solution_points.extend(new_solution_points)
 
-            t_after_point_creation = time.time()
+            # t_after_point_creation = time.time()
             # print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
             population_set = set(all_solution_points)
@@ -359,16 +359,16 @@ class COHDA:
                     else:
                         break
 
-            t_after_recuction = time.time()
+            # t_after_recuction = time.time()
             # print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
 
-            sorted_perfs = sorted([(round(ind.objective_values[0], 2),
-                                    round(ind.objective_values[1], 2)) for ind in all_solution_points],
-                                  key=lambda l: l[0])
+            # sorted_perfs = sorted([(round(ind.objective_values[0], 2),
+            #                         round(ind.objective_values[1], 2)) for ind in all_solution_points],
+            #                       key=lambda l: l[0])
             # print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
@@ -470,7 +470,6 @@ class COHDA:
         :param candidate_j: Second Candidate
         :param agent_id: Id of the agent that executes merge
         :param perf_func: Performance Function
-        :param reference_point: Reference Point
         :return: An Instance of SolutionCandidate
         """
 
