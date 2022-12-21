@@ -398,7 +398,7 @@ class COHDA:
                 # update counter
                 self._counter += 1
 
-            return sysconfig, current_best_candidate
+        return sysconfig, current_best_candidate
 
     def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> CohdaMessage:
         """
