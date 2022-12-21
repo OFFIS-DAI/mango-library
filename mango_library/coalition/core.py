@@ -19,11 +19,16 @@ The role models defined in this module:
 from uuid import UUID
 import asyncio
 import uuid
-from typing import Dict, Any, List, Tuple, Union
+import random
+from typing import Dict, Any, List, Tuple, Union, Set
 
 from mango.role.api import ProactiveRole, Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
+
+
+ContainerAddress = Union[str, Tuple[str, int]]
+ParticipantKey = Tuple[str, ContainerAddress, str]  # part_id as str, ContainerAddress, AgentID
 
 
 @json_serializable
@@ -33,7 +38,7 @@ class CoalitionAssignment:
     f.e. participant id, neighbors, ... .
     """
 
-    def __init__(self, coalition_id: UUID, neighbors: List[Tuple[str, Union[str, Tuple[str, int]], str]],
+    def __init__(self, coalition_id: UUID, neighbors: List[ParticipantKey],
                  topic: str,
                  part_id: str,
                  controller_agent_id: str,
@@ -54,11 +59,11 @@ class CoalitionAssignment:
         return self._coalition_id
 
     @property
-    def neighbors(self) -> List[Tuple[str, Union[str, Tuple[str, int]], str]]:
+    def neighbors(self) -> List[ParticipantKey]:
         """Neighbors of the participant.
 
         :return: List of the participant, a participant is modelled as
-                                        tuple (part_id, adress, aid)
+                                        tuple (part_id, address, aid)
         """
         return self._neighbors
 
@@ -87,7 +92,7 @@ class CoalitionAssignment:
         return self._controller_agent_id
 
     @property
-    def controller_agent_addr(self) -> Union[str, Tuple[str, int]]:
+    def controller_agent_addr(self) -> ContainerAddress:
         """Adress of the controller agent
 
         :return: adress as tuple
@@ -182,17 +187,16 @@ class CoaltitionResponse:
 
     @property
     def accept(self) -> bool:
-        """""Flag whether the coalition is accpeted
-
+        """
+        Flag whether the coalition is accpeted
         :return: true if accepted, false otherwise
-        """""
+        """
         return self._accept
 
 
-def clique_creator(participants: List[Tuple[str, Union[str, Tuple[str, int]], str]]) -> \
-        Dict[Tuple[str, Union[str, Tuple[str, int]], str],
-             List[Tuple[str, Union[str, Tuple[str, int]], str]]]:
-    """Create a clique topology
+def clique_creator(participants: List[ParticipantKey]) -> Dict[ParticipantKey, List[ParticipantKey]]:
+    """
+    Create a clique topology
 
     :param participants: the list of all participants
 
@@ -205,14 +209,50 @@ def clique_creator(participants: List[Tuple[str, Union[str, Tuple[str, int]], st
     return part_to_neighbors
 
 
+def small_world_creator(participants: List[ParticipantKey], k=2, w=0.0) -> Dict[ParticipantKey, List[ParticipantKey]]:
+    """
+    Builds a small world ring topology with neighbors in a distance of k and with random neighbors with the
+    probability w
+    :param participants:
+    :param k: maximum distance of connections in the ring
+    :param w: probability of random connections
+    """
+    neighborhood: Dict[ParticipantKey, List[ParticipantKey]] = {}
+    n_particpants = len(participants)
+    print(participants)
+
+    for agent in participants:
+        neighborhood[agent] = []
+
+    # create the ring
+    for index, participant in enumerate(participants):
+        for distance in range(1, k + 1):
+            left_neighbor = participants[(index - distance) % n_particpants]  # left neighbor
+            right_neighbor = participants[(index + distance) % n_particpants]  # right neighbor
+
+            if participant != left_neighbor and left_neighbor not in neighborhood[participant]:
+                neighborhood[participant].append(left_neighbor)
+            if participant != right_neighbor and right_neighbor not in neighborhood[participant]:
+                neighborhood[participant].append(right_neighbor)
+
+    # create random connections with probability w
+    for index, participant in enumerate(participants):
+        if random.random() < w:
+            random_agent = random.choice(participants)
+            if random_agent != participant and random_agent not in neighborhood[participant]:
+                neighborhood[participant].append(random_agent)
+                neighborhood[random_agent].append(participant)
+    return neighborhood
+
+
 class CoalitionInitiatorRole(ProactiveRole):
     """Role responsible for initiating a coalition. Considered as proactive role.
 
     The role will invite all given participants and add them to coalition if they accept the invite.
     """
 
-    def __init__(self, participants: List, topic: str, details: str,
-                 topology_creator=clique_creator):
+    def __init__(self, participants: List[Tuple[ContainerAddress, str]], topic: str, details: str,
+                 topology_creator=small_world_creator):
         super().__init__()
         self._participants = participants
         self._topic = topic
@@ -258,6 +298,8 @@ class CoalitionInitiatorRole(ProactiveRole):
         sender_id = meta['sender_id']
         if isinstance(sender_addr, list):
             sender_addr = tuple(sender_addr)
+
+        sender_addr: ContainerAddress
 
         self._part_to_state[(sender_addr, sender_id)] = content.accept
 
