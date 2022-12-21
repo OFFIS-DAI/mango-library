@@ -385,7 +385,7 @@ class COHDANegotiation:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
                     schedules[self._part_id] = self._schedule_provider(candidate=self._memory.solution_candidate,
-                                                         system_config=self._memory.system_config)[0]
+                                                                       system_config=self._memory.system_config)[0]
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
                     current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)
@@ -416,8 +416,7 @@ class COHDANegotiation:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
-        possible_schedules = self._schedule_provider(candidate=candidate,
-                                                         system_config=sysconfig)
+        possible_schedules = self._schedule_provider(candidate=candidate, system_config=sysconfig)
         current_best_candidate = candidate
         for schedule in possible_schedules:
             if self._is_local_acceptable(schedule):
