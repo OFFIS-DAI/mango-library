@@ -1,10 +1,11 @@
 import fractions
+import uuid
 
 from mango_library.negotiation.cohda.data_classes import SystemConfig,\
     SolutionCandidate, ScheduleSelection, WorkingMemory
-from mango_library.negotiation.cohda.cohda import CohdaMessage, COHDA
+from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
 from mango_library.negotiation.util import cohda_serializers
-from mango_library.negotiation.core import *
 from mango.messages.codecs import *
 import numpy as np
 from typing import Dict, List, Tuple
@@ -48,19 +49,20 @@ def test_serialization():
     decoded = codec.decode(encoded)
     assert working_memory == decoded
 
-    msg = CohdaMessage(working_memory=working_memory)
+    msg = CohdaNegotiationMessage(working_memory=working_memory, negotiation_id=uuid.uuid1(), coalition_id=uuid.uuid1())
     encoded = codec.encode(msg)
     decoded = codec.decode(encoded)
     assert msg.working_memory == decoded.working_memory
 
-    negotiation_msg = NegotiationMessage(coalition_id=uuid.uuid1(), negotiation_id=uuid.uuid4(), message=msg)
-    negotiation_msg.message_weight = fractions.Fraction(2, 5)
-    encoded = codec.encode(negotiation_msg)
+    negotiation_msg_with_weight = CohdaNegotiationMessage(coalition_id=uuid.uuid1(), negotiation_id=uuid.uuid4(),
+                                                          working_memory=working_memory)
+    negotiation_msg_with_weight.message_weight = fractions.Fraction(2, 5)
+    encoded = codec.encode(negotiation_msg_with_weight)
     decoded = codec.decode(encoded)
-    assert negotiation_msg.coalition_id == decoded.coalition_id
-    assert negotiation_msg.negotiation_id == decoded.negotiation_id
-    assert negotiation_msg.message.working_memory == decoded.message.working_memory
-    assert negotiation_msg.message_weight == decoded.message_weight
+    assert negotiation_msg_with_weight.coalition_id == decoded.coalition_id
+    assert negotiation_msg_with_weight.negotiation_id == decoded.negotiation_id
+    assert negotiation_msg_with_weight.working_memory == decoded.working_memory
+    assert negotiation_msg_with_weight.message_weight == decoded.message_weight
 
 
 def test_candidate_init():
@@ -149,7 +151,7 @@ def test_sysconf_merge(schedules_i: Dict[str, Tuple[List, int]], schedules_j: Di
     sysconfig_j = SystemConfig(schedule_choices=schedule_selections_j)
     expected_sysconfig = SystemConfig(schedule_choices=expected_selections)
 
-    merged_sysconfig = COHDA._merge_sysconfigs(sysconfig_i, sysconfig_j)
+    merged_sysconfig = COHDANegotiation._merge_sysconfigs(sysconfig_i, sysconfig_j)
     assert merged_sysconfig == expected_sysconfig
     assert (sysconfig_i == merged_sysconfig) == (sysconfig_i is merged_sysconfig)
 
@@ -183,7 +185,7 @@ def test_candidate_merge(schedules_i: Dict[str, List], agent_id_i: str, perf_i: 
     def sum_schedule(cluster_schedule, _):
         return cluster_schedule.sum()
 
-    assert COHDA._merge_candidates(candidate_i=candidate_i, candidate_j=candidate_j, agent_id=own_agent_id,
+    assert COHDANegotiation._merge_candidates(candidate_i=candidate_i, candidate_j=candidate_j, agent_id=own_agent_id,
                                    perf_func=sum_schedule, target_params=None) == expected_candidate
 
 
