@@ -2,7 +2,7 @@ import asyncio
 import math
 import numpy as np
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
 
@@ -15,9 +15,9 @@ NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = COHDA.pick_all_points
+PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = COHDA.pick_random_point
-MUTATE_FKT = COHDA.mutate_with_all_possible
+MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
 NUM_SIMULATIONS = 2

@@ -4,7 +4,7 @@ import math
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import store_in_db, \
     simulate_mo_cohda_NSGA2
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.result import Result
 from pymoo.optimize import minimize
@@ -19,8 +19,8 @@ NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = COHDA.pick_random_point
-MUTATE_FKT = COHDA.mutate_NSGA2
+PICK_FKT = MoCohdaNegotiation.pick_random_point
+MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
 
 NUM_SIMULATIONS = 1
 p = get_problem('zdt3')

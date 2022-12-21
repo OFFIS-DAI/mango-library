@@ -14,9 +14,11 @@ from pymoo.optimize import minimize
 from pymoo.problems import get_problem
 
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
-    CohdaNegotiationStarterRole
+    MoCohdaNegotiationModel
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 
@@ -300,7 +302,7 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            CohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
+            MoCohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
         await wait_for_term(controller_agent)
         end_time = time.time()
         print('Negotiation terminated.')
@@ -427,7 +429,8 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
             schedules_per_agent[a.aid] = provide_schedules(i)()
 
             a.add_role(CoalitionParticipantRole())
-            a.add_role(NegotiationTerminationParticipantRole())
+            a.add_role(NegotiationTerminationParticipantRole(negotiation_model_class=MoCohdaNegotiationModel,
+                 negotiation_message_class=MoCohdaNegotiationMessage))
             agents.append(a)
             addrs.append((container.addr, a.aid))
 
@@ -448,17 +451,19 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            CohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
+            MoCohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
         await wait_for_term(controller_agent)
         end_time = time.time()
         print('Negotiation terminated.')
 
         # get final memory of first agent
-        final_memory = next(iter(agents[0].roles[0]._cohda.values()))._memory
+        final_memory = next(iter(agents[0].roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
+                                 _negotiations.values()))._memory
 
         # make sure all working memories are equal
         for a in agents:
-            assert final_memory == next(iter(a.roles[0]._cohda.values()))._memory, \
+            assert final_memory == next(iter(a.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
+                                 _negotiations.values()))._memory, \
                 'Working memories of different agents are not equal.'
 
         # shutdown container

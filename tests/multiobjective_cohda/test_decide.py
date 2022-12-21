@@ -5,7 +5,7 @@ import pytest
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import SystemConfig, SolutionCandidate, \
     ScheduleSelections, WorkingMemory
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
 
 def min_perf_func(cluster_schedules, target_params):
@@ -38,7 +38,7 @@ def initial_working_memory():
 def cohda(initial_working_memory):
     global_ref_point = (1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
-    my_cohda = COHDA(
+    my_cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=min_perf_func,

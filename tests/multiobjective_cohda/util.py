@@ -5,9 +5,11 @@ import numpy as np
 from mango.role.core import RoleAgent
 
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
-    CohdaNegotiationStarterRole
+    MoCohdaNegotiationModel
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 
@@ -18,7 +20,8 @@ def get_solution(agents):
     for a in agents:
         for role in a.roles:
             if isinstance(role, MultiObjectiveCOHDARole):
-                cohda_objs = role._cohda
+                cohda_objs = role.context.get_or_create_model(MoCohdaNegotiationModel)._negotiations
+                print('cohda_objs', cohda_objs)
                 for key, value in cohda_objs.items():
                     resulting_candidates[
                         value._part_id] = value._memory.solution_candidate
@@ -64,7 +67,8 @@ async def create_agents(container, targets, possible_schedules,
             pick_func=pick_fkt, mutate_func=mutate_fkt, use_fixed_ref_point=use_fixed_ref_point, offsets=offsets)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
-        a.add_role(NegotiationTerminationParticipantRole())
+        a.add_role(NegotiationTerminationParticipantRole(negotiation_model_class=MoCohdaNegotiationModel,
+                 negotiation_message_class=MoCohdaNegotiationMessage))
         agents.append(a)
         addrs.append((this_container.addr, a._aid))
 
@@ -78,7 +82,7 @@ async def create_agents(container, targets, possible_schedules,
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
     print('Coalition build done')
     agents[0].add_role(
-        CohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
+        MoCohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
 
     print('Negotiation started')
 
