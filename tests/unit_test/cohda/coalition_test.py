@@ -134,7 +134,8 @@ async def test_build_coalition(num_part):
         addrs.append((c.addr, a._aid))
 
     controller_agent = RoleAgent(c)
-    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
+    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation',
+                                                     topology_creator_kwargs={'k': 2, 'w': 0.1}))
     agents.append(controller_agent)
 
     # all agents send ping request to all agents (including themselves)

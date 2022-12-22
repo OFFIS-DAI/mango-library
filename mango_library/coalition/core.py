@@ -252,12 +252,13 @@ class CoalitionInitiatorRole(ProactiveRole):
     """
 
     def __init__(self, participants: List[Tuple[ContainerAddress, str]], topic: str, details: str,
-                 topology_creator=small_world_creator):
+                 topology_creator=small_world_creator, topology_creator_kwargs: dict = None):
         super().__init__()
         self._participants = participants
         self._topic = topic
         self._details = details
         self._topology_creator = topology_creator
+        self._topology_creator_kwargs = topology_creator_kwargs if topology_creator_kwargs else {}
         self._part_to_state = {}
         self._assignments_sent = False
         self._coal_id = None
@@ -315,7 +316,7 @@ class CoalitionInitiatorRole(ProactiveRole):
                 part_id += 1
                 accepted_participants.append((str(part_id), agent_addr, agent_id))
 
-        part_to_neighbors = self._topology_creator(accepted_participants)
+        part_to_neighbors = self._topology_creator(accepted_participants, **self._topology_creator_kwargs)
         for part in accepted_participants:
             self.context.schedule_instant_task(agent_context.send_acl_message(
                 content=CoalitionAssignment(self._coal_id, part_to_neighbors[part],
