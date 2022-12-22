@@ -7,7 +7,7 @@ from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
 
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage,\
-    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage
+    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage,\
     InformAboutTerminationMessage
 
@@ -75,4 +75,5 @@ cohda_serializers = [
     StopNegotiationMessage.__serializer__,
     InformAboutTerminationMessage.__serializer__,
     CohdaFinalSolutionMessage.__serializer__,
+    ConfirmCohdaSolutionMessage.__serializer__,
 ]

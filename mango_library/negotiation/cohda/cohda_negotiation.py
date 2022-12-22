@@ -7,7 +7,7 @@ import numpy as np
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionRequestMessage, \
-    CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage
+    CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
 from mango.role.api import Role
@@ -211,11 +211,11 @@ class COHDANegotiationRole(Role):
             ),
         )
 
-    def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, _):
+    def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, meta):
         """
         Is called once a CohdaFinalSolutionMessage arrives
         :param content: The CohdaFinalSolutionMessage
-        :param _: Meta dict
+        :param meta: Meta dict
         :return:
         """
         final_candidate = content.solution_candidate
@@ -226,6 +226,12 @@ class COHDANegotiationRole(Role):
         final_schedule = final_candidate.schedules[part_id]
         # add final schedule to CohdaSolutionModel
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
+        # reply with a confirmation
+        self.context.schedule_instant_task(
+            self.context.send_acl_message(content=ConfirmCohdaSolutionMessage(neg_id),
+                                          receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                                          acl_metadata={'sender_id': self.context.aid})
+        )
 
 
 class COHDANegotiation:
@@ -379,7 +385,7 @@ class COHDANegotiation:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedules = self._memory.solution_candidate.schedules
                     schedules[self._part_id] = self._schedule_provider(candidate=self._memory.solution_candidate,
-                                                         system_config=self._memory.system_config)[0]
+                                                                       system_config=self._memory.system_config)[0]
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
                     current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules, perf=None)
@@ -410,8 +416,7 @@ class COHDANegotiation:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
-        possible_schedules = self._schedule_provider(candidate=candidate,
-                                                         system_config=sysconfig)
+        possible_schedules = self._schedule_provider(candidate=candidate, system_config=sysconfig)
         current_best_candidate = candidate
         for schedule in possible_schedules:
             if self._is_local_acceptable(schedule):
