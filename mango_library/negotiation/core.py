@@ -279,4 +279,4 @@ class NegotiationParticipant(SimpleReactiveRole, ABC):
         )
 
     def is_applicable(self, content, meta):
-        return isinstance(content, NegotiationMessage) or isinstance(content, NegotiationStartMessage)
+        return isinstance(content, NegotiationMessage)
