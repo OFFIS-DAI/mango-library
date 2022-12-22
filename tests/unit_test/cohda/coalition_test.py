@@ -1,8 +1,13 @@
-import mango.messages.codecs
+import asyncio
 import pytest
+import uuid
+import random
+
+import mango.messages.codecs
 from mango.core.container import Container
 from mango.role.core import RoleAgent
-from mango_library.coalition.core import *
+from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment,\
+    CoalitionInitiatorRole, CoalitionParticipantRole, CoalitionModel, small_world_creator
 from mango_library.negotiation.util import cohda_serializers
 
 
@@ -80,6 +85,38 @@ def test_colition_initiator_with_str_as_addr():
     assert (('localhost', 5555), 'Agent0') in c_init_role._part_to_state.keys()
 
 
+@pytest.mark.parametrize('participants,expected,k', [
+    ([('1', '1', '1'), ('2', '2', '2')], {('1', '1', '1'): [('2', '2', '2')], ('2', '2', '2'): [('1', '1', '1')]}, 1),
+    ([('1', ('127.0.0.3', 5555), '1'), ('2', ('127.0.0.3', 5555), '2')],
+     {('1', ('127.0.0.3', 5555), '1'): [('2', ('127.0.0.3', 5555), '2')],
+      ('2', ('127.0.0.3', 5555), '2'): [('1', ('127.0.0.3', 5555), '1')]}, 2),
+    (['1', '2'], {'1': ['2'], '2': ['1']}, 1),
+    (['1', '2', '3', '4'], {'1': ['4', '2'], '2': ['1', '3'], '3': ['2', '4'], '4': ['3', '1']}, 1),
+    (['1', '2', '3', '4'], {
+        '1': ['4', '2', '3'],
+        '2': ['1', '3', '4'],
+        '3': ['2', '4', '1'],
+        '4': ['3', '1', '2']}, 2),
+])
+def test_small_world_creator(participants, expected, k):
+    assert small_world_creator(participants=participants, k=k) == expected
+
+
+def test_small_world_creator_with_w():
+    random.seed(42)
+    participants = ['1', '2', '3', '4', '5', '6', '7', '8']
+    neighborhood = small_world_creator(participants=participants, k=1, w=0.5)
+    max_len = 0
+    for key, value in neighborhood.items():
+        for participant in value:
+            assert key in neighborhood[participant]
+        assert len(value) >= 2
+        max_len = max(max_len, len(value))
+
+    # with this random seed we will get some extra connections
+    assert max_len > 2
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("num_part", [1, 2, 3, 4, 5])
 async def test_build_coalition(num_part):
@@ -97,7 +134,8 @@ async def test_build_coalition(num_part):
         addrs.append((c.addr, a._aid))
 
     controller_agent = RoleAgent(c)
-    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
+    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation',
+                                                     topology_creator_kwargs={'k': 2, 'w': 0.1}))
     agents.append(controller_agent)
 
     # all agents send ping request to all agents (including themselves)
