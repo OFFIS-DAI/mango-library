@@ -4,8 +4,8 @@ from typing import List
 from mango_library.coalition.core import CoalitionModel, CoalitionAssignment
 import pytest
 import uuid
-from mango.core.container import Container
-from mango.role.core import RoleAgent
+from mango import Container
+from mango import RoleAgent
 
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation, COHDANegotiationRole, \
     CohdaNegotiationModel

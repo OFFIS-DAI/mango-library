@@ -1,7 +1,7 @@
 import uuid
 from fractions import Fraction
 
-from mango.role.api import Role
+from mango import Role
 
 from mango_library.coalition.core import CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage

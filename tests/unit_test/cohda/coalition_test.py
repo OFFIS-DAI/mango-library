@@ -4,8 +4,8 @@ import uuid
 import random
 
 import mango.messages.codecs
-from mango.core.container import Container
-from mango.role.core import RoleAgent
+from mango import Container
+from mango import RoleAgent
 from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment,\
     CoalitionInitiatorRole, CoalitionParticipantRole, CoalitionModel, small_world_creator
 from mango_library.negotiation.util import cohda_serializers

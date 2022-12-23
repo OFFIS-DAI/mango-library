@@ -1,8 +1,8 @@
 import asyncio
 import pytest
 import numpy as np
-from mango.core.container import Container
-from mango.role.core import RoleAgent
+from mango import Container
+from mango import RoleAgent
 import mango.messages.codecs
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiationRole, CohdaNegotiationModel, \
     CohdaSolutionModel

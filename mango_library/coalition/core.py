@@ -22,7 +22,7 @@ import uuid
 import random
 from typing import Dict, Any, List, Tuple, Union, Set
 
-from mango.role.api import ProactiveRole, Role, RoleContext
+from mango import Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
 
@@ -245,7 +245,7 @@ def small_world_creator(participants: List[ParticipantKey], k=2, w=0.0) -> Dict[
     return neighborhood
 
 
-class CoalitionInitiatorRole(ProactiveRole):
+class CoalitionInitiatorRole(Role):
     """Role responsible for initiating a coalition. Considered as proactive role.
 
     The role will invite all given participants and add them to coalition if they accept the invite.

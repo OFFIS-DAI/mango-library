@@ -1,7 +1,7 @@
 import logging
 from uuid import UUID
 from typing import Dict, Tuple, Optional, List
-from mango.role.api import Role
+from mango import Role
 
 from mango_library.negotiation.cohda.cohda_messages import CohdaSolutionRequestMessage, CohdaProposedSolutionMessage, \
     CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
