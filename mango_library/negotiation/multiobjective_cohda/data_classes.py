@@ -17,8 +17,9 @@ class SolutionPoint:
     and the idx dict, mapping agent_id to the idx of the cluster schedule
     """
     cluster_schedule: np.array
-    performance: Tuple[float, ...]
     idx: Dict[str, int]
+    # TODO: check if this can be set to None
+    performance: Tuple[float, ...] = None
 
     @property
     def objective_values(self):

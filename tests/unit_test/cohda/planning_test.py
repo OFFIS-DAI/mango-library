@@ -1,44 +1,56 @@
-from mango_library.coalition.core import CoalitionModel
+import numpy as np
+from typing import List
+
+from mango_library.coalition.core import CoalitionModel, CoalitionAssignment
 import pytest
 import uuid
 from mango.core.container import Container
 from mango.role.core import RoleAgent
-from mango_library.negotiation.cohda.cohda import *
+
+from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation, COHDANegotiationRole, \
+    CohdaNegotiationModel
+from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
+from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate, \
+    ScheduleSelection
 from test_data import test_decide_params, test_perceive_params
 import asyncio
 
 
 def test_cohda_init():
-    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3]],
-                  is_local_acceptable=lambda s: True,
-                  part_id='1')
-    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 3], [1, 1, 1]), SystemConfig({}), SolutionCandidate('1', {}, 0)))
-    cohda._perceive([cohda_message])
+    cohda = COHDANegotiation(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3]],
+                             is_local_acceptable=lambda s: True,
+                             part_id='1')
+    input_wm = WorkingMemory(target_params=([1, 2, 3], [1, 1, 1]),
+                             system_config=SystemConfig({}),
+                             solution_candidate=SolutionCandidate('1', {}, 0))
+    cohda._perceive([input_wm])
 
     assert cohda._memory.target_params == ([1, 2, 3], [1, 1, 1])
 
 
 def test_cohda_selection_multi():
-    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
-                  is_local_acceptable=lambda s: True, part_id='1')
-    cohda_message = CohdaMessage(WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate('1', {}, 0)))
-    sysconf, candidate = cohda._perceive([cohda_message])
+    cohda = COHDANegotiation(
+        schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
+        is_local_acceptable=lambda s: True,
+        part_id='1')
+    init_wm = WorkingMemory(([1, 2, 1], [1, 1, 1]), SystemConfig({}), SolutionCandidate('1', {}, 0))
+    sysconf, candidate = cohda._perceive([init_wm])
     sysconf, candidate = cohda._decide(candidate=candidate, sysconfig=sysconf)
 
     assert np.array_equal(candidate.schedules['1'], [1, 1, 1])
     assert sysconf.schedule_choices['1'].counter == 2
 
 
-@pytest.mark.parametrize('old_sysconfig, old_candidate, messages, expected_sysconfig, expected_candidate',
+@pytest.mark.parametrize('old_sysconfig, old_candidate, wms, expected_sysconfig, expected_candidate',
                          test_perceive_params
                          )
-def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, messages: List[CohdaMessage],
+def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, wms: List[WorkingMemory],
                   expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
-    cohda = COHDA(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
-                  is_local_acceptable=lambda s: True, part_id='1')
+    cohda = COHDANegotiation(schedule_provider=lambda: [[0, 1, 2], [1, 2, 3], [1, 1, 1], [4, 2, 3]],
+                             is_local_acceptable=lambda s: True, part_id='1')
     cohda._memory.system_config = old_sysconfig
     cohda._memory.solution_candidate = old_candidate
-    new_sysconfig, new_candidate = cohda._perceive(messages=messages)
+    new_sysconfig, new_candidate = cohda._perceive(working_memories=wms)
     for part_id in new_sysconfig.schedule_choices:
         assert np.array_equal(
             new_sysconfig.schedule_choices[part_id].schedule, expected_sysconfig.schedule_choices[part_id].schedule), \
@@ -56,7 +68,7 @@ def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate,
 @pytest.mark.parametrize('old_sysconfig, old_candidate, cohda_object, expected_sysconfig, expected_candidate',
                          test_decide_params
                          )
-def test_decide(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, cohda_object: COHDA,
+def test_decide(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, cohda_object: COHDANegotiation,
                 expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
 
     new_sysconfig, new_candidate = cohda_object._decide(sysconfig=old_sysconfig, candidate=old_candidate)
@@ -87,7 +99,7 @@ async def test_optimize_simple_test_case():
     addrs = []
     for _ in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
+        cohda_role = COHDANegotiationRole(schedules_provider=lambda: s_array[0], local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
@@ -102,7 +114,7 @@ async def test_optimize_simple_test_case():
                        zip(agents, range(10))))), 'cohda', str(part_id), 'agent_0', 1))
         part_id += 1
 
-    agents[0].add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1])))
+    agents[0].add_role(CohdaNegotiationStarterRole(target_params=([110, 110, 110, 110, 110], [1, 1, 1, 1, 1])))
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -110,9 +122,6 @@ async def test_optimize_simple_test_case():
                 raise a._check_inbox_task.exception()
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
-
-    # for a in agents:
-    #     await a.tasks_complete()
 
     # await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
     await asyncio.sleep(0.4)
@@ -123,8 +132,44 @@ async def test_optimize_simple_test_case():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert np.array_equal(agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules['0'],
+    assert len(agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations) == 1
+    cohda_negotiation = \
+        list(agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    assert np.array_equal(cohda_negotiation._memory.solution_candidate.schedules['0'],
                           np.array([11, 11, 11, 11, 11]))
+
+
+def test_schedule_provider_with_additional_parameters():
+    s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
+    schedule_providers = []
+
+    def schedule_provider_c(candidate):
+        assert isinstance(candidate, SolutionCandidate)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_c)
+
+    def schedule_provider_s(system_config):
+        assert isinstance(system_config, SystemConfig)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_s)
+
+    def schedule_provider_s_c(system_config, candidate):
+        assert isinstance(system_config, SystemConfig)
+        assert isinstance(candidate, SolutionCandidate)
+        return s_array[0]
+    schedule_providers.append(schedule_provider_s_c)
+
+    init_wms = [WorkingMemory(
+        target_params=([1, 1, 1, 1, 1], [1, 1, 1, 1, 1]),
+        system_config=SystemConfig({'2': ScheduleSelection([0, 0, 2, 2, 2], 1)}),
+        solution_candidate=SolutionCandidate(schedules={'2': [0, 0, 2, 2, 2]},
+                                             agent_id='2', perf=-3)
+    )]
+    for schedule_provider in schedule_providers:
+        cohda_negotiation = COHDANegotiation(schedule_provider=schedule_provider, is_local_acceptable=lambda _: True,
+                                             part_id='1')
+        s, c = cohda_negotiation._perceive(working_memories=init_wms)
+        cohda_negotiation._decide(s, c)
 
 
 @pytest.mark.asyncio
@@ -140,7 +185,7 @@ async def test_optimize_simple_test_case_multi_coal():
     addrs = []
     for _ in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda: s_array[0], lambda s: True)
+        cohda_role = COHDANegotiationRole(schedules_provider=lambda: s_array[0], local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
@@ -179,7 +224,9 @@ async def test_optimize_simple_test_case_multi_coal():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    assert np.array_equal(agents[0].roles[0]._cohda[coal_id2]._memory.solution_candidate.schedules['0'],
+    cohda_negotiation = \
+        list(agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    assert np.array_equal(cohda_negotiation._memory.solution_candidate.schedules['0'],
                           [11, 11, 11, 11, 11])
 
 
@@ -214,7 +261,8 @@ async def test_optimize_hinrichs_test_case():
     addrs = []
     for i in range(10):
         a = RoleAgent(c)
-        cohda_role = COHDARole(lambda n=i: s_array[n], lambda s: True)
+        cohda_role = COHDANegotiationRole(schedules_provider=lambda n=i: s_array[n],
+                                          local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         agents.append(a)
         addrs.append((c.addr, a._aid))
@@ -248,8 +296,9 @@ async def test_optimize_hinrichs_test_case():
     await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
-    cluster_schedule = np.array(list(
-        map(lambda item: item[1], agents[0].roles[0]._cohda[coal_id]._memory.solution_candidate.schedules.items())))
+    cohda_negotiation = \
+        list(agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+    cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
     assert [543, 529, 520, 512, 510] == cluster_schedule.sum(axis=0).tolist()
 
 

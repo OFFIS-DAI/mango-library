@@ -5,13 +5,13 @@ import base64
 from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
-
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage,\
+    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import ScheduleSelections,\
     SystemConfig as SystemConfig_m, SolutionCandidate as SolutionCandidate_m, WorkingMemory as WorkingMemory_m
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import CohdaMessage as CohdaMessage_m
-from mango_library.negotiation.cohda.cohda import CohdaMessage
-from mango_library.negotiation.core import NegotiationMessage
-from mango_library.negotiation.termination import TerminationMessage
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
+from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage,\
+    InformAboutTerminationMessage
 
 
 def get_np_serializer():
@@ -69,12 +69,15 @@ cohda_serializers = [
     SystemConfig.__serializer__,
     SolutionCandidate.__serializer__,
     WorkingMemory.__serializer__,
-    CohdaMessage.__serializer__,
-    NegotiationMessage.__serializer__,
+    CohdaNegotiationMessage.__serializer__,
+    CohdaSolutionRequestMessage.__serializer__,
+    CohdaProposedSolutionMessage.__serializer__,
     TerminationMessage.__serializer__,
     get_fraction_serializer,
+    StopNegotiationMessage.__serializer__,
+    InformAboutTerminationMessage.__serializer__,
+    CohdaFinalSolutionMessage.__serializer__,
 ]
-
 
 multi_objective_serializers = [
     get_np_serializer,
@@ -86,8 +89,7 @@ multi_objective_serializers = [
     SystemConfig_m.__serializer__,
     SolutionCandidate_m.__serializer__,
     WorkingMemory_m.__serializer__,
-    CohdaMessage_m.__serializer__,
-    NegotiationMessage.__serializer__,
+    MoCohdaNegotiationMessage.__serializer__,
     TerminationMessage.__serializer__,
     get_fraction_serializer,
 ]

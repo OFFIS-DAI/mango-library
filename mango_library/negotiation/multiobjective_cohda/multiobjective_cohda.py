@@ -4,64 +4,26 @@ integrate COHDA in the negotiation system and the core COHDA-decider together wi
 import asyncio
 import random
 import time
+import logging
 from typing import Dict, List, Any, Tuple, Callable, Optional
+from uuid import UUID
 
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-from mango.messages.codecs import json_serializable
+from mango.role.api import Role
 
-from mango_library.coalition.core import CoalitionAssignment
-from mango_library.negotiation.core import NegotiationParticipant, \
-    NegotiationStarterRole, Negotiation
+from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
     SystemConfig, ScheduleSelections, Target, SolutionPoint
 
 
-@json_serializable
-class CohdaMessage:
+logger = logging.getLogger(__name__)
+
+
+class MoCohdaNegotiation:
     """
-    Message for a COHDa negotiation.
-    Contains the working memory of an agent.
-    """
-
-    def __init__(self, working_memory: WorkingMemory):
-        self._working_memory = working_memory
-
-    @property
-    def working_memory(self) -> WorkingMemory:
-        """Return the working memory of the sender agent
-
-        :return: the working memory of the sender
-        """
-        return self._working_memory
-
-
-class MultiobjectiveCohdaNegotiationStarterRole(NegotiationStarterRole):
-    """
-    Convienience role for starting a COHDA negotiation
-    """
-
-    def __init__(self, num_solution_points) -> None:
-        """
-
-        :param target_params: Parameter that are necessary for the agents to calculate the performance.
-        Could be e.g. the target schedule.
-        :param coalition_model_matcher:
-        :param coalition_uuid:
-        """
-        super().__init__(
-            lambda assignment, msg:
-            CohdaMessage(WorkingMemory(
-                target_params=msg.target_params,
-                system_config=SystemConfig(schedule_choices={}, num_solution_points=num_solution_points),
-                solution_candidate=SolutionCandidate(agent_id=assignment.part_id, schedules={},
-                                                     num_solution_points=num_solution_points)))
-        )
-
-
-class COHDA:
-    """
-    COHDA-decider
+    Multi Objective Cohda Negotiation
     """
 
     def __init__(self, *, schedule_provider,
@@ -100,6 +62,9 @@ class COHDA:
             system_config=SystemConfig(schedule_choices={}, num_solution_points=0)
         )
         self._counter = 0
+        self._stopped = False   # is Ture once a StopNegotiationMessage is received for this negotiation
+        # self._active is False once an iteration of the process_message_queue function has not received any message
+        self._active = True
         self._perf_func = perf_func
         self._num_iterations = num_iterations
         self._pick_func = pick_func if pick_func is not None else self.pick_all_points
@@ -119,6 +84,36 @@ class COHDA:
         else:
             self._ref_point = None
 
+    @property
+    def active(self) -> bool:
+        """Is seen as active
+
+        :return: True if active, False otherwise
+        """
+        return self._active
+
+    @active.setter
+    def active(self, is_active) -> None:
+        """Set is active
+        :param is_active: active
+        """
+        self._active = is_active
+
+    @property
+    def stopped(self) -> bool:
+        """
+        Is seen as stopped
+        :return: True if stopped, False otherwise
+        """
+        return self._stopped
+
+    @stopped.setter
+    def stopped(self, is_stopped) -> None:
+        """
+        Set is stopped
+        :param is_stopped: stopped
+        """
+        self._stopped = is_stopped
 
     def construct_ref_point(self, solution_points, offsets=None):
         """
@@ -146,81 +141,102 @@ class COHDA:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_with_one_random(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
-        Function that mutates a solution point with one random schedule
-        :param solution_point:
+        Function that mutates each solution point with one random schedule that is different from the original
+        :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :param perf_func:
-        :param target_params:
         :return:
         """
         schedules = schedule_creator()
         if len(schedules) > 1:
-            schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
-            new_schedule = random.choice(schedules)
-            while new_schedule == schedule_before:
+            new_solution_points = []
+            for solution_point in solution_points:
+                schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
                 new_schedule = random.choice(schedules)
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            return [SolutionPoint(cluster_schedule=new_cs, performance=new_perf, idx=solution_point.idx)]
+                while new_schedule == schedule_before:
+                    new_schedule = random.choice(schedules)
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
+            return new_solution_points
 
         else:
-            return [solution_point]
+            return solution_points
 
     @staticmethod
-    def mutate_with_all_possible(solution_point: SolutionPoint, schedule_creator, agent_id, perf_func, target_params) \
+    def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
-        :param solution_point:
+        :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :param perf_func:
-        :param target_params:
+        :return:
+        """
+        new_solution_points = []
+        # TODO @EFR here I have just iterated over each solution point, you could also optimize all
+        #  solution points at once
+        for solution_point in solution_points:
+            new_schedules = schedule_creator(solution_point=solution_point, agent_id=agent_id)
+            for new_schedule in new_schedules:
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
+                                                         idx=solution_point.idx))
+        return new_solution_points
+
+    @staticmethod
+    def mutate_with_all_possible(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
+            -> List[SolutionPoint]:
+        """
+        Function that mutates a solution point with all possible schedules
+        :param solution_points:
+        :param schedule_creator:
+        :param agent_id:
         :return:
         """
         possible_schedules = schedule_creator()
         new_solution_points = []
-        for new_schedule in possible_schedules:
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_schedule
-            new_perf = perf_func([new_cs], target_params)[0]
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, performance=new_perf,
-                                                     idx=solution_point.idx))
+        for solution_point in solution_points:
+            for new_schedule in possible_schedules:
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[solution_point.idx[agent_id]] = new_schedule
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
+                                                         idx=solution_point.idx))
         return new_solution_points
 
-    def handle_cohda_msgs(self, messages: List[CohdaMessage]) -> Optional[CohdaMessage]:
+    def handle_cohda_msgs(self, messages: List[WorkingMemory]) -> Optional[WorkingMemory]:
         """
         This called by the COHDARole. It takes a List of COHDA messages, executes perceive, decide, act and returns
         a CohdaMessage in case the working memory has changed and None otherwise
         :param messages: The list of received CohdaMessages
         :return: The message to be sent to the neighbors, None if no message has to be sent
         """
+
         old_sysconf = self._memory.system_config
         old_candidate = self._memory.solution_candidate
 
         # perceive
         sysconf, candidate = self._perceive(messages)
-        t_after_perceive = time.time()
+        # t_after_perceive = time.time()
         # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
-            t_after_decide = time.time()
+            # t_after_decide = time.time()
             # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
-            return_msg = self._act(new_sysconfig=sysconf, new_candidate=candidate)
-            t_after_act = time.time()
+            new_wm = self._act(new_sysconfig=sysconf, new_candidate=candidate)
+            # t_after_act = time.time()
             # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
-            return return_msg
+            return new_wm
         else:
             return None
 
-    def _perceive(self, messages: List[CohdaMessage]) -> Tuple[SystemConfig, SolutionCandidate]:
+    def _perceive(self, messages: List[WorkingMemory]) -> Tuple[SystemConfig, SolutionCandidate]:
         """
         Updates the current knowledge
         :param messages: The List of received CohdaMessages
@@ -228,48 +244,50 @@ class COHDA:
         """
         current_sysconfig = None
         current_candidate = None
-        for message in messages:
+        for working_memory in messages:
             if self._memory.target_params is None:
                 # get target parameters if not known
-                self._memory.target_params = message.working_memory.target_params
+                self._memory.target_params = working_memory.target_params
 
-            if current_sysconfig is None:
+            if current_sysconfig is None or current_candidate is None:
                 if self._part_id not in self._memory.system_config.schedule_choices:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
-                    num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
+                    num_solution_points = working_memory.system_config.num_solution_points
+                    initial_schedules = self._schedule_provider()
+                    num_initial_schedules = len(initial_schedules)
+                    initial_schedules = [initial_schedules[n % num_initial_schedules] for n in
+                                         range(num_solution_points)]
+
                     schedule_choices[self._part_id] = ScheduleSelections(
-                        np.array(inital_schedules), self._counter + 1)
+                        np.array(initial_schedules), self._counter + 1)
                     self._counter += 1
                     # we need to create a new class of Systemconfig so the updates are recognized in handle_cohda_msgs()
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices,
                                                      num_solution_points=num_solution_points)
+
+                    if self._part_id not in self._memory.solution_candidate.schedules:
+                        # if you have not yet selected any schedule in the sysconfig, choose any to start with
+                        schedules = self._memory.solution_candidate.schedules
+                        schedules[self._part_id] = np.array(initial_schedules)
+                        # we need to create a new class of SolutionCandidate so the updates are
+                        # recognized in handle_cohda_msgs()
+                        current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
+                                                              num_solution_points=num_solution_points)
+                        current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
+                                                                 self._memory.target_params)
+
+                        performances = current_candidate.perf
+                        current_candidate.hypervolume = self.get_hypervolume(performances,
+                                                                             current_candidate.solution_points)
                 else:
                     current_sysconfig = self._memory.system_config
 
-            if current_candidate is None:
-                if self._part_id not in self._memory.solution_candidate.schedules:
-                    # if you have not yet selected any schedule in the sysconfig, choose any to start with
-                    schedules = self._memory.solution_candidate.schedules
-                    num_solution_points = message.working_memory.system_config.num_solution_points
-                    inital_schedules = [self._schedule_provider()[0] for _ in range(num_solution_points)]
-                    schedules[self._part_id] = np.array(inital_schedules)
-                    # we need to create a new class of SolutionCandidate so the updates are
-                    # recognized in handle_cohda_msgs()
-                    current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
-                                                          num_solution_points=num_solution_points)
-                    current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
-                                                             self._memory.target_params)
-
-                    performances = current_candidate.perf
-                    current_candidate.hypervolume = self.get_hypervolume(performances,
-                                                                         current_candidate.solution_points)
-                else:
+                if current_candidate is None:
                     current_candidate = self._memory.solution_candidate
 
-            new_sysconf = message.working_memory.system_config
-            new_candidate = message.working_memory.solution_candidate
+            new_sysconf = working_memory.system_config
+            new_candidate = working_memory.solution_candidate
 
             # Merge new information into current_sysconfig and current_candidate
             current_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
@@ -287,7 +305,7 @@ class COHDA:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
-        t_start_decide = time.time()
+        # t_start_decide = time.time()
         current_best_candidate = candidate
 
         for iteration in range(self._num_iterations):
@@ -301,15 +319,18 @@ class COHDA:
             solution_points_to_mutate = self._pick_func(solution_points=candidate_from_sysconfig.solution_points)
 
             # execute mutate for all solution points
-            for solution_point in solution_points_to_mutate:
-                # add new solution points to list of all solution points
-                new_solution_points = self._mutate_func(
-                    solution_point=solution_point, agent_id=self._part_id, perf_func=self._perf_func,
-                    target_params=self._memory.target_params, schedule_creator=self._schedule_provider)
+            # add new solution points to list of all solution points
+            new_solution_points = self._mutate_func(
+                solution_points=solution_points_to_mutate, agent_id=self._part_id,
+                schedule_creator=self._schedule_provider)
 
-                all_solution_points.extend(new_solution_points)
+            for new_point in new_solution_points:
+                new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
+                new_point.performance = new_perf
 
-            t_after_point_creation = time.time()
+            all_solution_points.extend(new_solution_points)
+
+            # t_after_point_creation = time.time()
             # print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
 
             population_set = set(all_solution_points)
@@ -334,16 +355,16 @@ class COHDA:
                     else:
                         break
 
-            t_after_recuction = time.time()
+            # t_after_recuction = time.time()
             # print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
 
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
 
-            sorted_perfs = sorted([(round(ind.objective_values[0], 2),
-                                    round(ind.objective_values[1], 2)) for ind in all_solution_points],
-                                  key=lambda l: l[0])
+            # sorted_perfs = sorted([(round(ind.objective_values[0], 2),
+            #                         round(ind.objective_values[1], 2)) for ind in all_solution_points],
+            #                       key=lambda l: l[0])
             # print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
@@ -373,9 +394,9 @@ class COHDA:
                 # update counter
                 self._counter += 1
 
-            return sysconfig, current_best_candidate
+        return sysconfig, current_best_candidate
 
-    def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> CohdaMessage:
+    def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> WorkingMemory:
         """
         Stores the new SystemConfig and SolutionCandidate in Memory and returns the COHDA message that should be sent
         :param new_sysconfig: The SystemConfig as a result from perceive and decide
@@ -385,8 +406,8 @@ class COHDA:
         # update memory
         self._memory.system_config = new_sysconfig
         self._memory.solution_candidate = new_candidate
-        # return COHDA message
-        return CohdaMessage(working_memory=self._memory)
+        # return memory
+        return self._memory
 
     @staticmethod
     def _merge_sysconfigs(sysconfig_i: SystemConfig, sysconfig_j: SystemConfig):
@@ -445,7 +466,6 @@ class COHDA:
         :param candidate_j: Second Candidate
         :param agent_id: Id of the agent that executes merge
         :param perf_func: Performance Function
-        :param reference_point: Reference Point
         :return: An Instance of SolutionCandidate
         """
 
@@ -496,7 +516,7 @@ class COHDA:
         return candidate
 
 
-class MultiObjectiveCOHDARole(NegotiationParticipant):
+class MultiObjectiveCOHDARole(Role):
     """Negotiation role for COHDA.
     """
 
@@ -507,7 +527,6 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
         super().__init__()
 
         self._schedule_provider = schedule_provider
-        print("schedules:", schedule_provider())
         self._is_local_acceptable = local_acceptable_func if local_acceptable_func is not None else lambda x: True
         self._perf_functions = [target.performance for target in targets]
         self._reference_point = tuple(
@@ -518,13 +537,17 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
             self._use_fixed_ref_point = True
         self._offsets = offsets
         self._num_solution_points = num_solution_points
-        self._cohda = {}
         self._cohda_msg_queues = {}
-        self._cohda_tasks = []
+        self._cohda_tasks: Dict[UUID, asyncio.Task] = {}          # stores the tasks that process the inbox
         self._num_iterations = num_iterations
         self._check_inbox_interval = check_inbox_interval
         self._pick_func = pick_func
         self._mutate_func = mutate_func
+
+    def setup(self):
+        # negotiation message
+        self.context.subscribe_message(self, self.handle_neg_msg,
+                                       lambda c, _: isinstance(c, MoCohdaNegotiationMessage))
 
     def create_cohda(self, part_id: str):
         """
@@ -533,16 +556,16 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
         :return: COHDA object
         """
 
-        return COHDA(schedule_provider=self._schedule_provider,
-                     is_local_acceptable=self._is_local_acceptable,
-                     part_id=part_id,
-                     reference_point=self._reference_point,
-                     perf_func=self._perf_func,
-                     num_iterations=self._num_iterations,
-                     pick_func=self._pick_func,
-                     mutate_func=self._mutate_func,
-                     use_fixed_ref_point=self._use_fixed_ref_point,
-                     offsets=self._offsets)
+        return MoCohdaNegotiation(schedule_provider=self._schedule_provider,
+                                  is_local_acceptable=self._is_local_acceptable,
+                                  part_id=part_id,
+                                  reference_point=self._reference_point,
+                                  perf_func=self._perf_func,
+                                  num_iterations=self._num_iterations,
+                                  pick_func=self._pick_func,
+                                  mutate_func=self._mutate_func,
+                                  use_fixed_ref_point=self._use_fixed_ref_point,
+                                  offsets=self._offsets)
 
     def _perf_func(self, cluster_schedules: List[np.array], target_params) -> List[Tuple]:
         """
@@ -564,48 +587,137 @@ class MultiObjectiveCOHDARole(NegotiationParticipant):
         Will be called once the agent is shutdown
         """
         # cancel all cohda tasks
-        for task in self._cohda_tasks:
+        for task in self._cohda_tasks.values():
             task.cancel()
             try:
                 await task
             except asyncio.CancelledError:
                 pass
 
-    def handle(self,
-               message,
-               assignment: CoalitionAssignment,
-               negotiation: Negotiation,
-               meta: Dict[str, Any]):
+    def handle_neg_msg(self,
+                       content: MoCohdaNegotiationMessage,
+                       meta: Dict[str, Any]):
 
-        if negotiation.coalition_id in self._cohda:
-            negotiation.active = True
-            self._cohda_msg_queues[negotiation.coalition_id].append(message)
-        else:
-            self._cohda[negotiation.coalition_id] = self.create_cohda(assignment.part_id)
-            self._cohda_msg_queues[negotiation.coalition_id] = [message]
+        # check if there is a Coalition with the coalition_ID
+        if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
+            logger.warning(f'Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}'
+                           f'but there is no such Coalition known.')
+            return
 
-            async def process_msg_queue():
-                """
-                Method to evaluate all incoming message of a cohda_message_queue for a certain negotiation
-                """
+        # get coalition_assignment
+        coalition_assignment: CoalitionAssignment = self.context.get_or_create_model(
+            CoalitionModel).by_id(content.coalition_id)
 
-                if len(self._cohda_msg_queues[negotiation.coalition_id]) > 0:
-                    # get queue
-                    cohda_message_queue, self._cohda_msg_queues[negotiation.coalition_id] = \
-                        self._cohda_msg_queues[negotiation.coalition_id], []
+        # get negotiation model
+        cohda_negotiation_model: MoCohdaNegotiationModel = self.context.get_or_create_model(MoCohdaNegotiationModel)
+        if not cohda_negotiation_model.exists(content.negotiation_id):
+            cohda_negotiation_model.add(
+                negotiation_id=content.negotiation_id,
+                cohda_negotiation=self.create_cohda(part_id=coalition_assignment.part_id))
 
-                    message_to_send = self._cohda[negotiation.coalition_id].handle_cohda_msgs(cohda_message_queue)
+        cohda_negotiation = cohda_negotiation_model.by_id(negotiation_id=content.negotiation_id)
 
-                    if message_to_send is not None:
-                        await self.send_to_neighbors(assignment, negotiation, message_to_send)
+        # add message to the queue if negotiation is not stopped
+        if not cohda_negotiation.stopped:
+            if content.negotiation_id in self._cohda_msg_queues.keys():
+                cohda_negotiation.active = True
+                self._cohda_msg_queues[content.negotiation_id].append(content.working_memory)
+            else:
+                self._cohda_msg_queues[content.negotiation_id] = [content.working_memory]
+                self._cohda_tasks[content.negotiation_id] = self.context.schedule_periodic_task(
+                    self.get_process_msg_queue_coro(
+                            cohda_negotiation=cohda_negotiation, negotiation_id=content.negotiation_id,
+                            coalition_assignment=coalition_assignment),
+                    delay=self._check_inbox_interval)
 
-                    else:
-                        # set the negotiation as inactive as the incoming information was known already
-                        negotiation.active = False
-                else:
-                    # set the negotiation as inactive as no message has arrived
-                    negotiation.active = False
-                # print(f'[{self.context.aid}] done processing cohda messages')
+    def get_process_msg_queue_coro(self, cohda_negotiation: MoCohdaNegotiation, coalition_assignment: CoalitionAssignment,
+                                   negotiation_id: UUID):
+        """
+        Method that returns a coroutine that process a message queue of a specific COHDA negotiation.
+        :param cohda_negotiation: the COHDA instance
+        :param coalition_assignment: the corresponding coalition assignment
+        :param negotiation_id: the corresponding negotiation ID
+        :return: a coroutine without arguments that can be scheduled as periodic task
+        """
 
-            self._cohda_tasks.append(self.context.schedule_periodic_task(process_msg_queue,
-                                                                         delay=self._check_inbox_interval))
+        async def process_msg():
+            if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
+                # get queue
+                cohda_message_queue, self._cohda_msg_queues[negotiation_id] = \
+                    self._cohda_msg_queues[negotiation_id], []
+
+                wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
+
+                if wm_to_send is not None:
+                    # send message to all neighbors
+                    for neighbor in coalition_assignment.neighbors:
+                        self.context.schedule_instant_task(self.context.send_acl_message(
+                            content=MoCohdaNegotiationMessage(
+                                negotiation_id=negotiation_id,
+                                coalition_id=coalition_assignment.coalition_id,
+                                working_memory=wm_to_send,
+                            ),
+                            receiver_addr=neighbor[1], receiver_id=neighbor[2],
+                            acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid})
+                        )
+
+            else:
+                # set the negotiation as inactive as no message has arrived
+                cohda_negotiation.active = False
+
+        return process_msg
+
+
+class MoCohdaNegotiationModel:
+    """Model for storing all metadata regarding negotiations
+    """
+
+    def __init__(self) -> None:
+        self._negotiations: Dict[UUID, MoCohdaNegotiation] = {}
+
+    def by_id(self, negotiation_id: UUID) -> MoCohdaNegotiation:
+        """Get a negotiation by id
+        :param negotiation_id: id of the negotiation
+        :return: the negotiation
+        """
+        return self._negotiations[negotiation_id]
+
+    def exists(self, negotiation_id: UUID) -> bool:
+        """Checks whether a negotiation exists
+        :param negotiation_id: id of the negotiation
+        :return: True if it exists, False otherwise
+        """
+        return negotiation_id in self._negotiations.keys()
+
+    def add(self, negotiation_id: UUID, cohda_negotiation: MoCohdaNegotiation):
+        """Add a concrete negotiation
+        :param negotiation_id: the UUID of the negotiation
+        :param cohda_negotiation: the cohda negotiation object
+        """
+        self._negotiations[negotiation_id] = cohda_negotiation
+
+
+class MoCohdaSolutionModel:
+    def __init__(self) -> None:
+        self._final_schedules: Dict[UUID, np.array] = {}
+
+    def by_id(self, negotiation_id: UUID) -> np.array:
+        """Get a solution of a negotiation by id
+        :param negotiation_id: id of the negotiation
+        :return: the negotiation
+        """
+        return self._final_schedules[negotiation_id]
+
+    def exists(self, negotiation_id: UUID) -> bool:
+        """Checks whether a final schedule exists
+        :param negotiation_id: id of the negotiation
+        :return: True if it exists, False otherwise
+        """
+        return negotiation_id in self._final_schedules.keys()
+
+    def add(self, negotiation_id: UUID, final_schedule: np.array):
+        """Add a concrete negotiation solution
+        :param negotiation_id: the UUID of the negotiation
+        :param final_schedule: the final schedule for the agent
+        """
+        self._final_schedules[negotiation_id] = final_schedule

@@ -1,6 +1,6 @@
 from typing import List, Tuple
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, SolutionPoint
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 import numpy as np
 
 
@@ -58,7 +58,7 @@ def test_merge_dummy():
     possible_schedules = []
     ref_point = (1.1, 1.1, 1.1)
 
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=perf_fkt,
@@ -122,7 +122,7 @@ def test_merge_sms_emoa():
     ref_point = (1.1, 1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.3, 0.6]]
 
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=perf_fkt,

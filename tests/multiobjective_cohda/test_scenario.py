@@ -6,7 +6,7 @@ from mango.core.container import Container
 from mango.messages.codecs import JSON
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation, MoCohdaNegotiationModel
 from mango_library.negotiation.util import multi_objective_serializers
 from util import MINIMIZE_TARGETS, MAXIMIZE_TARGETS, \
     create_agents, get_solution
@@ -138,12 +138,11 @@ async def test_maximize_scenario_without_fixed_reference_point():
         # there has to be a reference point, since there were calculations of it during the negotiation. This
         # reference point has to be different than the default ones given in the targets to make sure there has been
         # a calculation
-        assert list(agent.roles[0]._cohda.values())[
-                   0]._selection.sorting_component.hypervolume_indicator.reference_point is not None
-        assert list(agent.roles[0]._cohda.values())[
-            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
-        assert list(agent.roles[0]._cohda.values())[
-            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
+        cohda_negotiation = list(agent.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
+                                 _negotiations.values())[0]
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point is not None
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
 
     # gracefully shutdown
     await c.shutdown()
@@ -185,12 +184,11 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
         # there has to be a reference point, since there were calculations of it during the negotiation. This
         # reference point has to be different than the default ones given in the targets to make sure there has been
         # a calculation
-        assert list(agent.roles[0]._cohda.values())[
-                   0]._selection.sorting_component.hypervolume_indicator.reference_point is not None
-        assert list(agent.roles[0]._cohda.values())[
-            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
-        assert list(agent.roles[0]._cohda.values())[
-            0]._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
+        cohda_negotiation = list(agent.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
+                                 _negotiations.values())[0]
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point is not None
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[0].ref_point
+        assert cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point != MAXIMIZE_TARGETS[1].ref_point
 
     # gracefully shutdown
     await c.shutdown()
@@ -255,10 +253,10 @@ async def test_complex_scenario():
 
     target_first = Target(target_function=minimize_first, ref_point=1.1, maximize=False)
     target_second = Target(target_function=minimize_second, ref_point=1.1, maximize=False)
-    pick_fkt = COHDA.pick_all_points
+    pick_fkt = MoCohdaNegotiation.pick_all_points
     # pick_fkt = COHDA.pick_random_point
-    mutate_fkt = COHDA.mutate_with_all_possible
-    # mutate_fkt = COHDA.mutate_with_one_random
+    mutate_fkt = MoCohdaNegotiation.mutate_with_all_possible
+    #mutate_fkt = COHDA.mutate_with_one_random
 
     agents, addrs, controller_agent = await create_agents(container=c_1,
                                                           targets=[target_first, target_second],
@@ -289,7 +287,7 @@ async def test_complex_scenario():
         # sum and deviations are minimized
         for schedule in chosen_schedules:
             if np.sum(schedule) != 1:
-                assert pick_fkt == COHDA.pick_random_point or mutate_fkt == COHDA.mutate_with_one_random
+                assert pick_fkt == MoCohdaNegotiation.pick_random_point or mutate_fkt == MoCohdaNegotiation.mutate_with_one_random
 
         # gracefully shutdown
         await c_1.shutdown()

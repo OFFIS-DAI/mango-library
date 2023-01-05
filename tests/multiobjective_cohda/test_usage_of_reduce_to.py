@@ -5,7 +5,7 @@ import numpy as np
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import SystemConfig, SolutionCandidate, \
     ScheduleSelections, WorkingMemory, SolutionPoint
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
 
 def min_perf_func(cluster_schedules, target_params):
@@ -30,7 +30,7 @@ def test_unique_points_equals_number_solutions_points(monkeypatch):
     """
     global_ref_point = (1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=min_perf_func,
@@ -67,7 +67,7 @@ def test_more_unique_points_than_num_points_selection_variant_adaption():
     """
     global_ref_point = (1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=min_perf_func,
@@ -105,7 +105,7 @@ def test_more_unique_points_than_num_points_no_adaption(monkeypatch):
     # the length of all_solution_points - num_unique_solution_points is larger than candidate.num_solution_points.
     global_ref_point = (1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=min_perf_func,
@@ -135,7 +135,7 @@ def test_more_unique_points_than_num_points_no_adaption(monkeypatch):
     # the length of all_solution_points - num_unique_solution_points is equal to candidate.num_solution_points.
     global_ref_point = (1.1, 1.1)
     possible_schedules = [[0.1, 0.9], [0.1, 0.1]]
-    cohda = COHDA(
+    cohda = MoCohdaNegotiation(
         schedule_provider=lambda: possible_schedules,
         is_local_acceptable=lambda s: True,
         perf_func=min_perf_func,

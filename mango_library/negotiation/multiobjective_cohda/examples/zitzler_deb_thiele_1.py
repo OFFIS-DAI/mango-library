@@ -2,22 +2,22 @@ import asyncio
 import math
 import numpy as np
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import COHDA
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
 
-FILE = 'Ziztler_1.hdf5'
+FILE = 'Zitzler_1.hdf5'
 SIM_NAME = 'Zitzler_1'
 
 NUM_AGENTS = 30
-NUM_SCHEDULES = 11
-NUM_SOLUTION_POINTS = 5
+NUM_SCHEDULES = 50
+NUM_SOLUTION_POINTS = 20
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = COHDA.pick_all_points
+PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = COHDA.pick_random_point
-MUTATE_FKT = COHDA.mutate_with_all_possible
+MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
 NUM_SIMULATIONS = 1
