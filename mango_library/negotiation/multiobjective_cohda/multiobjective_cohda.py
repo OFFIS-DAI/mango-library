@@ -10,7 +10,7 @@ from uuid import UUID
 
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-from mango.role.api import Role
+from mango import Role
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage

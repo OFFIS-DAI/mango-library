@@ -6,13 +6,13 @@ from typing import List, Callable, Dict, Any
 
 import h5py
 import numpy as np
-from mango.core.container import Container
-from mango.role.core import RoleAgent
+from mango import RoleAgent
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.result import Result
 from pymoo.optimize import minimize
 from pymoo.problems import get_problem
 
+from mango import create_container
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
@@ -216,7 +216,7 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
 
         topology_creator = build_small_world_ring_topology
     for _ in range(num_simulations):
-        container = await Container.factory(addr=('127.0.0.2', 5555))
+        container = await create_container(addr=('127.0.0.2', 5555))
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
@@ -397,7 +397,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
         topology_creator = build_small_world_ring_topology
     for _ in range(num_simulations):
-        container = await Container.factory(addr=('127.0.0.2', 5555))
+        container = await create_container(addr=('127.0.0.2', 5555))
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
@@ -430,7 +430,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
             a.add_role(CoalitionParticipantRole())
             a.add_role(NegotiationTerminationParticipantRole(negotiation_model_class=MoCohdaNegotiationModel,
-                 negotiation_message_class=MoCohdaNegotiationMessage))
+                                                             negotiation_message_class=MoCohdaNegotiationMessage))
             agents.append(a)
             addrs.append((container.addr, a.aid))
 
@@ -463,7 +463,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # make sure all working memories are equal
         for a in agents:
             assert final_memory == next(iter(a.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
-                                 _negotiations.values()))._memory, \
+                                             _negotiations.values()))._memory, \
                 'Working memories of different agents are not equal.'
 
         # shutdown container

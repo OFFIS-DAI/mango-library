@@ -21,7 +21,7 @@ from .cohda.cohda_negotiation import CohdaNegotiationModel
 from .cohda.cohda_messages import StopNegotiationMessage
 from ..coalition.core import CoalitionModel, CoalitionAssignment
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
-from mango.role.api import Role
+from mango import Role
 from mango.messages.codecs import json_serializable
 
 

@@ -10,7 +10,7 @@ from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessa
     CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
-from mango.role.api import Role
+from mango import Role
 
 logger = logging.getLogger(__name__)
 
