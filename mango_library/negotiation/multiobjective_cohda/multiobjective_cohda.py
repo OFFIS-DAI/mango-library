@@ -215,7 +215,7 @@ class MoCohdaNegotiation:
         :param messages: The list of received CohdaMessages
         :return: The message to be sent to the neighbors, None if no message has to be sent
         """
-
+        logger.info("Handle cohda msg")
         old_sysconf = self._memory.system_config
         old_candidate = self._memory.solution_candidate
 
@@ -229,11 +229,14 @@ class MoCohdaNegotiation:
             # t_after_decide = time.time()
             # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
             # act
+            logger.info("After decide")
             new_wm = self._act(new_sysconfig=sysconf, new_candidate=candidate)
+            logger.info("After act")
             # t_after_act = time.time()
             # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
             return new_wm
         else:
+            logger.info("No update")
             return None
 
     def _perceive(self, messages: List[WorkingMemory]) -> Tuple[SystemConfig, SolutionCandidate]:
@@ -597,7 +600,7 @@ class MultiObjectiveCOHDARole(Role):
     def handle_neg_msg(self,
                        content: MoCohdaNegotiationMessage,
                        meta: Dict[str, Any]):
-
+        logger.info(f"NegotiationMessage received")
         # check if there is a Coalition with the coalition_ID
         if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
             logger.warning(f'Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}'
@@ -619,6 +622,7 @@ class MultiObjectiveCOHDARole(Role):
 
         # add message to the queue if negotiation is not stopped
         if not cohda_negotiation.stopped:
+            logger.info("Negotiation running")
             if content.negotiation_id in self._cohda_msg_queues.keys():
                 cohda_negotiation.active = True
                 self._cohda_msg_queues[content.negotiation_id].append(content.working_memory)

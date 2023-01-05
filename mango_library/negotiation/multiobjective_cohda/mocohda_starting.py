@@ -1,12 +1,15 @@
+import logging
 import uuid
 from fractions import Fraction
 
 from mango import Role
 
 from mango_library.coalition.core import CoalitionModel
-from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage, \
+    MoCohdaNegotiationStartMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
 
+logger = logging.getLogger(__name__)
 
 class MoCohdaNegotiationStarterRole(Role):
     """
@@ -39,7 +42,12 @@ class MoCohdaNegotiationStarterRole(Role):
 
     def setup(self):
         super().setup()
-        self.context.schedule_conditional_task(self.start(), self.is_startable)
+
+        self.context.subscribe_message(self, self.handle_mocohda_start,
+                                       lambda c, m: isinstance(c, MoCohdaNegotiationStartMessage))
+
+    def handle_mocohda_start(self, msg, m):
+        self.context.schedule_conditional_task(self.start(msg), self.is_startable)
 
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
@@ -52,21 +60,22 @@ class MoCohdaNegotiationStarterRole(Role):
         # no matching coalition has been found
         return False
 
-    def _look_up_assignment(self, all_assignments):
-        for assignment in all_assignments:
-            if self._coalition_model_matcher(assignment):
-                return assignment
+    def _look_up_assignment(self, all_assignments, coalition_id=None):
+        if coalition_id is not None:
+            for assignment in all_assignments:
+                if assignment.coalition_id == coalition_id:
+                    return assignment
         # default to the first one
         return list(all_assignments)[0]
 
-    async def start(self):
+    async def start(self, mocohda_start_msg:MoCohdaNegotiationStartMessage):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
 
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
+        matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), mocohda_start_msg.coalition_id)
 
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
@@ -80,6 +89,7 @@ class MoCohdaNegotiationStarterRole(Role):
             )
 
         # send message to all neighbors
+        logger.info("Start Sending Negotiation Messages")
         for neighbor in matched_assignment.neighbors:
             neg_msg = MoCohdaNegotiationMessage(
                 working_memory=empty_wm,

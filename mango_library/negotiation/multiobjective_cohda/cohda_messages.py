@@ -59,3 +59,10 @@ class MoCohdaNegotiationMessage:
         :param new_weight: The new message
         """
         self._message_weight = new_weight
+
+@json_serializable
+class MoCohdaNegotiationStartMessage:
+    def __init__(self, target_params, coalition_id, send_weight: bool):
+        self.target_params = target_params
+        self.coalition_id = coalition_id
+        self.send_weight = send_weight
