@@ -7,7 +7,7 @@ from mango.role.core import RoleAgent
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
-    CohdaNegotiationStarterRole
+    MultiobjectiveCohdaNegotiationStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 
@@ -77,7 +77,7 @@ async def create_agents(container, targets, possible_schedules,
 
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
     agents[0].add_role(
-        CohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
+        MultiobjectiveCohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None))
 
     print('Negotiation started')
 

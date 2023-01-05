@@ -36,7 +36,7 @@ class CohdaMessage:
         return self._working_memory
 
 
-class CohdaNegotiationStarterRole(NegotiationStarterRole):
+class MultiobjectiveCohdaNegotiationStarterRole(NegotiationStarterRole):
     """
     Convienience role for starting a COHDA negotiation
     """

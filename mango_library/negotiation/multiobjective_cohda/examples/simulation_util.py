@@ -12,7 +12,7 @@ from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInit
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole,\
-    CohdaNegotiationStarterRole
+    MultiobjectiveCohdaNegotiationStarterRole
 from mango.core.container import Container
 from mango.role.core import RoleAgent
 
@@ -262,7 +262,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            CohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
+            MultiobjectiveCohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None))
         await wait_for_term(controller_agent)
         end_time = time.time()
         print('Negotiation terminated.')
