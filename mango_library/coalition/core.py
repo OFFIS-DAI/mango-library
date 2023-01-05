@@ -394,7 +394,6 @@ class CoalitionParticipantRole(Role):
         :param content: the invite
         :param meta: meta data
         """
-        print("Got invite")
         asyncio.create_task(self.context.send_message(
             content=CoaltitionResponse(self._join_decider(content)),
             receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
