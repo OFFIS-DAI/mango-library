@@ -28,6 +28,9 @@ from mango.messages.codecs import json_serializable
 
 NeighborhoodAddress = Tuple[str, Union[str, Tuple[str, int]], str]
 
+class SendInvitations:
+    def __init__(self, start_date):
+        self.start_date = start_date
 
 @json_serializable
 class AgentAddress:
@@ -300,8 +303,10 @@ class CoalitionInitiatorRole(ProactiveRole):
                                        lambda c, m: isinstance(c, CoaltitionResponse))
         self.context.subscribe_message(self, self.handle_unit_agent_subscription,
                                        lambda content, meta: isinstance(content, AgentAddress))
+        self.context.subscribe_message(self, self.handle_new_invitation,
+                                       lambda content, meta: isinstance(content, SendInvitations))
 
-        # tasks
+    def handle_new_invitation(self):
         self.context.schedule_task(InstantScheduledTask(
             self.send_invitations(self.context)))
 
