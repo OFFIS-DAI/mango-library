@@ -7,6 +7,18 @@ from mango_library.negotiation.cohda.data_classes import WorkingMemory, Solution
 
 
 @json_serializable
+class StartCohdaNegotiationMessage:
+    """
+        Message to start a COHDA negotiation.
+        Contains the coalition_id of the associated coalition
+        and the target parameters that are necessary for the agents to calculate the performance.
+        """
+    def __init__(self, coalition_id, target_params = None):
+        self.coalition_id = coalition_id
+        self.target_params = target_params
+
+
+@json_serializable
 class CohdaNegotiationMessage:
     """
     Message for a COHDA negotiation.

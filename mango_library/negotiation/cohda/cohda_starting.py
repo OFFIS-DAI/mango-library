@@ -4,7 +4,7 @@ from fractions import Fraction
 from mango.role.api import Role
 
 from mango_library.coalition.core import CoalitionModel
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, StartCohdaNegotiationMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
 
 
@@ -39,7 +39,12 @@ class CohdaNegotiationStarterRole(Role):
 
     def setup(self):
         super().setup()
-        self.context.schedule_conditional_task(self.start(), self.is_startable)
+
+        self.context.subscribe_message(self, self.handle_cohda_start,
+                                       lambda c, m: isinstance(c, StartCohdaNegotiationMessage))
+
+    def handle_cohda_start(self, msg, m):
+        self.context.schedule_conditional_task(self.start(msg), self.is_startable)
 
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
@@ -52,24 +57,29 @@ class CohdaNegotiationStarterRole(Role):
         # no matching coalition has been found
         return False
 
-    def _look_up_assignment(self, all_assignments):
-        for assignment in all_assignments:
-            if self._coalition_model_matcher(assignment):
-                return assignment
-        # default to the first one
+    def _look_up_assignment(self, all_assignments, coalition_id):
+        if coalition_id is not None:
+            for assignment in all_assignments:
+                if assignment.coalition_id == coalition_id and self._coalition_model_matcher(assignment):
+                    return assignment
+            # default to the first one
         return list(all_assignments)[0]
 
-    async def start(self):
+    async def start(self, start_msg: StartCohdaNegotiationMessage):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
 
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
+        matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), start_msg.coalition_id)
 
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
+
+        # update target_params
+        if start_msg.target_params is not None:
+            self._target_params = start_msg.target_params
 
         empty_wm = WorkingMemory(
                 target_params=self._target_params,
