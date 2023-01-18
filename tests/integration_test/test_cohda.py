@@ -40,7 +40,8 @@ async def test_coalition_to_cohda_with_termination():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
+            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ]),
+                                                   start_negotiation_directly=True))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -100,7 +101,8 @@ async def test_coalition_to_cohda_with_termination_different_container():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
+            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ]),
+                                                   start_negotiation_directly=True))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -157,7 +159,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         addrs.append((c.addr, a._aid))
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
-    cohda_agents[0].add_role(CohdaNegotiationStarterRole(([n_agents//2], [1])))
+    cohda_agents[0].add_role(CohdaNegotiationStarterRole(([n_agents//2], [1]), start_negotiation_directly=True))
 
     for a in cohda_agents:
         if a._check_inbox_task.done():

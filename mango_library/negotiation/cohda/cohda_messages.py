@@ -13,10 +13,18 @@ class StartCohdaNegotiationMessage:
         Contains the coalition_id of the associated coalition
         and the target parameters that are necessary for the agents to calculate the performance.
         """
-    def __init__(self, coalition_id, target_params = None):
+    def __init__(self, coalition_id, send_weight, target_params = None):
         self.coalition_id = coalition_id
-        self.target_params = target_params
+        self._send_weight = send_weight
+        self._target_params = target_params
 
+    @property
+    def send_weight(self):
+        return self._send_weight
+
+    @property
+    def target_params(self):
+        return self._target_params
 
 @json_serializable
 class CohdaNegotiationMessage:
