@@ -29,6 +29,7 @@ from mango.messages.codecs import json_serializable
 class TerminationMessage:
     """Message for sending the remaining weight to the controller
     """
+
     def __init__(self, weight: Fraction, coalition_id: UUID, negotiation_id: UUID) -> None:
         self._weight = weight
         self._coalition_id = coalition_id
