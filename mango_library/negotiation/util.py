@@ -5,10 +5,12 @@ import base64
 from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
-
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage,\
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage, \
     CohdaSolutionRequestMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
-from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage,\
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
+from mango_library.negotiation.multiobjective_cohda.data_classes import ScheduleSelections, \
+    SystemConfig as SystemConfig_m, SolutionCandidate as SolutionCandidate_m, WorkingMemory as WorkingMemory_m
+from mango_library.negotiation.termination import TerminationMessage, StopNegotiationMessage, \
     InformAboutTerminationMessage
 
 
@@ -76,4 +78,20 @@ cohda_serializers = [
     InformAboutTerminationMessage.__serializer__,
     CohdaFinalSolutionMessage.__serializer__,
     ConfirmCohdaSolutionMessage.__serializer__,
+]
+
+multi_objective_serializers = [
+    get_np_serializer,
+    get_uuid_serializer,
+    CoalitionInvite.__serializer__,
+    CoaltitionResponse.__serializer__,
+    CoalitionAssignment.__serializer__,
+    ScheduleSelections.__serializer__,
+    SystemConfig_m.__serializer__,
+    SolutionCandidate_m.__serializer__,
+    WorkingMemory_m.__serializer__,
+    MoCohdaNegotiationMessage.__serializer__,
+    TerminationMessage.__serializer__,
+    get_fraction_serializer,
+    StopNegotiationMessage.__serializer__,
 ]

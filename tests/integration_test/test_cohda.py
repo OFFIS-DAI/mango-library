@@ -8,7 +8,7 @@ from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiationRo
     CohdaSolutionModel
 from mango_library.negotiation.cohda.cohda_solution_aggregation import CohdaSolutionAggregationRole
 from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
-from mango_library.negotiation.termination import NegotiationTerminationParticipantRole,\
+from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
 import mango_library.negotiation.util as util
@@ -31,17 +31,18 @@ async def test_coalition_to_cohda_with_termination():
 
     for i in range(10):
         a = RoleAgent(c)
+
         def schedules_provider(candidate):
-            print('This is the candidate', candidate)
+            # print('This is the candidate', #candidate)
             return s_array[0]
+
         cohda_role = COHDANegotiationRole(schedules_provider=schedules_provider,
                                           local_acceptable_func=lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ]),
-                                                   start_negotiation_directly=True))
+            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -101,8 +102,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ]),
-                                                   start_negotiation_directly=True))
+            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -159,7 +159,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         addrs.append((c.addr, a._aid))
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
-    cohda_agents[0].add_role(CohdaNegotiationStarterRole(([n_agents//2], [1]), start_negotiation_directly=True))
+    cohda_agents[0].add_role(CohdaNegotiationStarterRole(([n_agents // 2], [1])))
 
     for a in cohda_agents:
         if a._check_inbox_task.done():
@@ -185,7 +185,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
     final_candidate = cohda_negotiation._memory.solution_candidate
 
     assert np.array_equal(
-        final_candidate.cluster_schedule.sum(axis=0), [n_agents//2])
+        final_candidate.cluster_schedule.sum(axis=0), [n_agents // 2])
     for a in cohda_agents:
         # get part_id
         part_id = list(a._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]._part_id
