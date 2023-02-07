@@ -57,7 +57,7 @@ class CohdaNegotiationInteractiveStarterRole(Role):
         # no matching coalition has been found
         return False
 
-    def _look_up_assignment(self, all_assignments, start_msg = None):
+    def _look_up_assignment(self, all_assignments, start_msg=None):
         for assignment in all_assignments:
             if start_msg is not None:
                 if assignment.coalition_id == start_msg.coalition_id:
@@ -144,9 +144,6 @@ class CohdaNegotiationDirectStarterRole(Role):
 
         self.context.schedule_conditional_task(self.start(), self.is_startable)
 
-    def handle_cohda_start(self, msg, m):
-        self.context.schedule_conditional_task(self.start(msg), self.is_startable)
-
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
@@ -158,33 +155,24 @@ class CohdaNegotiationDirectStarterRole(Role):
         # no matching coalition has been found
         return False
 
-    def _look_up_assignment(self, all_assignments, start_msg = None):
+    def _look_up_assignment(self, all_assignments):
         for assignment in all_assignments:
-            if start_msg is not None:
-                if assignment.coalition_id == start_msg.coalition_id:
-                    break
             if self._coalition_model_matcher(assignment):
                 return assignment
         # default to the first one
         return list(all_assignments)[0]
 
-    async def start(self, start_msg: StartCohdaNegotiationMessage = None):
+    async def start(self):
         """Start a negotiation. Send all neighbors a starting negotiation message.
         """
 
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), start_msg)
+        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
 
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
-
-        # update target_params
-        if start_msg is not None:
-            if start_msg.target_params is not None:
-                self._target_params = start_msg.target_params
-            self._send_weight = start_msg.send_weight
 
         empty_wm = WorkingMemory(
                 target_params=self._target_params,
