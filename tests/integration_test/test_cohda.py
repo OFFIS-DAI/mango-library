@@ -7,7 +7,7 @@ import mango.messages.codecs
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiationRole, CohdaNegotiationModel, \
     CohdaSolutionModel
 from mango_library.negotiation.cohda.cohda_solution_aggregation import CohdaSolutionAggregationRole
-from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationStarterRole
+from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationDirectStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
@@ -42,7 +42,7 @@ async def test_coalition_to_cohda_with_termination():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
+            a.add_role(CohdaNegotiationDirectStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -102,7 +102,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
-            a.add_role(CohdaNegotiationStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
+            a.add_role(CohdaNegotiationDirectStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
         addrs.append((c.addr, a._aid))
         cohda_agents.append(a)
 
@@ -159,7 +159,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         addrs.append((c.addr, a._aid))
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
-    cohda_agents[0].add_role(CohdaNegotiationStarterRole(([n_agents // 2], [1])))
+    cohda_agents[0].add_role(CohdaNegotiationDirectStarterRole(([n_agents // 2], [1])))
 
     for a in cohda_agents:
         if a._check_inbox_task.done():
