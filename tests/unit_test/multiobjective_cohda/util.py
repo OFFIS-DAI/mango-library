@@ -9,7 +9,7 @@ from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohd
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     MoCohdaNegotiationModel
-from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationStarterRole
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationDirectStarterRole
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
     NegotiationTerminationDetectorRole
 
@@ -82,8 +82,7 @@ async def create_agents(container, targets, possible_schedules,
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
     print('Coalition build done')
     agents[0].add_role(
-        MoCohdaNegotiationStarterRole(num_solution_points=num_candidates, target_params=None,
-                                      start_negotiation_directly=True))
+        MoCohdaNegotiationDirectStarterRole(num_solution_points=num_candidates, target_params=None))
 
     print('Negotiation started')
 

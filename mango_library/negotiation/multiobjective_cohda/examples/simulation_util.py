@@ -18,7 +18,7 @@ from pymoo.problems import get_problem
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationStarterRole
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationDirectStarterRole
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
     MoCohdaNegotiationModel
 from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
@@ -331,8 +331,7 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            MoCohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None,
-                                          start_negotiation_directly=True))
+            MoCohdaNegotiationDirectStarterRole(num_solution_points=num_solution_points, target_params=None))
         await wait_for_term(controller_agent)
         end_time = time.time()
         print('Negotiation terminated.')
@@ -494,8 +493,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            MoCohdaNegotiationStarterRole(num_solution_points=num_solution_points, target_params=None,
-                                          start_negotiation_directly=True)
+            MoCohdaNegotiationDirectStarterRole(num_solution_points=num_solution_points, target_params=None)
         )
         await wait_for_term(controller_agent)
         end_time = time.time()
