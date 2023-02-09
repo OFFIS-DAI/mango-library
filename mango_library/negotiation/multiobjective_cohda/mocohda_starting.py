@@ -43,7 +43,6 @@ class MoCohdaNegotiationInteractiveStarterRole(Role):
 
     def setup(self):
         super().setup()
-
         self.context.subscribe_message(self, self.handle_mocohda_start,
                                        lambda c, m: isinstance(c, MoCohdaNegotiationStartMessage))
 
