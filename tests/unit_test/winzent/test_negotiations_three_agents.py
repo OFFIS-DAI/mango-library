@@ -1,6 +1,6 @@
 import pytest
 
-from tests.unit_test.winzent.util_functions import create_three_agents, shutdown
+from mango_library.negotiation.winzent.util_functions import create_three_agents, shutdown
 
 
 @pytest.mark.asyncio
