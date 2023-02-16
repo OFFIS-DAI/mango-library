@@ -229,9 +229,12 @@ class NegotiationTerminationDetectorRole(Role):
         """
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
+            sender_addr = meta['sender_addr']
+            if isinstance(sender_addr, list):
+                sender_addr = tuple(sender_addr)  # so we can check if it is equal to our keys in the dict
             if neg_id not in self._participant_map:
                 self._participant_map[neg_id] = set()
-            self._participant_map[neg_id].add((tuple(meta['sender_addr']), meta['sender_id']))
+            self._participant_map[neg_id].add((sender_addr, meta['sender_id']))
 
         if neg_id not in self._weight_map:
             self._weight_map[neg_id] = content.weight

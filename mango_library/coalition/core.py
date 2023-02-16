@@ -219,7 +219,6 @@ def small_world_creator(participants: List[ParticipantKey], k=2, w=0.0) -> Dict[
     """
     neighborhood: Dict[ParticipantKey, List[ParticipantKey]] = {}
     n_particpants = len(participants)
-    print(participants)
 
     for agent in participants:
         neighborhood[agent] = []
