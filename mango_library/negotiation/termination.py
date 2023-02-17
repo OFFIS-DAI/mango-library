@@ -17,12 +17,13 @@ from fractions import Fraction
 from typing import Dict, Any, Union, Optional, Set, Tuple, Callable, List
 from uuid import UUID
 
-from .cohda.cohda_negotiation import CohdaNegotiationModel
-from .cohda.cohda_messages import StopNegotiationMessage
-from ..coalition.core import CoalitionModel, CoalitionAssignment
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
-from mango.role.api import Role
 from mango.messages.codecs import json_serializable
+from mango.role.api import Role
+
+from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
+from .cohda.cohda_messages import StopNegotiationMessage
+from .cohda.cohda_negotiation import CohdaNegotiationModel
+from ..coalition.core import CoalitionModel, CoalitionAssignment
 
 
 @json_serializable
@@ -65,6 +66,7 @@ class InformAboutTerminationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
+
     def __init__(self, negotiation_id: UUID, participants: List[Tuple]) -> None:
         self._negotiation_id = negotiation_id
         self._participants = participants
@@ -187,6 +189,7 @@ class NegotiationTerminationDetectorRole(Role):
     """
 
     """
+
     def __init__(self, on_termination: Callable = None, aggregator_addr=None, aggregator_id: str = None):
         super().__init__()
         self._weight_map: Dict[UUID, Fraction] = {}
@@ -230,9 +233,13 @@ class NegotiationTerminationDetectorRole(Role):
         """
         neg_id = content.negotiation_id
         if 'sender_addr' in meta and 'sender_id' in meta:
+            sender_addr = meta['sender_addr']
+            if isinstance(sender_addr, list):
+                sender_addr = tuple(sender_addr)
+
             if neg_id not in self._participant_map:
                 self._participant_map[neg_id] = set()
-            self._participant_map[neg_id].add((tuple(meta['sender_addr']), meta['sender_id']))
+            self._participant_map[neg_id].add((sender_addr, meta['sender_id']))
 
         if neg_id not in self._weight_map:
             self._weight_map[neg_id] = content.weight
