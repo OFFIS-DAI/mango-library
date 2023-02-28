@@ -75,6 +75,8 @@ class SolutionCandidate:
         self._perf: List[Tuple[float, ...]] = perf
 
     def __eq__(self, o: object) -> bool:
+        if not isinstance(o, SolutionCandidate):
+            return False
         # check whether the actual values of the performances are equal
         performance_equal = True
         for idx in range(len(self._perf)):

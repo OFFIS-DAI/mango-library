@@ -96,18 +96,18 @@ def test_merge_dummy():
     print(candidate_1.perf)
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_2, agent_id='1',
-        perf_func=perf_fkt)
+        perf_func=perf_fkt, get_hypervolume=cohda.get_hypervolume)
 
     assert merge_result != candidate_1 and merge_result is not candidate_1
 
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_1, agent_id='1',
-        perf_func=perf_fkt)
+        perf_func=perf_fkt, get_hypervolume=cohda.get_hypervolume)
     assert merge_result == candidate_1 and merge_result is candidate_1
 
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_3, candidate_j=candidate_1, agent_id='3',
-        perf_func=perf_fkt)
+        perf_func=perf_fkt, get_hypervolume=lambda *_: float('-inf'))
 
     assert merge_result != candidate_3 and merge_result is not candidate_3
     assert merge_result.agent_id == '3'
@@ -158,18 +158,18 @@ def test_merge_sms_emoa():
 
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_2, agent_id='1',
-        perf_func=perf_fkt_min)
+        perf_func=perf_fkt_min, get_hypervolume=cohda.get_hypervolume)
 
     assert merge_result is candidate_1
 
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_1, agent_id='1',
-        perf_func=perf_fkt_min)
+        perf_func=perf_fkt_min, get_hypervolume=cohda.get_hypervolume)
     assert merge_result is candidate_1
 
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_3, candidate_j=candidate_1, agent_id='3',
-        perf_func=perf_fkt)
+        perf_func=perf_fkt, get_hypervolume=lambda *_: float('-inf'))
 
     assert merge_result is not candidate_3 and merge_result != candidate_3
     assert merge_result.agent_id == '3'

@@ -1,43 +1,50 @@
 import logging
-from uuid import UUID
+import logging
+import random
 from typing import Dict, Tuple, Optional, List
+from uuid import UUID
 
 from mango.role.api import Role
 
-from mango_library.negotiation.cohda.cohda_messages import CohdaSolutionRequestMessage, CohdaProposedSolutionMessage, \
-    CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
-from mango_library.negotiation.cohda.data_classes import SolutionCandidate
-from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaSolutionRequestMessage, \
+    MoCohdaProposedSolutionMessage, MoCohdaFinalSolutionMessage, ConfirmMoCohdaSolutionMessage
+from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionPoint, SolutionCandidate
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 from mango_library.negotiation.termination import InformAboutTerminationMessage
 
 logger = logging.getLogger(__name__)
 
 
-class CohdaSolutionAggregationRole(Role):
+class MoCohdaSolutionAggregationRole(Role):
     """
     This Role aggregates the CohdaSolutions of single agents.
     It reacts on an incoming InformAboutTerminationMessage, sends a SolutionRequest to all participants.
     Once all replies have arrived, it aggregates the solutions to one final solution and then sends a
     CohdaFinalSolutionMessage to all participants with the final candidate
     """
-    def __init__(self):
+
+    def __init__(self, solution_point_choosing_function=None):
         """
-        Init the CohdaSolutionAggregationRole
+        Init the MoCohdaSolutionAggregationRole
         """
         super().__init__()
-        self.cohda_solutions: Dict[UUID, SolutionCandidate] = {}    # holds teh final solutions
+        self.cohda_solutions: Dict[UUID, SolutionPoint] = {}  # holds the final solutions
         self._open_solution_requests: Dict[UUID, Dict[Tuple, Optional[SolutionCandidate]]] = {}  # holds open requests
         self._open_confirmations: Dict[UUID, List[Tuple]] = {}
         self._confirmed_cohda_solutions: List[UUID] = []
+        if solution_point_choosing_function is None:
+            self.solution_point_choosing_function = self.choose_random_solution_point
+        else:
+            self.solution_point_choosing_function = solution_point_choosing_function
 
     def setup(self):
         super().setup()
         self.context.subscribe_message(self, self.handle_inform_about_term,
                                        message_condition=lambda c, _: isinstance(c, InformAboutTerminationMessage))
         self.context.subscribe_message(self, self.handle_cohda_solution,
-                                       message_condition=lambda c, _: isinstance(c, CohdaProposedSolutionMessage))
+                                       message_condition=lambda c, _: isinstance(c, MoCohdaProposedSolutionMessage))
         self.context.subscribe_message(self, self.handle_solution_confirmation,
-                                       message_condition=lambda c, _: isinstance(c, ConfirmCohdaSolutionMessage))
+                                       message_condition=lambda c, _: isinstance(c, ConfirmMoCohdaSolutionMessage))
 
     def handle_inform_about_term(self, content: InformAboutTerminationMessage, _):
         """
@@ -47,6 +54,7 @@ class CohdaSolutionAggregationRole(Role):
         :param content: The InformAboutTerminationMessage
         :param _: Meta dict
         """
+        # rint("Aggregator receives InformAboutTerminationMessage")
         # we have a new terminated COHDA negotiation.
         # check if it is really new
         if content.negotiation_id in self.cohda_solutions.keys():
@@ -71,20 +79,19 @@ class CohdaSolutionAggregationRole(Role):
         # Ask for all solutions from the participating agents
         for agent_addr, agent_id in content.participants:
             self.context.schedule_instant_task(self.context.send_acl_message(
-                content=CohdaSolutionRequestMessage(negotiation_id=content.negotiation_id),
+                content=MoCohdaSolutionRequestMessage(negotiation_id=content.negotiation_id),
                 receiver_addr=agent_addr,
                 receiver_id=agent_id,
                 acl_metadata={'sender_id': self.context.aid}
             ))
 
-    def handle_cohda_solution(self, content: CohdaProposedSolutionMessage, meta):
+    def handle_cohda_solution(self, content: MoCohdaProposedSolutionMessage, meta):
         """Is called, once a CohdaProposedSolutionMessage arrives.
         It will first add the proposed solution to the open_solution_requests.
         In case all proposed solutions have arrived, it will start the aggregation
         :param content: The CohdaProposedSolutionMessage
         :param meta: The meta dict
         """
-
         # get sender and id
         sender_addr = meta['sender_addr']
         sender_id = meta['sender_id']
@@ -108,23 +115,35 @@ class CohdaSolutionAggregationRole(Role):
 
         if None not in self._open_solution_requests[negotiation_id].values():
             # we have received all individual solutions, so we can aggregate
-            final_solution = self.aggregate_solution(list(self._open_solution_requests[negotiation_id].values()))
+            final_solution_front = self.aggregate_solution(list(self._open_solution_requests[negotiation_id].values()))
+            final_solution = self.solution_point_choosing_function(final_solution_front)
             # store the result
             self.cohda_solutions[negotiation_id] = final_solution
             self._open_confirmations[negotiation_id] = list(self._open_solution_requests[negotiation_id].keys())
             # inform all participants
             for agent_addr, agent_id in self._open_solution_requests[negotiation_id].keys():
                 self.context.schedule_instant_task(self.context.send_acl_message(
-                    content=CohdaFinalSolutionMessage(solution_candidate=final_solution, negotiation_id=negotiation_id),
+                    content=MoCohdaFinalSolutionMessage(solution_point=final_solution,
+                                                        negotiation_id=negotiation_id),
                     receiver_addr=agent_addr, receiver_id=agent_id, acl_metadata={'sender_id': self.context.aid}
                 ))
             # delete negotiation_id from open requests dict
             del self._open_solution_requests[negotiation_id]
 
     @staticmethod
+    def choose_random_solution_point(solution_front: SolutionCandidate) -> SolutionPoint:
+        """
+        Chooses a SolutionPoint from the pareto front
+        :param solution_front: MOCOHDA SolutionCandidate with solution front
+        :return: the choosen SolutionPoint
+        """
+        return random.choice(solution_front.solution_points)
+
+    @staticmethod
     def aggregate_solution(candidates: List[SolutionCandidate]) -> SolutionCandidate:
         """
-        Aggregates potentially different SolutionCandidates to one SolutionCandidate
+        Aggregates different SolutionCandidates in the proposed solution front to one SolutionCandidate,
+        when there is a timeout the agents have the same
         :param candidates: List of proposed Solution Candidates
         :return: The final SolutionCandidate
         """
@@ -139,13 +158,14 @@ class CohdaSolutionAggregationRole(Role):
                 # If participant list differs, create a new SolutionCandidate with all participants and set performance
                 # to float('-inf').
                 # This is necessary, as we don't know the performance function at this place
-                current_best_candidate = COHDANegotiation._merge_candidates(
-                    current_best_candidate, candidate, agent_id='Aggregation',
-                    perf_func=lambda *_: float('-inf'), target_params=None)
+                current_best_candidate = MoCohdaNegotiation._merge_candidates(
+                    candidate_i=current_best_candidate, candidate_j=candidate, agent_id='Aggregation',
+                    perf_func=lambda *_: float('-inf'), target_params=None,
+                    get_hypervolume=MoCohdaNegotiation.get_hypervolume)
 
         return current_best_candidate
 
-    def handle_solution_confirmation(self, content: ConfirmCohdaSolutionMessage, meta):
+    def handle_solution_confirmation(self, content: ConfirmMoCohdaSolutionMessage, meta):
         neg_id = content.negotiation_id
 
         # check if neg_id is expected and if you can extract sender information
@@ -174,3 +194,12 @@ class CohdaSolutionAggregationRole(Role):
             # all confirmations received
             del self._open_confirmations[neg_id]
             self._confirmed_cohda_solutions.append(neg_id)
+
+            # send final solution to controller after confirmation
+            self.context.schedule_instant_task(self.context.send_acl_message(
+                MoCohdaFinalSolutionMessage(solution_point=content.solution_point,
+                                            negotiation_id=content.negotiation_id),
+                receiver_addr=self._context.addr,
+                receiver_id=self._context.aid,
+                acl_metadata={'sender_id': self.context.aid}
+            ))

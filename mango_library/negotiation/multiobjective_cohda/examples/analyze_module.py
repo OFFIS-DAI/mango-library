@@ -1,11 +1,13 @@
 import math
-import h5py
-import numpy as np
-import matplotlib.pyplot as plt
 import os
-from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
+
+import h5py
+import matplotlib.pyplot as plt
+import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
 from pymoo.problems import get_problem
+
+from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
 
 
 def get_performance_metrics(approximated_front, reference_front, reference_point, p, inside_exponent, minimize):

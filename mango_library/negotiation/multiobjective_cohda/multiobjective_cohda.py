@@ -13,9 +13,12 @@ from evoalgos.selection import HyperVolumeContributionSelection
 from mango.role.api import Role
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
-from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage, \
+    MoCohdaProposedSolutionMessage, MoCohdaFinalSolutionMessage, ConfirmMoCohdaSolutionMessage, StopNegotiationMessage, \
+    MoCohdaSolutionRequestMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
     SystemConfig, ScheduleSelections, Target, SolutionPoint
+import inspect
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +50,20 @@ class MoCohdaNegotiation:
         :param mutate_func
         :param use_fixed_ref_point
         """
+
+        def complete_schedule_provider(system_config: SystemConfig, candidate: SolutionCandidate,
+                                       target_params: Dict):
+            schedule_provider_args = inspect.signature(schedule_provider).parameters.keys()
+            args = {}
+            if 'candidate' in schedule_provider_args:
+                args['candidate'] = candidate
+            if 'system_config' in schedule_provider_args:
+                args['system_config'] = system_config
+            if 'target_params' in schedule_provider_args:
+                args['target_params'] = target_params
+            return schedule_provider(**args)
+
+        self._schedule_provider = complete_schedule_provider
         self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
         self._part_id = part_id
@@ -289,7 +306,8 @@ class MoCohdaNegotiation:
             current_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf)
             current_candidate = self._merge_candidates(
                 candidate_i=current_candidate, candidate_j=new_candidate, agent_id=self._part_id,
-                perf_func=self._perf_func, target_params=self._memory.target_params)
+                perf_func=self._perf_func, target_params=self._memory.target_params,
+                get_hypervolume=self.get_hypervolume)
 
         return current_sysconfig, current_candidate
 
@@ -451,8 +469,9 @@ class MoCohdaNegotiation:
         return self._selection.sorting_component.hypervolume_indicator. \
             assess_non_dom_front(performances)
 
-    def _merge_candidates(self, candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
-                          perf_func, target_params=None):
+    @staticmethod
+    def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
+                          perf_func, get_hypervolume, target_params=None):
         """
         Merge *candidate_i* and *candidate_j* and return the result.
 
@@ -507,7 +526,7 @@ class MoCohdaNegotiation:
             # calculate and set perf
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
-            candidate.hypervolume = self.get_hypervolume(candidate.perf, candidate.solution_points)
+            candidate.hypervolume = get_hypervolume(candidate.perf, candidate.solution_points)
 
         return candidate
 
@@ -547,6 +566,15 @@ class MultiObjectiveCOHDARole(Role):
         # negotiation message
         self.context.subscribe_message(self, self.handle_neg_msg,
                                        lambda c, _: isinstance(c, MoCohdaNegotiationMessage))
+        # stop negotiation message
+        self.context.subscribe_message(self, self.handle_neg_stop,
+                                       lambda c, _: isinstance(c, StopNegotiationMessage))
+        # solution request message
+        self.context.subscribe_message(self, self.handle_solution_request,
+                                       lambda c, _: isinstance(c, MoCohdaSolutionRequestMessage))
+        # final solution message
+        self.context.subscribe_message(self, self.handle_cohda_solution_msg,
+                                       lambda c, _: isinstance(c, MoCohdaFinalSolutionMessage))
 
     def create_cohda(self, part_id: str):
         """
@@ -701,6 +729,90 @@ class MultiObjectiveCOHDARole(Role):
             general_group.create_dataset(f'Solutionpoint_{i}', data=data_solution_points)
         self._updates_iter += 1
         self._hf.close()
+
+    def handle_neg_stop(self, content: StopNegotiationMessage, _):
+        """ Is called once a StopNegotiationMessage arrived
+        """
+        if content.negotiation_id in self._cohda_tasks.keys():
+            # get negotiation
+            cohda_negotiation_model: MoCohdaNegotiationModel = self.context.get_or_create_model(MoCohdaNegotiationModel)
+            if not cohda_negotiation_model.exists(content.negotiation_id):
+                logger.warning(f'Received a stop message for a negotiation with id {content.negotiation_id} '
+                               'but no such negotiation is running.')
+                return
+            cohda_negotiation = cohda_negotiation_model.by_id(content.negotiation_id)
+
+            cohda_negotiation.stopped = True
+
+            # wait until current iteration of negotiation is done (in case it is still running)
+            self.context.schedule_conditional_task(self.stop_cohda_task(content.negotiation_id),
+                                                   condition_func=lambda: not cohda_negotiation.active,
+                                                   lookup_delay=0.05)
+
+    async def stop_cohda_task(self, negotiation_id):
+        """
+        Will stop the process message task of a certain negotiation
+        :param negotiation_id: ID of the negotiation
+        """
+        # cancel task
+        task = self._cohda_tasks[negotiation_id]
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+    def handle_solution_request(self, content: MoCohdaSolutionRequestMessage, meta):
+        """
+        Handles a solution request for a certain negotiation
+        :param content: The CohdaSolutionRequestMessage
+        :param meta: meta of the message
+        """
+        # get negotiation
+        mocohda_negotiation_model: MoCohdaNegotiationModel = self.context.get_or_create_model(MoCohdaNegotiationModel)
+        if not mocohda_negotiation_model.exists(content.negotiation_id):
+            logger.warning(f'Received a solution request message for a negotiation with id {content.negotiation_id} '
+                           'but no such negotiation exists.')
+            return
+        mocohda_negotiation = mocohda_negotiation_model.by_id(content.negotiation_id)
+
+        # get current solution candidate
+        final_solution = mocohda_negotiation._memory.solution_candidate
+        # send CohdaProposedSolutionMessage
+        self.context.schedule_instant_task(
+            self.context.send_acl_message(content=MoCohdaProposedSolutionMessage(
+                solution_candidate=final_solution, negotiation_id=content.negotiation_id
+            ),
+                receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                acl_metadata={'sender_id': self.context.aid}
+            ),
+        )
+
+    def handle_cohda_solution_msg(self, content: MoCohdaFinalSolutionMessage, meta):
+        """
+        Is called once a CohdaFinalSolutionMessage arrives
+        :param content: The CohdaFinalSolutionMessage
+        :param meta: Meta dict
+        :return:
+        """
+        final_candidate: SolutionPoint = content.solution_point
+        neg_id = content.negotiation_id
+        # get part id from negotiation
+        part_id = self.context.get_or_create_model(MoCohdaNegotiationModel).by_id(neg_id)._part_id
+        # get individual schedule from final candidate
+        final_schedule = final_candidate.cluster_schedule[final_candidate.idx[part_id]]
+
+        # add final schedule to CohdaSolutionModel
+        model = self.context.get_or_create_model(MoCohdaSolutionModel)
+        model.add(neg_id, final_schedule)
+        self.context.update(model)
+        # reply with a confirmation
+        self.context.schedule_instant_task(
+            self.context.send_acl_message(
+                content=ConfirmMoCohdaSolutionMessage(negotiation_id=neg_id, solution_point=final_candidate),
+                receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                acl_metadata={'sender_id': self.context.aid})
+        )
 
 
 class MoCohdaNegotiationModel:
