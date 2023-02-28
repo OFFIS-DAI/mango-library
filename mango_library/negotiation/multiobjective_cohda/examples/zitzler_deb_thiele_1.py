@@ -5,7 +5,6 @@ from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
-
 FILE = 'Zitzler_1.hdf5'
 SIM_NAME = 'Zitzler_1'
 
@@ -24,11 +23,11 @@ NUM_SIMULATIONS = 1
 
 
 def g(cs):
-    return 1 + 9/29 * cs.sum(axis=0)[1]
+    return 1 + 9 / 29 * cs.sum(axis=0)[1]
 
 
 def h(cs):
-    return 1 - math.sqrt(target_func_1(cs)/g(cs))
+    return 1 - math.sqrt(target_func_1(cs) / g(cs))
 
 
 def target_func_1(cs):
@@ -49,7 +48,7 @@ TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)
 TARGET_2 = Target(target_function=target_func_2, ref_point=1.1)
 TARGETS = [TARGET_1, TARGET_2]
 
-SCHEDULE_STEP_SIZE = 1 / (NUM_SCHEDULES-1)
+SCHEDULE_STEP_SIZE = 1 / (NUM_SCHEDULES - 1)
 SINGLE_POINT_SCHEDULES = [SCHEDULE_STEP_SIZE * i for i in range(NUM_SCHEDULES)]
 POSSIBLE_SCHEDULES = []
 for i in range(NUM_AGENTS):
