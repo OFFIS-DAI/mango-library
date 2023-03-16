@@ -78,6 +78,8 @@ class CohdaNegotiationStarterRole(Role):
             )
 
         # send message to all neighbors
+        print('mango: start negotiation. matched_assignment.neighbors: ', len(matched_assignment.neighbors))
+        print('mango: ', matched_assignment.neighbors)
         for neighbor in matched_assignment.neighbors:
             neg_msg = CohdaNegotiationMessage(
                 working_memory=empty_wm,

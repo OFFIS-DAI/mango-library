@@ -136,6 +136,7 @@ class COHDANegotiationRole(Role):
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                 if wm_to_send is not None:
+                    print('mango: send msgs to neighbors')
                     # send message to all neighbors
                     for neighbor in coalition_assignment.neighbors:
                         self.context.schedule_instant_task(self.context.send_acl_message(
@@ -157,6 +158,7 @@ class COHDANegotiationRole(Role):
         """ Is called once a StopNegotiationMessage arrived
         """
         if content.negotiation_id in self._cohda_tasks.keys():
+            print(self.context.aid, ' handle neg stop')
             # get negotiation
             cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
             if not cohda_negotiation_model.exists(content.negotiation_id):
@@ -191,6 +193,7 @@ class COHDANegotiationRole(Role):
         :param content: The CohdaSolutionRequestMessage
         :param meta: meta of the message
         """
+        print(self.context.aid, ' handle solution request msg')
         # get negotiation
         cohda_negotiation_model: CohdaNegotiationModel = self.context.get_or_create_model(CohdaNegotiationModel)
         if not cohda_negotiation_model.exists(content.negotiation_id):

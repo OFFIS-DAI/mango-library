@@ -46,6 +46,7 @@ class CohdaSolutionAggregationRole(Role):
         :param content: The InformAboutTerminationMessage
         :param _: Meta dict
         """
+        print('cohda solution aggregation: received information about termination')
         # we have a new terminated COHDA negotiation.
         # check if it is really new
         if content.negotiation_id in self.cohda_solutions.keys():
@@ -127,6 +128,7 @@ class CohdaSolutionAggregationRole(Role):
         :param candidates: List of proposed Solution Candidates
         :return: The final SolutionCandidate
         """
+        print('cohda solution aggregation: start solution aggregation')
         current_best_candidate = None
 
         for candidate in candidates:
@@ -142,6 +144,7 @@ class CohdaSolutionAggregationRole(Role):
                     current_best_candidate, candidate, agent_id='Aggregation',
                     perf_func=lambda *_: float('-inf'), target_params=None)
 
+        print('cohda solution aggregation: finish solution aggregation')
         return current_best_candidate
 
     def handle_solution_confirmation(self, content: ConfirmCohdaSolutionMessage, meta):
@@ -170,6 +173,7 @@ class CohdaSolutionAggregationRole(Role):
         self._open_confirmations[neg_id].remove(agent_key)
 
         if len(self._open_confirmations[neg_id]) == 0:
+            print('cohda solution aggregation: all solution confirmations received')
             # all confirmations received
             del self._open_confirmations[neg_id]
             self._confirmed_cohda_solutions.append(neg_id)

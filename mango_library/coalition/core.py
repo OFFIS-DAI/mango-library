@@ -26,7 +26,6 @@ from mango import Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
 
-
 ContainerAddress = Union[str, Tuple[str, int]]
 ParticipantKey = Tuple[str, ContainerAddress, str]  # part_id as str, ContainerAddress, AgentID
 
@@ -278,7 +277,7 @@ class CoalitionInitiatorRole(Role):
         :param agent_context: the context
         """
         self._coal_id = uuid.uuid1()
-
+        print(f' mango: send invitiations to: {len(self._participants)} participants')
         for participant in self._participants:
             await agent_context.send_acl_message(
                 content=CoalitionInvite(self._coal_id, self._topic),
@@ -293,7 +292,7 @@ class CoalitionInitiatorRole(Role):
         :param content: the invite response
         :param meta: meta data
         """
-
+        print('mango: coalition response: ')
         sender_addr = meta['sender_addr']
         sender_id = meta['sender_id']
         if isinstance(sender_addr, list):
@@ -302,19 +301,25 @@ class CoalitionInitiatorRole(Role):
         sender_addr: ContainerAddress
 
         self._part_to_state[(sender_addr, sender_id)] = content.accept
+        print('mango: len received responses: ', len(self._part_to_state))
 
         if len(self._part_to_state) == len(self._participants) and not self._assignments_sent:
+            print('mango: all responses received.')
             self._send_assignments(self.context)
             self._assignments_sent = True
 
     def _send_assignments(self, agent_context: RoleContext):
+        print('mango: send assignments')
         part_id = 0
         accepted_participants = []
         for agent_addr, agent_id in self._participants:
             if (agent_addr, agent_id) in self._part_to_state and self._part_to_state[(agent_addr, agent_id)]:
                 part_id += 1
                 accepted_participants.append((str(part_id), agent_addr, agent_id))
-
+        print(
+            f'mango: received all coalition responses. send coalition assignments.'
+            f' number of accepted participants: {len(accepted_participants)}')
+        print(f'accepted_participants: {accepted_participants}')
         part_to_neighbors = self._topology_creator(accepted_participants, **self._topology_creator_kwargs)
         for part in accepted_participants:
             self.context.schedule_instant_task(agent_context.send_acl_message(
@@ -352,6 +357,7 @@ class CoalitionParticipantRole(Role):
         :param content: the invite
         :param meta: meta data
         """
+        print(f'mango: {self.context.aid} handles coalitioninvite. send response')
         asyncio.create_task(self.context.send_message(
             content=CoaltitionResponse(self._join_decider(content)),
             receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
@@ -365,6 +371,7 @@ class CoalitionParticipantRole(Role):
             :param content: the assignment
             :param _: the meta data
         """
+        print(f'mango: {self.context.aid} handles coalition assignment')
         assignment = self.context.get_or_create_model(CoalitionModel)
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)

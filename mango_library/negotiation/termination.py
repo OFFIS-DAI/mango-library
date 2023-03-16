@@ -29,6 +29,7 @@ from mango.messages.codecs import json_serializable
 class TerminationMessage:
     """Message for sending the remaining weight to the controller
     """
+
     def __init__(self, weight: Fraction, coalition_id: UUID, negotiation_id: UUID) -> None:
         self._weight = weight
         self._coalition_id = coalition_id
@@ -64,6 +65,7 @@ class InformAboutTerminationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
+
     def __init__(self, negotiation_id: UUID, participants: List[Tuple]) -> None:
         self._negotiation_id = negotiation_id
         self._participants = participants
@@ -136,6 +138,10 @@ class NegotiationTerminationParticipantRole(Role):
         :param content: the incoming neogtiation message
         :param _: the meta data
         """
+        print(f'mango: {self.context.aid} in handle_neg_msg')
+        print('mango: ', self.context.get_or_create_model(CoalitionModel)._assignments)
+        model = self.context.get_or_create_model(CoalitionModel).by_id(content.coalition_id)
+        print('mango: ', model)
         if content.negotiation_id in self._weight_map:
             self._weight_map[content.negotiation_id] += content.message_weight
         else:
@@ -186,6 +192,7 @@ class NegotiationTerminationDetectorRole(Role):
     """
 
     """
+
     def __init__(self, on_termination: Callable = None, aggregator_addr=None, aggregator_id: str = None):
         super().__init__()
         self._weight_map: Dict[UUID, Fraction] = {}
@@ -213,6 +220,7 @@ class NegotiationTerminationDetectorRole(Role):
 
         # now send message to aggregator
         if self._aggregator_addr is not None and self._aggregator_id is not None:
+            print('mango: termination detected')
             await self.context.send_acl_message(
                 content=InformAboutTerminationMessage(negotiation_id=negotiation_id,
                                                       participants=list(self._participant_map[negotiation_id])),
