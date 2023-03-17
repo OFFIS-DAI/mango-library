@@ -2,6 +2,7 @@
 integrate COHDA in the negotiation system and the core COHDA-decider together with its model.
 """
 import asyncio
+import inspect
 import logging
 import random
 from typing import Dict, List, Any, Tuple, Callable, Optional
@@ -18,7 +19,6 @@ from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohd
     MoCohdaSolutionRequestMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import SolutionCandidate, WorkingMemory, \
     SystemConfig, ScheduleSelections, Target, SolutionPoint
-import inspect
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,6 @@ class MoCohdaNegotiation:
             return schedule_provider(**args)
 
         self._schedule_provider = complete_schedule_provider
-        self._schedule_provider = schedule_provider
         self._is_local_acceptable = is_local_acceptable
         self._part_id = part_id
         empty_candidate = SolutionCandidate(agent_id=self._part_id,
@@ -74,7 +73,7 @@ class MoCohdaNegotiation:
                                             num_solution_points=0)
         # create an empty working memory
         self._memory = WorkingMemory(
-            target_params=None, solution_candidate=empty_candidate,
+            target_params={}, solution_candidate=empty_candidate,
             system_config=SystemConfig(schedule_choices={}, num_solution_points=0)
         )
         self._counter = 0
@@ -157,7 +156,7 @@ class MoCohdaNegotiation:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
+    def mutate_with_one_random(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
         Function that mutates each solution point with one random schedule that is different from the original
@@ -166,7 +165,9 @@ class MoCohdaNegotiation:
         :param agent_id:
         :return:
         """
-        schedules = schedule_creator()
+        schedules = schedule_creator(system_config=None,
+                                     candidate=None,
+                                     target_params=target_params, )
         if len(schedules) > 1:
             new_solution_points = []
             for solution_point in solution_points:
@@ -183,7 +184,7 @@ class MoCohdaNegotiation:
             return solution_points
 
     @staticmethod
-    def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
+    def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
@@ -203,16 +204,19 @@ class MoCohdaNegotiation:
         return new_solution_points
 
     @staticmethod
-    def mutate_with_all_possible(solution_points: List[SolutionPoint], schedule_creator, agent_id) \
+    def mutate_with_all_possible(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
         Function that mutates a solution point with all possible schedules
+        :param target_params:
         :param solution_points:
         :param schedule_creator:
         :param agent_id:
         :return:
         """
-        possible_schedules = schedule_creator()
+        possible_schedules = schedule_creator(system_config=None,
+                                              candidate=None,
+                                              target_params=target_params, )
         new_solution_points = []
         for solution_point in solution_points:
             for new_schedule in possible_schedules:
@@ -258,7 +262,7 @@ class MoCohdaNegotiation:
         current_sysconfig = None
         current_candidate = None
         for working_memory in messages:
-            if self._memory.target_params is None:
+            if self._memory.target_params is None or len(self._memory.target_params.keys()) == 0:
                 # get target parameters if not known
                 self._memory.target_params = working_memory.target_params
 
@@ -267,7 +271,9 @@ class MoCohdaNegotiation:
                     # if you have not yet selected any schedule in the sysconfig, choose any to start with
                     schedule_choices = self._memory.system_config.schedule_choices
                     num_solution_points = working_memory.system_config.num_solution_points
-                    initial_schedules = self._schedule_provider()
+                    initial_schedules = self._schedule_provider(system_config=self._memory.system_config,
+                                                                candidate=self._memory.solution_candidate,
+                                                                target_params=self._memory.target_params)
                     num_initial_schedules = len(initial_schedules)
                     initial_schedules = [initial_schedules[n % num_initial_schedules] for n in
                                          range(num_solution_points)]
@@ -336,7 +342,7 @@ class MoCohdaNegotiation:
             # add new solution points to list of all solution points
             new_solution_points = self._mutate_func(
                 solution_points=solution_points_to_mutate, agent_id=self._part_id,
-                schedule_creator=self._schedule_provider)
+                schedule_creator=self._schedule_provider, target_params=self._memory.target_params)
 
             for new_point in new_solution_points:
                 new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
