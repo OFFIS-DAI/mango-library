@@ -31,8 +31,8 @@ class SolutionPoint:
 
     def __eq__(self, other):
         return isinstance(other, SolutionPoint) and np.array_equal(self.cluster_schedule,
-                              other.cluster_schedule) and self.performance == other.performance \
-               and self.idx == other.idx
+                                                                   other.cluster_schedule) and self.performance == other.performance \
+            and self.idx == other.idx
 
     def __lt__(self, other):
         if self == other:
@@ -153,7 +153,7 @@ class SolutionCandidate:
             current_candidate = []
             for schedule_array in self.schedules.values():
                 current_candidate.append(schedule_array[i])
-            all_cs.append(np.array(current_candidate))
+            all_cs.append(np.array(current_candidate, dtype=object))
         return all_cs
 
     @property

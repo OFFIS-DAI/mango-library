@@ -28,7 +28,7 @@ def get_solution(agents):
 
     final_candidate = list(resulting_candidates.values())[0]
     for part_id, candidate in resulting_candidates.items():
-        assert np.allclose(final_candidate.cluster_schedules,
+        assert np.array_equal(final_candidate.cluster_schedules,
                            candidate.cluster_schedules)
 
     return final_candidate
