@@ -238,17 +238,13 @@ class MoCohdaNegotiation:
 
         # perceive
         sysconf, candidate = self._perceive(messages)
-        # t_after_perceive = time.time()
-        # print(f'Perceive took {round(t_after_perceive - t_handle_start, 3)} seconds')
+
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
-            # t_after_decide = time.time()
-            # print(f'Decide took {round(t_after_decide - t_after_perceive, 3)} seconds')
+
             # act
             new_wm = self._act(new_sysconfig=sysconf, new_candidate=candidate)
-            # t_after_act = time.time()
-            # print(f' Act took {round(t_after_act - t_after_decide, 3)} seconds')
             return new_wm
         else:
             return None
@@ -350,9 +346,6 @@ class MoCohdaNegotiation:
 
             all_solution_points.extend(new_solution_points)
 
-            # t_after_point_creation = time.time()
-            # print(f'Creating all points took {round(t_after_point_creation - t_start_decide, 3)} seconds.')
-
             population_set = set(all_solution_points)
             num_unique_solution_points = len(population_set)
 
@@ -375,17 +368,9 @@ class MoCohdaNegotiation:
                     else:
                         break
 
-            # t_after_recuction = time.time()
-            # print(f'Reducing all points took {round(t_after_recuction - t_after_point_creation, 3)} seconds.')
-
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
-
-            # sorted_perfs = sorted([(round(ind.objective_values[0], 2),
-            #                         round(ind.objective_values[1], 2)) for ind in all_solution_points],
-            #                       key=lambda l: l[0])
-            # print(f'Candidate after decide:\nPerformance: {sorted_perfs}\nHypervolume: {round(new_hyper_volume, 4)}')
 
             # if new is better than current, exchange current
             if new_hyper_volume > current_best_candidate.hypervolume:
