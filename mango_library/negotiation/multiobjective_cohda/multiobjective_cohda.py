@@ -37,7 +37,8 @@ class MoCohdaNegotiation:
                  pick_func: Callable = None,
                  mutate_func: Callable = None,
                  use_fixed_ref_point: bool = True,
-                 offsets: list = None):
+                 offsets: list = None,
+                 target_params: dict = {}):
         """
 
         :param schedule_provider:
@@ -73,7 +74,7 @@ class MoCohdaNegotiation:
                                             num_solution_points=0)
         # create an empty working memory
         self._memory = WorkingMemory(
-            target_params={}, solution_candidate=empty_candidate,
+            target_params=target_params, solution_candidate=empty_candidate,
             system_config=SystemConfig(schedule_choices={}, num_solution_points=0)
         )
         self._counter = 0
@@ -258,9 +259,12 @@ class MoCohdaNegotiation:
         current_sysconfig = None
         current_candidate = None
         for working_memory in messages:
-            if self._memory.target_params is None or len(self._memory.target_params.keys()) == 0:
+            if not self._memory.target_params or len(self._memory.target_params.keys()) == 0:
                 # get target parameters if not known
                 self._memory.target_params = working_memory.target_params
+            if self._memory.target_params is None:
+                self._memory.target_params = {}
+            self._memory.update_target_params(working_memory.target_params)
 
             if current_sysconfig is None or current_candidate is None:
                 if self._part_id not in self._memory.system_config.schedule_choices:
@@ -289,8 +293,11 @@ class MoCohdaNegotiation:
                         # recognized in handle_cohda_msgs()
                         current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
                                                               num_solution_points=num_solution_points)
+                        target_params = self._memory.target_params if self._memory.target_params is not None else {}
+                        target_params.update(
+                            {'selected_schedule': current_candidate.schedules[current_candidate.agent_id]})
                         current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
-                                                                 self._memory.target_params)
+                                                                 target_params)
 
                         performances = current_candidate.perf
                         current_candidate.hypervolume = self.get_hypervolume(performances,
@@ -327,8 +334,11 @@ class MoCohdaNegotiation:
         for iteration in range(self._num_iterations):
             candidate_from_sysconfig: SolutionCandidate = \
                 SolutionCandidate.create_from_sysconf(sysconfig=sysconfig, agent_id=self._part_id)
+            target_params = self._memory.target_params if self._memory.target_params is not None else {}
+            target_params.update(
+                {'selected_schedule': candidate_from_sysconfig.schedules[candidate_from_sysconfig.agent_id]})
             candidate_from_sysconfig.perf = self._perf_func(candidate_from_sysconfig.cluster_schedules,
-                                                            self._memory.target_params)
+                                                            target_params)
             all_solution_points = candidate_from_sysconfig.solution_points
 
             # pick solution points to mutate
@@ -341,7 +351,9 @@ class MoCohdaNegotiation:
                 schedule_creator=self._schedule_provider, target_params=self._memory.target_params)
 
             for new_point in new_solution_points:
-                new_perf = self._perf_func([new_point.cluster_schedule], self._memory.target_params)[0]
+                target_params = self._memory.target_params if self._memory.target_params is not None else {}
+                target_params.update({'selected_schedule': new_point.idx})
+                new_perf = self._perf_func([new_point.cluster_schedule], target_params)[0]
                 new_point.performance = new_perf
 
             all_solution_points.extend(new_solution_points)
@@ -515,6 +527,9 @@ class MoCohdaNegotiation:
                                           hypervolume=None,
                                           num_solution_points=candidate_i.num_solution_points)
             # calculate and set perf
+            if target_params is None:
+                target_params = {}
+            target_params.update({'selected_schedule': candidate.schedules[candidate.agent_id]})
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
             candidate.hypervolume = get_hypervolume(candidate.perf, candidate.solution_points)
@@ -529,7 +544,8 @@ class MultiObjectiveCOHDARole(Role):
     def __init__(self, *, schedule_provider, targets: List[Target], num_solution_points: int,
                  local_acceptable_func=None, check_inbox_interval: float = 0.1,
                  pick_func=None, mutate_func=None, num_iterations: int = 1,
-                 use_fixed_ref_point: bool = True, offsets: list = None, store_updates_to_db: bool = False):
+                 use_fixed_ref_point: bool = True, offsets: list = None, store_updates_to_db: bool = False,
+                 target_params: dict = {}):
         super().__init__()
 
         self._schedule_provider = schedule_provider
@@ -552,6 +568,7 @@ class MultiObjectiveCOHDARole(Role):
         self._store_updates_to_db = store_updates_to_db
         self._hf = None
         self._updates_iter = 0
+        self._target_params = target_params
 
     def setup(self):
         # negotiation message
@@ -583,9 +600,10 @@ class MultiObjectiveCOHDARole(Role):
                                   pick_func=self._pick_func,
                                   mutate_func=self._mutate_func,
                                   use_fixed_ref_point=self._use_fixed_ref_point,
-                                  offsets=self._offsets)
+                                  offsets=self._offsets,
+                                  target_params=self._target_params)
 
-    def _perf_func(self, cluster_schedules: List[np.array], target_params) -> List[Tuple]:
+    def _perf_func(self, cluster_schedules: List[np.array], target_params: Dict) -> List[Tuple]:
         """
 
         :param cluster_schedules:

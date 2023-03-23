@@ -345,6 +345,13 @@ class WorkingMemory:
         return (isinstance(o, WorkingMemory) and self.solution_candidate == o.solution_candidate
                 and self.system_config == o.system_config and self.target_params == o.target_params)
 
+    def update_target_params(self, target_params_dict):
+        if target_params_dict is None:
+            return
+        if self._target_params is None:
+            self._target_params = {}
+        self._target_params.update(target_params_dict)
+
 
 class Target:
 
