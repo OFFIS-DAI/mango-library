@@ -3,14 +3,15 @@ import inspect
 import logging
 from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
+
 import numpy as np
 
+from mango.role.api import Role
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaSolutionRequestMessage, \
     CohdaProposedSolutionMessage, StopNegotiationMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate, SystemConfig, \
     ScheduleSelection
-from mango.role.api import Role
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +43,8 @@ class COHDANegotiationRole(Role):
         else:
             self._is_local_acceptable = local_acceptable_func
 
-        self._cohda_msg_queues: Dict[UUID, List[WorkingMemory]] = {}     # stores the message queues
-        self._cohda_tasks: Dict[UUID, asyncio.Task] = {}          # stores the tasks that process the inbox
+        self._cohda_msg_queues: Dict[UUID, List[WorkingMemory]] = {}  # stores the message queues
+        self._cohda_tasks: Dict[UUID, asyncio.Task] = {}  # stores the tasks that process the inbox
         self.check_inbox_interval = check_inbox_interval
 
     def setup(self) -> None:
@@ -80,7 +81,6 @@ class COHDANegotiationRole(Role):
         :param content: CohdaNegotiationMessage
         :param _: meta dict
         """
-
         # check if there is a Coalition with the coalition_ID
         if not self.context.get_or_create_model(CoalitionModel).exists(content.coalition_id):
             logger.warning(f'Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}'
@@ -114,8 +114,8 @@ class COHDANegotiationRole(Role):
                 self._cohda_msg_queues[content.negotiation_id] = [content.working_memory]
                 self._cohda_tasks[content.negotiation_id] = self.context.schedule_periodic_task(
                     self.get_process_msg_queue_coro(
-                            cohda_negotiation=cohda_negotiation, negotiation_id=content.negotiation_id,
-                            coalition_assignment=coalition_assignment),
+                        cohda_negotiation=cohda_negotiation, negotiation_id=content.negotiation_id,
+                        coalition_assignment=coalition_assignment),
                     delay=self.check_inbox_interval)
 
     def get_process_msg_queue_coro(self, cohda_negotiation, coalition_assignment: CoalitionAssignment,
@@ -127,6 +127,7 @@ class COHDANegotiationRole(Role):
         :param negotiation_id: the corresponding negotiation ID
         :return: a coroutine without arguments that can be scheduled as periodic task
         """
+
         async def process_msg():
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
@@ -151,6 +152,7 @@ class COHDANegotiationRole(Role):
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
+
         return process_msg
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
@@ -266,9 +268,9 @@ class COHDANegotiation:
         self._is_local_acceptable = is_local_acceptable
         # start with an empty WorkingMemory
         self._memory = WorkingMemory(None, SystemConfig({}), SolutionCandidate(self._part_id, {}, float('-inf')))
-        self._counter = 0   # counter for ScheduleSelections
+        self._counter = 0  # counter for ScheduleSelections
 
-        self._stopped = False   # is Ture once a StopNegotiationMessage is received for this negotiation
+        self._stopped = False  # is Ture once a StopNegotiationMessage is received for this negotiation
         # self._active is False once an iteration of the process_message_queue function has not received any message
         self._active = True
 
@@ -295,7 +297,7 @@ class COHDANegotiation:
         diff = np.abs(np.array(target_schedule) - sum_cs)  # deviation to the target schedule
         w_diff = diff * np.array(weights)  # multiply with weight vector
         result = -np.sum(w_diff)
-        return float(result)        # cast to float, otherwise a numpy object is returned
+        return float(result)  # cast to float, otherwise a numpy object is returned
 
     @property
     def active(self) -> bool:
