@@ -2,7 +2,8 @@ import numpy as np
 import fractions
 import uuid
 import base64
-from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment
+from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment, \
+    CoalitionAssignmentConfirm, CoalitionBuildConfirm
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage, \
@@ -65,6 +66,8 @@ cohda_serializers = [
     CoalitionInvite.__serializer__,
     CoaltitionResponse.__serializer__,
     CoalitionAssignment.__serializer__,
+    CoalitionAssignmentConfirm.__serializer__,
+    CoalitionBuildConfirm.__serializer__,
     ScheduleSelection.__serializer__,
     SystemConfig.__serializer__,
     SolutionCandidate.__serializer__,
