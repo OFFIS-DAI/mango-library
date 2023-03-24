@@ -44,6 +44,30 @@ def test_serialize_coalition_response():
     assert my_data_2.accept == decoded.accept
 
 
+def test_serialize_coalition_assignment_confirm():
+    codec = mango.messages.codecs.JSON()
+    for serializer in cohda_serializers:
+        codec.add_serializer(*serializer())
+    coal_id = '12345678123456781234567812345678'
+    my_data = CoalitionAssignmentConfirm(coalition_id=uuid.UUID(coal_id))
+
+    encoded = codec.encode(my_data)
+    decoded = codec.decode(encoded)
+    assert my_data.coalition_id == decoded.coalition_id
+
+
+def test_serialize_coalition_build_confirm():
+    codec = mango.messages.codecs.JSON()
+    for serializer in cohda_serializers:
+        codec.add_serializer(*serializer())
+    coal_id = '12345678123456781234567812345678'
+    my_data = CoalitionBuildConfirm(coalition_id=uuid.UUID(coal_id))
+
+    encoded = codec.encode(my_data)
+    decoded = codec.decode(encoded)
+    assert my_data.coalition_id == decoded.coalition_id
+
+
 def test_serialize_coalition_assignment():
     codec = mango.messages.codecs.JSON()
     for serializer in cohda_serializers:
@@ -121,9 +145,9 @@ def test_small_world_creator_with_w():
 @pytest.mark.parametrize("num_part", [1, 2, 3, 4, 5])
 async def test_build_coalition(num_part):
     # create containers
-    
+
     c = await Container.factory(addr=('127.0.0.2', 5555))
-    
+
     # create agents
     agents = []
     addrs = []
@@ -146,7 +170,7 @@ async def test_build_coalition(num_part):
                 raise a._check_inbox_task.exception()
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
-    
+
     for a in agents:
         await a.tasks_complete()
 
@@ -163,7 +187,70 @@ async def test_build_coalition(num_part):
         assert list(assignments.values())[0].coalition_id is not None
         assert list(assignments.values())[0].controller_agent_id == controller_agent.aid
         assert list(assignments.values())[0].controller_agent_addr == c.addr
-        assert len(list(assignments.values())[0].neighbors) == num_part-1
+        assert len(list(assignments.values())[0].neighbors) == num_part - 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("num_part", [1, 2, 3, 4, 5])
+async def test_build_coalition_with_negotiation_starter(num_part):
+    # create containers
+
+    c = await Container.factory(addr=('127.0.0.2', 5555))
+
+    # create agents
+    agents = []
+    addrs = []
+    for _ in range(num_part):
+        a = RoleAgent(c)
+        a.add_role(CoalitionParticipantRole())
+        agents.append(a)
+        addrs.append((c.addr, a._aid))
+
+    agents[0].add_role(CohdaNegotiationDirectStarterRole(target_params=None))
+    controller_agent = RoleAgent(c)
+    controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation',
+                                                     topology_creator_kwargs={'k': 2, 'w': 0.1}))
+    agents.append(controller_agent)
+
+    # all agents send ping request to all agents (including themselves)
+
+    for a in agents:
+        if a._check_inbox_task.done():
+            if a._check_inbox_task.exception() is not None:
+                raise a._check_inbox_task.exception()
+            else:
+                assert False, f'check_inbox terminated unexpectedly.'
+
+    for a in agents:
+        await a.tasks_complete()
+
+    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
+
+    # When the CoalitionInitiator received all confirmations regarding the assignments, the future is done for each
+    # agent in the list with expected assignment confirms.
+    for agent_addr, fut in controller_agent.roles[0]._assignments_confirmed.items():
+        assert fut.done()
+
+    # If the coalition build was successful and all assignments were confirmed, the CoalitionInitiator informs the
+    # other agents about it. The agent with the NegotiationStarterRole expects this message and stores the ID of
+    # the successful coalition.
+    assert len(agents[0].roles[1]._coalitions) == 1
+
+    # The coalition ID stored by the agent with the NegotiationStarterRole equals the coalition ID
+    # of the CoalitionInitiator
+    assert agents[0].roles[1]._coalitions[0] == controller_agent.roles[0]._coal_id
+    # gracefully shutdown
+    for a in agents:
+        await a.shutdown()
+    await c.shutdown()
+
+    assert len(asyncio.all_tasks()) == 1
+    for a in agents[0:num_part]:
+        assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
+        assert list(assignments.values())[0].coalition_id is not None
+        assert list(assignments.values())[0].controller_agent_id == controller_agent.aid
+        assert list(assignments.values())[0].controller_agent_addr == c.addr
+        assert len(list(assignments.values())[0].neighbors) == num_part - 1
 
 
 async def wait_for_coalition_built(agents):

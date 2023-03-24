@@ -16,7 +16,6 @@ The messages defined in this module:
 The role models defined in this module:
 * :class:`CoalitionModel`: contains all information for all coalitions an agent participates in
 """
-from uuid import UUID
 import asyncio
 import uuid
 import random
@@ -25,6 +24,8 @@ from typing import Dict, Any, List, Tuple, Union, Set
 from mango import Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 from mango.messages.codecs import json_serializable
+
+logger = logging.getLogger(__name__)
 
 ContainerAddress = Union[str, Tuple[str, int]]
 ParticipantKey = Tuple[str, ContainerAddress, str]  # part_id as str, ContainerAddress, AgentID
@@ -193,6 +194,26 @@ class CoaltitionResponse:
         return self._accept
 
 
+@json_serializable
+class CoalitionAssignmentConfirm:
+    def __init__(self, coalition_id: UUID):
+        self._coalition_id = coalition_id
+
+    @property
+    def coalition_id(self):
+        return self._coalition_id
+
+
+@json_serializable
+class CoalitionBuildConfirm:
+    def __init__(self, coalition_id: UUID):
+        self._coalition_id = coalition_id
+
+    @property
+    def coalition_id(self):
+        return self._coalition_id
+
+
 def clique_creator(participants: List[ParticipantKey]) -> Dict[ParticipantKey, List[ParticipantKey]]:
     """
     Create a clique topology
@@ -260,12 +281,17 @@ class CoalitionInitiatorRole(Role):
         self._part_to_state = {}
         self._assignments_sent = False
         self._coal_id = None
+        self._assignments_confirmed = {}
 
     def setup(self):
 
         # subscriptions
         self.context.subscribe_message(self, self.handle_coalition_response_msg,
                                        lambda c, m: isinstance(c, CoaltitionResponse))
+
+        # coalition assignment confirms
+        self.context.subscribe_message(self, self.handle_assignment_confirms,
+                                       lambda c, m: isinstance(c, CoalitionAssignmentConfirm))
 
         # tasks
         self.context.schedule_task(InstantScheduledTask(
@@ -305,11 +331,11 @@ class CoalitionInitiatorRole(Role):
 
         if len(self._part_to_state) == len(self._participants) and not self._assignments_sent:
             print('mango: all responses received.')
+            self.context.schedule_instant_task(self._send_assignments(self.context))
             self._send_assignments(self.context)
             self._assignments_sent = True
 
-    def _send_assignments(self, agent_context: RoleContext):
-        print('mango: send assignments')
+    async def _send_assignments(self, agent_context: RoleContext):
         part_id = 0
         accepted_participants = []
         for agent_addr, agent_id in self._participants:
@@ -330,6 +356,46 @@ class CoalitionInitiatorRole(Role):
                 acl_metadata={'sender_addr': agent_context.addr,
                               'sender_id': agent_context.aid}
             ))
+            self._assignments_confirmed[(part[1], part[2])] = asyncio.Future()
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*[fut for fut in self._assignments_confirmed.values()]),
+                timeout=5,
+            )
+        except asyncio.TimeoutError:
+            self._assignments_confirmed = {}
+            logger.warning(
+                f'Not all agents responded in time to the coalition assignments for coalition: {self._coal_id}.')
+            return
+
+        for part in accepted_participants:
+            self.context.schedule_instant_task(agent_context.send_acl_message(
+                content=CoalitionBuildConfirm(coalition_id=self._coal_id),
+                receiver_addr=part[1], receiver_id=part[2],
+                acl_metadata={'sender_addr': agent_context.addr,
+                              'sender_id': agent_context.aid}
+            ))
+
+    def handle_assignment_confirms(self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]) -> None:
+        """Handle the responses to the invites.
+        :param content: the invite response
+        :param meta: meta data
+        """
+        sender_addr = meta['sender_addr']
+        sender_id = meta['sender_id']
+
+        if isinstance(sender_addr, list):
+            sender_addr = tuple(sender_addr)
+
+        assert self._coal_id == content.coalition_id
+
+        if (sender_addr, sender_id) in self._assignments_confirmed:
+            if not self._assignments_confirmed[(sender_addr, sender_id)].cancelled():
+                self._assignments_confirmed[(sender_addr, sender_id)].set_result(True)
+        else:
+            raise ValueError(
+                f'Received confirmation about assignment from an agent which is not part of coalition. '
+                f'AgentId: {sender_id}')
 
 
 class CoalitionParticipantRole(Role):
@@ -357,7 +423,6 @@ class CoalitionParticipantRole(Role):
         :param content: the invite
         :param meta: meta data
         """
-        print(f'mango: {self.context.aid} handles coalitioninvite. send response')
         asyncio.create_task(self.context.send_message(
             content=CoaltitionResponse(self._join_decider(content)),
             receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
@@ -365,13 +430,19 @@ class CoalitionParticipantRole(Role):
                           'sender_id': self.context.aid},
             create_acl=True))
 
-    def handle_assignment(self, content: CoalitionAssignment, _: Dict[str, Any]) -> None:
+    def handle_assignment(self, content: CoalitionAssignment, meta: Dict[str, Any]) -> None:
         """Handle an incoming assignment to a coalition. Store the information in a CoalitionModel.
 
             :param content: the assignment
-            :param _: the meta data
+            :param meta: the meta data
         """
-        print(f'mango: {self.context.aid} handles coalition assignment')
         assignment = self.context.get_or_create_model(CoalitionModel)
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)
+
+        asyncio.create_task(self.context.send_message(
+            content=CoalitionAssignmentConfirm(coalition_id=content.coalition_id),
+            receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+            acl_metadata={'sender_addr': self.context.addr,
+                          'sender_id': self.context.aid},
+            create_acl=True))
