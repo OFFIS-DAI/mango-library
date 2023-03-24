@@ -3,7 +3,7 @@ from fractions import Fraction
 
 from mango.role.api import Role
 
-from mango_library.coalition.core import CoalitionModel
+from mango_library.coalition.core import CoalitionModel, CoalitionBuildConfirm
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, StartCohdaNegotiationMessage
 from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
 
@@ -86,10 +86,10 @@ class CohdaNegotiationInteractiveStarterRole(Role):
             self._send_weight = start_msg.send_weight
 
         empty_wm = WorkingMemory(
-                target_params=self._target_params,
-                system_config=SystemConfig({}),
-                solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
-            )
+            target_params=self._target_params,
+            system_config=SystemConfig({}),
+            solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
+        )
 
         # send message to all neighbors
         for neighbor in matched_assignment.neighbors:
@@ -138,18 +138,24 @@ class CohdaNegotiationDirectStarterRole(Role):
         else:
             # when nothing has been provided just match the first coalition
             self._coalition_model_matcher = lambda _: True
+        self._coalitions = []
 
     def setup(self):
         super().setup()
 
         self.context.schedule_conditional_task(self.start(), self.is_startable)
+        self.context.subscribe_message(self, self.handle_coalition_build_confirm,
+                                       lambda c, m: isinstance(c, CoalitionBuildConfirm))
+
+    def handle_coalition_build_confirm(self, msg, m):
+        self._coalitions.append(msg.coalition_id)
 
     def is_startable(self):
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # check if there is a coalition that can be used
         for assignment in coalition_model.assignments.values():
-            if self._coalition_model_matcher(assignment):
+            if self._coalition_model_matcher(assignment) and assignment.coalition_id in self._coalitions:
                 return True
 
         # no matching coalition has been found
@@ -175,10 +181,10 @@ class CohdaNegotiationDirectStarterRole(Role):
         negotiation_uuid = uuid.uuid1()
 
         empty_wm = WorkingMemory(
-                target_params=self._target_params,
-                system_config=SystemConfig({}),
-                solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
-            )
+            target_params=self._target_params,
+            system_config=SystemConfig({}),
+            solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
+        )
 
         # send message to all neighbors
         for neighbor in matched_assignment.neighbors:

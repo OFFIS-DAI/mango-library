@@ -206,6 +206,16 @@ class CoalitionAssignmentConfirm:
         return self._coalition_id
 
 
+@json_serializable
+class CoalitionBuildConfirm:
+    def __init__(self, coalition_id: UUID):
+        self._coalition_id = coalition_id
+
+    @property
+    def coalition_id(self):
+        return self._coalition_id
+
+
 def clique_creator(participants: List[ParticipantKey]) -> Dict[ParticipantKey, List[ParticipantKey]]:
     """
     Create a clique topology
@@ -351,9 +361,17 @@ class CoalitionInitiatorRole(Role):
             )
         except asyncio.TimeoutError:
             self._assignments_confirmed = {}
-            print('timeout')
             logger.warning(
                 f'Not all agents responded in time to the coalition assignments for coalition: {self._coal_id}.')
+            return
+
+        for part in accepted_participants:
+            self.context.schedule_instant_task(agent_context.send_acl_message(
+                content=CoalitionBuildConfirm(coalition_id=self._coal_id),
+                receiver_addr=part[1], receiver_id=part[2],
+                acl_metadata={'sender_addr': agent_context.addr,
+                              'sender_id': agent_context.aid}
+            ))
 
     def handle_assignment_confirms(self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]) -> None:
         """Handle the responses to the invites.
