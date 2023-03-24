@@ -4,10 +4,12 @@ import uuid
 import random
 
 import mango.messages.codecs
-from mango import Container
+from mango import create_container
 from mango import RoleAgent
-from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment,\
-    CoalitionInitiatorRole, CoalitionParticipantRole, CoalitionModel, small_world_creator
+from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, CoalitionAssignment, \
+    CoalitionInitiatorRole, CoalitionParticipantRole, CoalitionModel, small_world_creator, CoalitionBuildConfirm, \
+    CoalitionAssignmentConfirm
+from mango_library.negotiation.cohda.cohda_starting import CohdaNegotiationDirectStarterRole
 from mango_library.negotiation.util import cohda_serializers
 
 
@@ -146,7 +148,7 @@ def test_small_world_creator_with_w():
 async def test_build_coalition(num_part):
     # create containers
 
-    c = await Container.factory(addr=('127.0.0.2', 5555))
+    c = await create_container(addr=('127.0.0.2', 5555))
 
     # create agents
     agents = []
@@ -155,7 +157,7 @@ async def test_build_coalition(num_part):
         a = RoleAgent(c)
         a.add_role(CoalitionParticipantRole())
         agents.append(a)
-        addrs.append((c.addr, a._aid))
+        addrs.append((c.addr, a._role_context.aid))
 
     controller_agent = RoleAgent(c)
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation',
@@ -195,7 +197,7 @@ async def test_build_coalition(num_part):
 async def test_build_coalition_with_negotiation_starter(num_part):
     # create containers
 
-    c = await Container.factory(addr=('127.0.0.2', 5555))
+    c = await create_container(addr=('127.0.0.2', 5555))
 
     # create agents
     agents = []
@@ -204,7 +206,7 @@ async def test_build_coalition_with_negotiation_starter(num_part):
         a = RoleAgent(c)
         a.add_role(CoalitionParticipantRole())
         agents.append(a)
-        addrs.append((c.addr, a._aid))
+        addrs.append((c.addr, a._role_context._aid))
 
     agents[0].add_role(CohdaNegotiationDirectStarterRole(target_params=None))
     controller_agent = RoleAgent(c)

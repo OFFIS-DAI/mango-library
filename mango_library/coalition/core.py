@@ -18,7 +18,9 @@ The role models defined in this module:
 """
 import asyncio
 import uuid
+from uuid import UUID
 import random
+import logging
 from typing import Dict, Any, List, Tuple, Union, Set
 
 from mango import Role, RoleContext
@@ -332,7 +334,6 @@ class CoalitionInitiatorRole(Role):
         if len(self._part_to_state) == len(self._participants) and not self._assignments_sent:
             print('mango: all responses received.')
             self.context.schedule_instant_task(self._send_assignments(self.context))
-            self._send_assignments(self.context)
             self._assignments_sent = True
 
     async def _send_assignments(self, agent_context: RoleContext):
@@ -357,17 +358,11 @@ class CoalitionInitiatorRole(Role):
                               'sender_id': agent_context.aid}
             ))
             self._assignments_confirmed[(part[1], part[2])] = asyncio.Future()
-        try:
-            await asyncio.wait_for(
-                asyncio.gather(*[fut for fut in self._assignments_confirmed.values()]),
-                timeout=5,
-            )
-        except asyncio.TimeoutError:
-            self._assignments_confirmed = {}
-            logger.warning(
-                f'Not all agents responded in time to the coalition assignments for coalition: {self._coal_id}.')
-            return
 
+        self.context.schedule_conditional_task(self.send_coalition_build_confirms(agent_context, accepted_participants),
+                                               self.all_assignment_confirms_received)
+
+    def send_coalition_build_confirms(self, agent_context, accepted_participants):
         for part in accepted_participants:
             self.context.schedule_instant_task(agent_context.send_acl_message(
                 content=CoalitionBuildConfirm(coalition_id=self._coal_id),
@@ -375,6 +370,9 @@ class CoalitionInitiatorRole(Role):
                 acl_metadata={'sender_addr': agent_context.addr,
                               'sender_id': agent_context.aid}
             ))
+
+    def all_assignment_confirms_received(self):
+        return all([fut.done() for fut in self._assignments_confirmed.values()])
 
     def handle_assignment_confirms(self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]) -> None:
         """Handle the responses to the invites.
@@ -392,6 +390,7 @@ class CoalitionInitiatorRole(Role):
         if (sender_addr, sender_id) in self._assignments_confirmed:
             if not self._assignments_confirmed[(sender_addr, sender_id)].cancelled():
                 self._assignments_confirmed[(sender_addr, sender_id)].set_result(True)
+                print('Assignment confirmed from agent: ', sender_addr, sender_id)
         else:
             raise ValueError(
                 f'Received confirmation about assignment from an agent which is not part of coalition. '

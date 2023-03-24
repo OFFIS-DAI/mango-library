@@ -1,8 +1,8 @@
 import asyncio
 import pytest
 import numpy as np
-from mango.core.container import Container
-from mango.role.core import RoleAgent
+from mango import create_container
+from mango import RoleAgent
 import mango.messages.codecs
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiationRole, CohdaNegotiationModel, \
     CohdaSolutionModel
@@ -17,7 +17,7 @@ import mango_library.negotiation.util as util
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination():
     # create container
-    c = await Container.factory(addr=('127.0.0.3', 5555))
+    c = await create_container(addr=('127.0.0.3', 5555))
     s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
 
     # create cohda_agents
@@ -43,7 +43,7 @@ async def test_coalition_to_cohda_with_termination():
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
             a.add_role(CohdaNegotiationDirectStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
-        addrs.append((c.addr, a._aid))
+        addrs.append((c.addr, a._role_context._aid))
         cohda_agents.append(a)
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
@@ -64,7 +64,7 @@ async def test_coalition_to_cohda_with_termination():
 
     assert len(asyncio.all_tasks()) == 1, f'Too many Tasks are running{asyncio.all_tasks()}'
     cohda_negotiation = \
-        list(cohda_agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+        list(cohda_agents[0]._role_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
     cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
     for a in cohda_agents:
         assert np.array_equal(get_final_schedule(a), [11, 11, 11, 11, 11])
@@ -81,8 +81,8 @@ async def test_coalition_to_cohda_with_termination_different_container():
     for serializer in util.cohda_serializers:
         codec.add_serializer(*serializer())
         codec2.add_serializer(*serializer())
-    c_1 = await Container.factory(addr=('127.0.0.3', 5555), codec=codec)
-    c_2 = await Container.factory(addr=('127.0.0.3', 5556), codec=codec2)
+    c_1 = await create_container(addr=('127.0.0.3', 5555), codec=codec)
+    c_2 = await create_container(addr=('127.0.0.3', 5556), codec=codec2)
 
     s_array = [[[1, 1, 1, 1, 1], [4, 3, 3, 3, 3], [6, 6, 6, 6, 6], [9, 8, 8, 8, 8], [11, 11, 11, 11, 11]]]
 
@@ -103,7 +103,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
         a.add_role(NegotiationTerminationParticipantRole())
         if i == 0:
             a.add_role(CohdaNegotiationDirectStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1, ])))
-        addrs.append((c.addr, a._aid))
+        addrs.append((c.addr, a._role_context._aid))
         cohda_agents.append(a)
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
@@ -125,7 +125,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
 
     assert len(asyncio.all_tasks()) == 1, f'Too many Tasks are running{asyncio.all_tasks()}'
     cohda_negotiation = \
-        list(cohda_agents[1]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+        list(cohda_agents[1]._role_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
     cluster_schedule = cohda_negotiation._memory.solution_candidate.cluster_schedule
     assert np.array_equal(cluster_schedule[0],
                           [11, 11, 11, 11, 11])
@@ -137,7 +137,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination_long_scenario():
     # create containers
-    c = await Container.factory(addr=('127.0.0.2', 5555))
+    c = await create_container(addr=('127.0.0.2', 5555))
     controller_agent = RoleAgent(c)
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     aggregation_role = CohdaSolutionAggregationRole()
@@ -156,7 +156,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         cohda_agents.append(a)
-        addrs.append((c.addr, a._aid))
+        addrs.append((c.addr, a._role_context._aid))
 
     controller_agent.add_role(CoalitionInitiatorRole(addrs, 'cohda', 'cohda-negotiation'))
     cohda_agents[0].add_role(CohdaNegotiationDirectStarterRole(([n_agents // 2], [1])))
@@ -181,14 +181,14 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
 
     assert len(asyncio.all_tasks()) == 1
     cohda_negotiation = \
-        list(cohda_agents[0]._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
+        list(cohda_agents[0]._role_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]
     final_candidate = cohda_negotiation._memory.solution_candidate
 
     assert np.array_equal(
         final_candidate.cluster_schedule.sum(axis=0), [n_agents // 2])
     for a in cohda_agents:
         # get part_id
-        part_id = list(a._agent_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]._part_id
+        part_id = list(a._role_context.get_or_create_model(CohdaNegotiationModel)._negotiations.values())[0]._part_id
         assert np.array_equal(get_final_schedule(a), final_candidate.schedules[part_id])
     assert next(iter(controller_agent.roles[0]._weight_map.values())) == 1
 
@@ -199,4 +199,4 @@ async def wait_for_solution_confirmed(aggregation_role):
 
 
 def get_final_schedule(cohda_agent):
-    return list(cohda_agent._agent_context.get_or_create_model(CohdaSolutionModel)._final_schedules.values())[0]
+    return list(cohda_agent._role_context.get_or_create_model(CohdaSolutionModel)._final_schedules.values())[0]
