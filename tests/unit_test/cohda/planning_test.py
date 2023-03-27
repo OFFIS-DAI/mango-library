@@ -70,7 +70,6 @@ def test_perceive(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate,
                          )
 def test_decide(old_sysconfig: SystemConfig, old_candidate: SolutionCandidate, cohda_object: COHDANegotiation,
                 expected_sysconfig: SystemConfig, expected_candidate: SolutionCandidate):
-
     new_sysconfig, new_candidate = cohda_object._decide(sysconfig=old_sysconfig, candidate=old_candidate)
     for part_id in new_sysconfig.schedule_choices:
         assert np.array_equal(
@@ -115,6 +114,10 @@ async def test_optimize_simple_test_case():
         part_id += 1
 
     agents[0].add_role(CohdaNegotiationDirectStarterRole(target_params=([110, 110, 110, 110, 110], [1, 1, 1, 1, 1])))
+    # CohdaNegotiationDirectStarterRole awaits confirmation from CoalitionInitiator that all assignments were received
+    # and adds the coalition ID to its coalitions. Since the CoalitionInitiator is not implemented here, the coalition
+    # ID is directly added to be able to start a negotiation.
+    agents[0].roles[1]._coalitions.append(coal_id)
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -146,17 +149,20 @@ def test_schedule_provider_with_additional_parameters():
     def schedule_provider_c(candidate):
         assert isinstance(candidate, SolutionCandidate)
         return s_array[0]
+
     schedule_providers.append(schedule_provider_c)
 
     def schedule_provider_s(system_config):
         assert isinstance(system_config, SystemConfig)
         return s_array[0]
+
     schedule_providers.append(schedule_provider_s)
 
     def schedule_provider_s_c(system_config, candidate):
         assert isinstance(system_config, SystemConfig)
         assert isinstance(candidate, SolutionCandidate)
         return s_array[0]
+
     schedule_providers.append(schedule_provider_s_c)
 
     init_wms = [WorkingMemory(
@@ -207,6 +213,11 @@ async def test_optimize_simple_test_case_multi_coal():
     # the solution candidate is correct due to the agents schedules and the target
     agents[0].add_role(
         CohdaNegotiationDirectStarterRole(([110, 110, 110, 110, 110], [1, 1, 1, 1, 1]), coalition_uuid=coal_id2))
+
+    # CohdaNegotiationDirectStarterRole awaits confirmation from CoalitionInitiator that all assignments were received
+    # and adds the coalition ID to its coalitions. Since the CoalitionInitiator is not implemented here, the coalition
+    # ID is directly added to be able to start a negotiation.
+    agents[0].roles[1]._coalitions.append(coal_id2)
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -278,6 +289,10 @@ async def test_optimize_hinrichs_test_case():
         part_id += 1
 
     agents[0].add_role(CohdaNegotiationDirectStarterRole(([542, 528, 519, 511, 509], [1, 1, 1, 1, 1])))
+    # CohdaNegotiationDirectStarterRole awaits confirmation from CoalitionInitiator that all assignments were received
+    # and adds the coalition ID to its coalitions. Since the CoalitionInitiator is not implemented here, the coalition
+    # ID is directly added to be able to start a negotiation.
+    agents[0].roles[1]._coalitions.append(coal_id)
 
     for a in agents:
         if a._check_inbox_task.done():
@@ -304,5 +319,5 @@ async def test_optimize_hinrichs_test_case():
 
 async def wait_for_coalition_built(agents):
     for agent in agents:
-        while not agent.inbox.empty():
+        while len(agent.roles[0].context.get_or_create_model(CoalitionModel).assignments) == 0:
             await asyncio.sleep(0.1)
