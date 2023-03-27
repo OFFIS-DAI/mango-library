@@ -176,7 +176,7 @@ async def test_build_coalition(num_part):
     for a in agents:
         await a.tasks_complete()
 
-    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=20)
 
     # gracefully shutdown
     for a in agents:

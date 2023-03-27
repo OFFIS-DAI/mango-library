@@ -354,8 +354,9 @@ class CoalitionInitiatorRole(Role):
             ))
             self._assignments_confirmed[(part[1], part[2])] = asyncio.Future()
 
-        self.context.schedule_conditional_task(self._send_coalition_build_confirms(agent_context, accepted_participants),
-                                               self._all_assignment_confirms_received)
+        self.context.schedule_conditional_task(
+            self._send_coalition_build_confirms(agent_context, accepted_participants),
+            self._all_assignment_confirms_received)
 
     def _send_coalition_build_confirms(self, agent_context, accepted_participants):
         for part in accepted_participants:
@@ -381,10 +382,10 @@ class CoalitionInitiatorRole(Role):
             sender_addr = tuple(sender_addr)
 
         assert self._coal_id == content.coalition_id
+        sender_identifier = (sender_addr, sender_id)
 
-        if (sender_addr, sender_id) in self._assignments_confirmed:
-            if not self._assignments_confirmed[(sender_addr, sender_id)].cancelled():
-                self._assignments_confirmed[(sender_addr, sender_id)].set_result(True)
+        if sender_identifier in self._assignments_confirmed:
+            self._assignments_confirmed[sender_identifier].set_result(True)
         else:
             raise ValueError(
                 f'Received confirmation about assignment from an agent which is not part of coalition. '
@@ -416,12 +417,11 @@ class CoalitionParticipantRole(Role):
         :param content: the invite
         :param meta: meta data
         """
-        asyncio.create_task(self.context.send_message(
+        self.context.schedule_instant_task(self.context.send_acl_message(
             content=CoaltitionResponse(self._join_decider(content)),
             receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
             acl_metadata={'sender_addr': self.context.addr,
-                          'sender_id': self.context.aid},
-            create_acl=True))
+                          'sender_id': self.context.aid}))
 
     def handle_assignment(self, content: CoalitionAssignment, meta: Dict[str, Any]) -> None:
         """Handle an incoming assignment to a coalition. Store the information in a CoalitionModel.
@@ -433,9 +433,8 @@ class CoalitionParticipantRole(Role):
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)
 
-        asyncio.create_task(self.context.send_message(
+        self.context.schedule_instant_task(self.context.send_acl_message(
             content=CoalitionAssignmentConfirm(coalition_id=content.coalition_id),
             receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
             acl_metadata={'sender_addr': self.context.addr,
-                          'sender_id': self.context.aid},
-            create_acl=True))
+                          'sender_id': self.context.aid}))
