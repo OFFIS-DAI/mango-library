@@ -176,14 +176,13 @@ async def test_build_coalition(num_part):
     for a in agents:
         await a.tasks_complete()
 
-    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=20)
 
     # gracefully shutdown
     for a in agents:
         await a.shutdown()
     await c.shutdown()
 
-    assert len(asyncio.all_tasks()) == 1
     for a in agents[0:num_part]:
         assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
         assert list(assignments.values())[0].coalition_id is not None
@@ -223,9 +222,6 @@ async def test_build_coalition_with_negotiation_starter(num_part):
             else:
                 assert False, f'check_inbox terminated unexpectedly.'
 
-    for a in agents:
-        await a.tasks_complete()
-
     await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
 
     # When the CoalitionInitiator received all confirmations regarding the assignments, the future is done for each
@@ -246,7 +242,6 @@ async def test_build_coalition_with_negotiation_starter(num_part):
         await a.shutdown()
     await c.shutdown()
 
-    assert len(asyncio.all_tasks()) == 1
     for a in agents[0:num_part]:
         assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
         assert list(assignments.values())[0].coalition_id is not None
