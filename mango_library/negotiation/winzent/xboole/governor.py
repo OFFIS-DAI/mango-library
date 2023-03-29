@@ -49,7 +49,7 @@ class Governor:
         self.message_journal = MessageJournal()
         self.solution_journal = MessageJournal()
         self.solver_triggered = False
-        self.triggered_due_to_timeout = True
+        self.triggered_due_to_timeout = False
 
     @property
     def id(self):
@@ -78,6 +78,6 @@ class Governor:
     def try_balance(self):
         assert self._power_balance is not None
         assert self._power_balance_strategy is not None
-
+        print(("power balance ") + str(self._power_balance._ledger[0][0].message.ethics_score))
         return self._power_balance_strategy.solve(
             self._power_balance, xboole.InitiatingParty.Local)

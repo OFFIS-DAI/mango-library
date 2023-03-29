@@ -4,6 +4,7 @@ import math
 import uuid
 from copy import deepcopy
 from datetime import datetime
+import random
 
 from mango.core.agent import Agent
 
@@ -13,16 +14,18 @@ from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
 logger = logging.getLogger(__name__)
 
 
-class WinzentAgent(Agent):
-    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False):
+class WinzentEthicalAgent(Agent):
+    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1):
         super().__init__(container)
         print("Version from 26.07.2022 18:05")
 
-        # PGASC: if true stores the message path in the message
+        # Determines if the message paths are stored in the message
         self.send_message_paths = send_message_paths
-        self.negotiation_connections = {}  # message paths of all agents that have established a connection in
-        # the negotiation
 
+        # message paths of all agents that have established a connection in the negotiation
+        self.negotiation_connections = {}
+
+        # a counter to keep track of the messages sent
         self.messages_sent = 0
 
         # store flexibility as interval with maximum and minimum value per time
@@ -39,9 +42,15 @@ class WinzentAgent(Agent):
         # in final, the result for a disequilibrium is stored
         self.final = {}
 
-        # PGASC in result, the final negotiated (accepted and acknowledged) result is saved
+        # keeps track of this agent's ethics score
+        # Change No.1
+        self.ethics_score = random.uniform(1.0, 10.0)
+        print(ethics_score)
+
+        # In result, the final negotiated (accepted and acknowledged) result is saved
         self.result = {}
         self.result_sum = 0
+
         # store other agents as neighbors in a list
         self.neighbors = {}
 
@@ -126,7 +135,7 @@ class WinzentAgent(Agent):
 
     async def start_negotiation(self, ts, value):
         """
-        Start a negotiation with other agents for the given timestamp and 
+        Start a negotiation with other agents for the given timestamp and
         value. The negotiation is started by calling handle_internal_request.
         :param ts: timespan for the negotiation
         :param value: power value to negotiate about
@@ -136,9 +145,9 @@ class WinzentAgent(Agent):
 
         requirement = xboole.Requirement(
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
-        print(requirement.message)
         requirement.from_target = True
         requirement.message.sender = self._aid
+        requirement.message.ethics_score = self.ethics_score
 
         message = requirement.message
         message.sender = self._aid
@@ -213,7 +222,7 @@ class WinzentAgent(Agent):
 
     async def handle_internal_request(self, requirement):
         """
-        The negotiation request is for this agents. Therefore, it handles an
+        The negotiation request is from this agents. Therefore, it handles an
         internal request and not a request from other agents. This is the
         beginning of a negotiation, because messages to the neighboring agents
         are sent regarding the negotiation information in the given
@@ -257,8 +266,8 @@ class WinzentAgent(Agent):
         message.value[:] = [message.value[0] - value]
         requirement.message = message
         requirement.forecast.second = message.value[0]
-        #this line seems to be a duplicate
-        #self.governor.message_journal.add(message)
+        # this line seems to be a duplicate
+        # self.governor.message_journal.add(message)
         requirement.from_target = True
         self.governor.power_balance.add(requirement)
 
@@ -274,6 +283,7 @@ class WinzentAgent(Agent):
                                  id=message.id,
                                  time_span=requirement.time_span,
                                  sender=self._aid,
+                                 ethics_score=self.ethics_score
                                  )
         # PGASC add logging
         logger.debug(
@@ -336,7 +346,7 @@ class WinzentAgent(Agent):
         """
         if message_path is None:
             message_path = []
-        print(str(self.aid) + "received message: " + str(requirement.message))
+        print("ethics score" + str(requirement.message.ethics_score))
         message = requirement.message
         # If this agent already has its own negotiation running, it will deny the external
         # request by sending a withdrawal message.
@@ -397,7 +407,8 @@ class WinzentAgent(Agent):
                                        receiver=message.sender,
                                        time_span=message.time_span,
                                        value=[value], ttl=self._current_ttl,
-                                       id=str(uuid.uuid4()))
+                                       id=str(uuid.uuid4()),
+                                       ethics_score=float(self.ethics_score))
                 self.governor.message_journal.add(reply)
                 self._current_inquiries_from_agents[reply.id] = reply
                 if self.send_message_paths:
@@ -427,21 +438,27 @@ class WinzentAgent(Agent):
             f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
         )
 
-        if abs(message.value[0]) - abs(value) == 0:
-            # PGASC add logging
-            logger.debug(
-                f"handle_external_request: {self.aid} does not forward the message to other agents "
-                f"because value is completely fulfilled"
-            )
-            # The value in the negotiation request is completely fulfilled.
-            # Therefore, the message is not forwarded to other agents.
-            return
+        # message always get forwarded when trying to make the most ethical decision
+        # Change No.2
+
+        # if abs(message.value[0]) - abs(value) == 0:
+        #     # PGASC add logging
+        #     logger.debug(
+        #         f"handle_external_request: {self.aid} does not forward the message to other agents "
+        #         f"because value is completely fulfilled"
+        #     )
+        #     # The value in the negotiation request is completely fulfilled.
+        #     # Therefore, the message is not forwarded to other agents.
+        #     return
         # In this case, the power value of the request cannot be completely
         # fulfilled yet. Therefore, the remaining power of the request is
         # forwarded to other agents.
-        val = message.value[0]
-        del message.value[:]
-        message.value.append(val - value)
+
+        # Value is not getting subtracted since the full offer needs to be considered.
+        # Change No.3
+        # val = message.value[0]
+        # del message.value[:]
+        # message.value.append(val - value)
         message.is_answer = False
         message.receiver = ''
         logger.debug(
@@ -470,7 +487,7 @@ class WinzentAgent(Agent):
                 self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
         return valid
 
-    async def handle_external_reply(self, requirement, message_path=None):
+    async def handle_external_reply(self, requirement, message_path=None, ethics_score=0):
         """
         Handle a reply from other agents. Reply may be from types:
         DemandNotification, OfferNotification, AcceptanceNotification,
@@ -522,6 +539,7 @@ class WinzentAgent(Agent):
                     self.negotiation_connections[
                         message_path[-1]] = message_path  # received offer; establish connection
                     # supplier:[self.aid/demander, ..., supplier]
+                print("solver lets go")
                 await self.solve()
 
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
@@ -660,7 +678,7 @@ class WinzentAgent(Agent):
         """
         After a negotiation, reset the negotiation parameters.
         """
-        print("reset is called")
+        print("reset is called" + str(self.governor.curr_requirement_value))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -671,6 +689,12 @@ class WinzentAgent(Agent):
         self.result_sum = 0
         self._acknowledgements_sent = []
         self.negotiation_connections = {}
+        self.ethics_score = 0
+
+
+    def calculate_new_ethics_score(self):
+        print("test")
+
 
     def acceptance_valid(self, msg):
         """
@@ -694,15 +718,16 @@ class WinzentAgent(Agent):
         # determine flexibility sign according to msg type
         positive = False if initial_msg_type == xboole.MessageType.DemandNotification else True
         afforded_value = 0
-        #print("soltuion" + str(solution[0]))
-        #print("gcd" + str(gcd[0]))
-        #print("a" + str(int(solution[0][-1])))
+        # print("soltuion" + str(solution[0]))
+        # print("gcd" + str(gcd[0]))
+        # print("a" + str(int(solution[0][-1])))
         # create dict with agents and used power value per agent
         for j in range(len(solution)):
             answer_objects.append(solution[j].split(':', 1)[0])
         sol = DictList()
         for j in range(len(answer_objects)):
             sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
+        print("sol " + str(sol.values))
         self.final = {}
         for k, v in sol.values.copy().items():
             if abs(afforded_value) + abs(v) >= abs(initial_value):
@@ -720,7 +745,7 @@ class WinzentAgent(Agent):
             act_value = -afforded_value
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            print("afforded value " + str(abs(afforded_value)) + " and inital value "+ str(abs(initial_value)))
+            print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
@@ -846,6 +871,7 @@ class WinzentAgent(Agent):
                 await self.no_solution_after_timeout()
             return
         solution = result[0]
+        print("result " + str(solution))
         if len(solution) > 0:
             # There was actually a solution. Split solution values according
             # to agents taking part in it
@@ -891,6 +917,7 @@ class WinzentAgent(Agent):
         """
         Handle message object (content) from other agents.
         """
+        print(meta)
         if content.msg_type == xboole.MessageType. \
                 WithdrawalNotification:
             # withdraw the message the content refers to
@@ -902,11 +929,15 @@ class WinzentAgent(Agent):
             if content.is_answer:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_reply(req, message_path=meta["ontology"]))
+                asyncio.create_task(self.handle_external_reply(req,
+                                                               message_path=meta["ontology"],
+                ))
             else:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_request(req, message_path=meta["ontology"]))
+                asyncio.create_task(self.handle_external_request(req,
+                                                                 message_path=meta["ontology"],
+                                    ))
 
     async def send_message(self, winzent_message, receiver=None, message_path=None):
         """
@@ -914,7 +945,6 @@ class WinzentAgent(Agent):
         """
         if message_path is None:
             message_path = []
-
         logger.debug(
             f"*** {self._aid} sends message with type {winzent_message.msg_type}. ***")
 
@@ -951,7 +981,8 @@ class WinzentAgent(Agent):
                 receiver_id=receiver,
                 acl_metadata={'sender_addr': self._container.addr,
                               'sender_id': self._aid,
-                              'ontology': message_path.copy()}, create_acl=True)
+                              'ontology': message_path.copy(),
+                              }, create_acl=True)
         else:
             # send message to every neighbor
             for neighbor in self.neighbors.keys():
@@ -967,14 +998,12 @@ class WinzentAgent(Agent):
                     receiver_id=neighbor,
                     acl_metadata={'sender_addr': self._container.addr,
                                   'sender_id': self._aid,
-                                  'ontology': message_path.copy()},
-                    # copy to avoid neighbors working on the same object
-                    create_acl=True
-                )
+                                  'ontology': message_path.copy(),
+                        },create_acl=True)
 
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
-    """PGASC fix: deep copy of winzent message object (otherwise two agents manipulate the same object and its ttl)"""
+    """PGASC fix: deep copy of winzent3 message object (otherwise two agents manipulate the same object and its ttl)"""
     return WinzentMessage(
         msg_type=message.msg_type,
         sender=message.sender,
@@ -985,6 +1014,7 @@ def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
         ttl=message.ttl,
         id=message.id,
         answer_to=message.answer_to,
+        ethics_score=message.ethics_score
     )
 
 

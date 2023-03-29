@@ -1,6 +1,6 @@
 import pytest
 
-from tests.unit_test.winzent.util_functions import create_three_agents, shutdown
+from util_functions import create_three_agents, shutdown
 
 
 @pytest.mark.asyncio
@@ -12,14 +12,15 @@ async def test_successful_negotiation_three_agents_demand():
     agent_a, agent_b, agent_c, container = await create_three_agents()
 
     # first, hand flexibility to agents
-    agent_a.update_flexibility(t_start=900, min_p=-10, max_p=0)
-    agent_b.update_flexibility(t_start=900, min_p=-30, max_p=0)
+    agent_a.update_flexibility(t_start=900, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=900, min_p=-30, max_p=-30)
     agent_c.update_flexibility(t_start=900, min_p=-10, max_p=0)
 
     # value is to negotiate is -50, so each of the agents need to take part in the negotiation to solve it
     await agent_b.start_negotiation(ts=[900, 1800], value=-50)
     await agent_b.negotiation_done
     # after the negotiation, the agents should have updated their flexibility
+    print("Lösung!" + str(agent_b.final))
     assert agent_a.flex[900] == [0, 0]
     assert agent_b.flex[900] == [0, 0]
     assert agent_c.flex[900] == [0, 0]

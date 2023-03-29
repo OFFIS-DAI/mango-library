@@ -1,6 +1,7 @@
 from mango.core.container import Container
 
 from mango_library.negotiation.winzent.winzent_agent import WinzentAgent
+from negotiation.winzent.winzent_ethical_agent import WinzentEthicalAgent
 
 
 async def shutdown(agents, containers):
@@ -51,14 +52,14 @@ async def create_six_agents():
 
     # multiple container are possible, here just one is taken
     container = await Container.factory(addr=addr)
-
+    tts = 15
     # create agents
-    agent_a = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_b = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_c = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_d = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_e = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_f = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
+    agent_a = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
+    agent_b = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
+    agent_c = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
+    agent_d = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
+    agent_e = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
+    agent_f = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts)
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,

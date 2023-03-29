@@ -1,3 +1,4 @@
+
 syntax = "proto3";
 
 message WinzentMessage {
@@ -10,4 +11,5 @@ message WinzentMessage {
     repeated int32 value = 7;
     string answer_to = 8;
     string receiver = 9;
+    float ethics_score = 10;
 }

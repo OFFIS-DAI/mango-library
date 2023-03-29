@@ -1,6 +1,6 @@
 import pytest
 
-from tests.unit_test.winzent.util_functions import create_agents, shutdown
+from util_functions import create_agents, shutdown
 
 
 @pytest.mark.asyncio
@@ -25,5 +25,5 @@ async def test_successful_negotiation_hundred_agents():
 
     await agents[0].negotiation_done
     assert not agents[0]._unsuccessful_negotiations
-
+    print(agents[0].final)
     await shutdown(agents, [container])
