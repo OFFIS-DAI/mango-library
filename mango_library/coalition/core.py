@@ -24,7 +24,7 @@ from typing import Dict, Any, List, Tuple, Union
 from uuid import UUID
 
 from mango.messages.codecs import json_serializable
-from mango.role.api import Role, RoleContext
+from mango import Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 
 logger = logging.getLogger(__name__)
