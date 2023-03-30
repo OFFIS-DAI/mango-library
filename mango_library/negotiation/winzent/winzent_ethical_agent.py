@@ -45,7 +45,7 @@ class WinzentEthicalAgent(Agent):
         # keeps track of this agent's ethics score
         # Change No.1
         self.ethics_score = random.uniform(1.0, 10.0)
-        print(ethics_score)
+        self.grace_period_granted = False
 
         # In result, the final negotiated (accepted and acknowledged) result is saved
         self.result = {}
@@ -173,11 +173,13 @@ class WinzentEthicalAgent(Agent):
         while not self.stopped.done():
             await asyncio.sleep(0.1)
             if self._negotiation_running:
+                print("sleeping")
                 await asyncio.sleep(self._time_to_sleep)
                 now = datetime.now()
 
                 current_time = now.strftime("%H:%M:%S")
                 print("Timer ran out at =", current_time)
+                self.grace_period_granted = True
                 # After sleeping, the solver is triggered. This is necessary
                 # in case when not the complete negotiation problem can be
                 # solved. The solver is triggered after the timeout to
@@ -608,6 +610,7 @@ class WinzentEthicalAgent(Agent):
             if self.governor.solution_journal.is_empty():
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
+                print("hi?")
                 await self.reset()
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
@@ -766,6 +769,16 @@ class WinzentEthicalAgent(Agent):
                     await self.no_solution_after_timeout()
                     self.governor.triggered_due_to_timeout = False
                     return
+
+        elif not self.grace_period_granted:
+            # Grace period introduced
+            print("grace period activated")
+            await asyncio.sleep(5)
+            # final solution is calculated
+            self.grace_period_granted = True
+            await self.solve()
+            return
+
         i = 0
         zero_indeces = []
 
