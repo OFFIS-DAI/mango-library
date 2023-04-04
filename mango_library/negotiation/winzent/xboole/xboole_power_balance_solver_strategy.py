@@ -24,6 +24,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         vv = []
         id = str(requirement.message.id)
         kw = abs(requirement.forecast.second)
+        print("kw" + str(kw))
 
         for i in range(len(gcds)):
             if abs(gcds[i]) <= kw:
@@ -187,7 +188,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
 
     @staticmethod
     def find_afforded_value(power_balance, initial_requirement):
-        value = value=0
+        value = 0
         for i in power_balance:
             if i[1] == initial_requirement:
                 continue
@@ -200,4 +201,3 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         for i in power_balance:
             if i[1] == initial_requirement:
                 i[1].forecast.second(value)
-            # i[1].message.value(value)
