@@ -6,6 +6,7 @@ from copy import deepcopy
 from datetime import datetime
 import random
 
+import numpy
 from mango.core.agent import Agent
 
 from mango_library.negotiation.winzent import xboole
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class WinzentEthicalAgent(Agent):
-    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1):
+    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, initial_ethics_score=1, name=""):
         super().__init__(container)
         print("Version from 26.07.2022 18:05")
 
@@ -24,6 +25,8 @@ class WinzentEthicalAgent(Agent):
 
         # message paths of all agents that have established a connection in the negotiation
         self.negotiation_connections = {}
+
+        self.name = name
 
         # a counter to keep track of the messages sent
         self.messages_sent = 0
@@ -44,7 +47,8 @@ class WinzentEthicalAgent(Agent):
 
         # keeps track of this agent's ethics score
         # Change No.1
-        self.ethics_score = random.uniform(1.0, 10.0)
+        self.ethics_score = initial_ethics_score
+        self.decay_rate = 0.01
         self.grace_period_granted = False
 
         # In result, the final negotiated (accepted and acknowledged) result is saved
@@ -173,7 +177,6 @@ class WinzentEthicalAgent(Agent):
         while not self.stopped.done():
             await asyncio.sleep(0.1)
             if self._negotiation_running:
-                print("sleeping")
                 await asyncio.sleep(self._time_to_sleep)
                 now = datetime.now()
 
@@ -610,7 +613,6 @@ class WinzentEthicalAgent(Agent):
             if self.governor.solution_journal.is_empty():
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
-                print("hi?")
                 await self.reset()
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
@@ -685,6 +687,7 @@ class WinzentEthicalAgent(Agent):
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
+        self.calculate_new_ethics_score()
         self.governor.power_balance.clear()
         self._curr_sent_acceptances = []
         if not self.negotiation_done.done():
@@ -692,12 +695,21 @@ class WinzentEthicalAgent(Agent):
         self.result_sum = 0
         self._acknowledgements_sent = []
         self.negotiation_connections = {}
-        self.ethics_score = 0
-
+        self.grace_period_granted = False
 
     def calculate_new_ethics_score(self):
-        print("test")
-
+        # self.ethics_score = self.ethics_score + 0.1*(1-(self.result_sum / self.governor.curr_requirement_value))
+        if self.result_sum / self.governor.curr_requirement_value < 1:
+            self.ethics_score = math.ceil(round((self.ethics_score + 0.1) * 100.0, 3)) / 100.0
+            print("need could not be satisfied: result is " + str(self.result_sum) + " and requirement is " + str(self.governor.curr_requirement_value))
+        else:
+            lower_tier_end = math.floor(self.ethics_score * 100) / 100
+            temp_ethics_score = self.ethics_score - self.decay_rate
+            if temp_ethics_score >= lower_tier_end:
+                self.ethics_score = temp_ethics_score
+            else:
+                self.ethics_score = lower_tier_end
+        print("new ethics score for " + self.name + ": " + str(self.ethics_score))
 
     def acceptance_valid(self, msg):
         """
@@ -769,13 +781,14 @@ class WinzentEthicalAgent(Agent):
                     await self.no_solution_after_timeout()
                     self.governor.triggered_due_to_timeout = False
                     return
-
         elif not self.grace_period_granted:
             # Grace period introduced
             print("grace period activated")
-            await asyncio.sleep(5)
+            await asyncio.sleep(3)
             # final solution is calculated
             self.grace_period_granted = True
+            self._solution_found = False
+            self.governor.solver_triggered = False
             await self.solve()
             return
 
@@ -869,6 +882,7 @@ class WinzentEthicalAgent(Agent):
         if not self._negotiation_running:
             return
         if self.governor.solver_triggered or self._solution_found:
+            print(self.governor.solver_triggered)
             return
         self.governor.solver_triggered = True
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
@@ -1012,7 +1026,7 @@ class WinzentEthicalAgent(Agent):
                     acl_metadata={'sender_addr': self._container.addr,
                                   'sender_id': self._aid,
                                   'ontology': message_path.copy(),
-                        },create_acl=True)
+                                  }, create_acl=True)
 
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:

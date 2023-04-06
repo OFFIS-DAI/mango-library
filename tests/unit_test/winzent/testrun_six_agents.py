@@ -9,7 +9,7 @@ to solve the problem successfully.
 """
 async def run_six():
     now = datetime.now()
-
+    test = False
     current_time = now.strftime("%H:%M:%S")
     print("Current Time =", current_time)
 
