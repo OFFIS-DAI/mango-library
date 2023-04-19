@@ -7,22 +7,34 @@ from typing import List, Callable, Dict, Any
 
 import h5py
 import numpy as np
-from mango.role.core import RoleAgent
-from mango.core.container import Container
+from mango import RoleAgent
+from mango import create_container
 from mango.messages.codecs import JSON
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.result import Result
 from pymoo.optimize import minimize
 from pymoo.problems import get_problem
 
-from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole, CoalitionModel
-from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
+from mango_library.coalition.core import (
+    CoalitionParticipantRole,
+    CoalitionInitiatorRole,
+    CoalitionModel,
+)
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
+    MoCohdaNegotiationMessage,
+)
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationDirectStarterRole
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MultiObjectiveCOHDARole, \
-    MoCohdaNegotiationModel
-from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
-    NegotiationTerminationDetectorRole
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import (
+    MoCohdaNegotiationDirectStarterRole,
+)
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import (
+    MultiObjectiveCOHDARole,
+    MoCohdaNegotiationModel,
+)
+from mango_library.negotiation.termination import (
+    NegotiationTerminationParticipantRole,
+    NegotiationTerminationDetectorRole,
+)
 from mango_library.negotiation.util import multi_objective_serializers
 
 CODEC = JSON()
@@ -30,9 +42,19 @@ for serializer in multi_objective_serializers:
     CODEC.add_serializer(*serializer())
 
 
-def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Target], n_solution_points: int,
-                check_inbox_interval: float, mutate_func: Callable, pick_func: Callable,
-                n_iterations: int, results: List[Dict]):
+def store_in_db(
+    *,
+    db_file: str,
+    sim_name: str,
+    n_agents: int,
+    targets: List[Target],
+    n_solution_points: int,
+    check_inbox_interval: float,
+    mutate_func: Callable,
+    pick_func: Callable,
+    n_iterations: int,
+    results: List[Dict],
+):
     """
     Function that creates a hdf5 file which stores the simulation configurations together with the simulation results.
     CAUTION: Any existing file with the same name as provided in 'db_file' will be overwritten
@@ -48,129 +70,168 @@ def store_in_db(*, db_file: str, sim_name: str, n_agents: int, targets: List[Tar
     :param results: The simulation results as returned from simulate_mo_cohda
     """
     if len(results) == 0:
-        print('Cannot store anything in db as results dict is empty.')
+        print("Cannot store anything in db as results dict is empty.")
         return
 
     # open the file
-    with h5py.File(db_file, 'w') as f:
+    with h5py.File(db_file, "w") as f:
 
-        if os.path.isfile('UnitAgent_0.h5'):
+        if os.path.isfile("UnitAgent_0.h5"):
             # open updates from agents, if those are stored
-            agent_updates = [f'UnitAgent_{i}.h5' for i in range(n_agents)]
+            agent_updates = [f"UnitAgent_{i}.h5" for i in range(n_agents)]
 
             for agent_name in agent_updates:
-                file = h5py.File(agent_name, 'a')
+                file = h5py.File(agent_name, "a")
                 groups = [key for key in file.keys()]
                 groups.sort()
                 for key in groups:
-                    file.copy(key, f, name=f'{agent_name[:-2]}_{key}')
+                    file.copy(key, f, name=f"{agent_name[:-2]}_{key}")
                 os.remove(agent_name)
 
         # General group
-        general_group = f.create_group('General infos')
+        general_group = f.create_group("General infos")
 
         # General Infos dataset
-        dtype_general = np.dtype([
-            ('Name', 'S100'),
-            ('n_agents', 'uint64'),
-            ('n_objectives', 'uint64'),
-            ('n_solution_points', 'uint64'),
-            ('n_iterations', 'uint64'),
-            ('msg_queue_interval', 'float64'),
-            ('mutate_func', 'S100'),
-            ('pick_func', 'S100'),
-        ])
-        data_general = np.array([(sim_name, n_agents, len(targets), n_solution_points, n_iterations,
-                                  check_inbox_interval, mutate_func.__name__, pick_func.__name__)],
-                                dtype=dtype_general)
-        general_group.create_dataset('general_info', data=data_general)
+        dtype_general = np.dtype(
+            [
+                ("Name", "S100"),
+                ("n_agents", "uint64"),
+                ("n_objectives", "uint64"),
+                ("n_solution_points", "uint64"),
+                ("n_iterations", "uint64"),
+                ("msg_queue_interval", "float64"),
+                ("mutate_func", "S100"),
+                ("pick_func", "S100"),
+            ]
+        )
+        data_general = np.array(
+            [
+                (
+                    sim_name,
+                    n_agents,
+                    len(targets),
+                    n_solution_points,
+                    n_iterations,
+                    check_inbox_interval,
+                    mutate_func.__name__,
+                    pick_func.__name__,
+                )
+            ],
+            dtype=dtype_general,
+        )
+        general_group.create_dataset("general_info", data=data_general)
 
         # Targets dataset
-        dtype_targets = np.dtype([
-            ('Function', 'S100'),
-            ('Ref Point', 'float64')
-        ])
-        data_targets = np.array([(t._target_function.__doc__, t.ref_point) for t in targets], dtype=dtype_targets)
-        general_group.create_dataset('targets', data=data_targets)
+        dtype_targets = np.dtype([("Function", "S100"), ("Ref Point", "float64")])
+        data_targets = np.array(
+            [(t._target_function.__doc__, t.ref_point) for t in targets],
+            dtype=dtype_targets,
+        )
+        general_group.create_dataset("targets", data=data_targets)
 
         # Schedules dataset
-        dtype_schedules = [('aid', 'S100')]
-        schedules_per_agent = results[0]['schedules']
+        dtype_schedules = [("aid", "S100")]
+        schedules_per_agent = results[0]["schedules"]
         max_num_schedules = max([len(s) for s in schedules_per_agent.values()])
 
         len_of_schedules = len(list(schedules_per_agent.values())[0][0])
         for i in range(max_num_schedules):
             for j in range(len_of_schedules):
-                dtype_schedules.append((f'schedule_{i}[{j}]', 'float64'))
+                dtype_schedules.append((f"schedule_{i}[{j}]", "float64"))
         dtype_schedules = np.dtype(dtype_schedules)
         data_schedules = []
 
         for results_dict in results:
-            assert schedules_per_agent == results_dict['schedules']
+            assert schedules_per_agent == results_dict["schedules"]
 
         for aid, sched_list in schedules_per_agent.items():
-            single_point_schedules = [s[pos] for s in sched_list for pos in range(len_of_schedules)]
+            single_point_schedules = [
+                s[pos] for s in sched_list for pos in range(len_of_schedules)
+            ]
             missing_schedules = max_num_schedules - len(single_point_schedules)
-            data_schedules.append(tuple([aid] + single_point_schedules + [np.nan] * missing_schedules))
+            data_schedules.append(
+                tuple([aid] + single_point_schedules + [np.nan] * missing_schedules)
+            )
         data_schedules = np.array(data_schedules, dtype=dtype_schedules)
-        general_group.create_dataset('Schedules', data=data_schedules)
+        general_group.create_dataset("Schedules", data=data_schedules)
 
         # Results group
-        results_group = f.create_group('Results')
+        results_group = f.create_group("Results")
 
         # Go through all results in result dict
         for sim_no, results_dict in enumerate(results):
             # General Results dataset
-            sim_results_grp = results_group.create_group(f'Results_{sim_no}')
-            solution_candidate = results_dict['final_memory'].solution_candidate
-            dtype_general_result = np.dtype([
-                ('Duration', 'float64'),
-                ('Hypervolume', 'float64')
-            ])
-            data_general_results = np.array([(results_dict['duration'], solution_candidate.hypervolume)],
-                                            dtype=dtype_general_result)
-            sim_results_grp.create_dataset('general results', data=data_general_results)
+            sim_results_grp = results_group.create_group(f"Results_{sim_no}")
+            solution_candidate = results_dict["final_memory"].solution_candidate
+            dtype_general_result = np.dtype(
+                [("Duration", "float64"), ("Hypervolume", "float64")]
+            )
+            data_general_results = np.array(
+                [(results_dict["duration"], solution_candidate.hypervolume)],
+                dtype=dtype_general_result,
+            )
+            sim_results_grp.create_dataset("general results", data=data_general_results)
 
             # Performance dataset
-            dtype_performances = np.dtype([
-                (f'Performance_{i}', 'float64') for i, _ in enumerate(targets)
-            ])
-            data_perf = np.array(sorted(solution_candidate.perf), dtype=dtype_performances)
-            sim_results_grp.create_dataset('performances', data=data_perf)
+            dtype_performances = np.dtype(
+                [(f"Performance_{i}", "float64") for i, _ in enumerate(targets)]
+            )
+            data_perf = np.array(
+                sorted(solution_candidate.perf), dtype=dtype_performances
+            )
+            sim_results_grp.create_dataset("performances", data=data_perf)
 
             # Overlay dataset
-            dtype_neighbors = [
-                ('part_id', 'S100')
-            ]
-            max_len_of_neighbors = max(len(neighbors) for neighbors in results_dict['overlay'].values())
+            dtype_neighbors = [("part_id", "S100")]
+            max_len_of_neighbors = max(
+                len(neighbors) for neighbors in results_dict["overlay"].values()
+            )
             for i in range(max_len_of_neighbors):
-                dtype_neighbors.append((f'neighbor_{i}', 'S100'))
+                dtype_neighbors.append((f"neighbor_{i}", "S100"))
             dtype_neighbors = np.dtype(dtype_neighbors)
             data_neighbors = []
-            for part_id, neighbors in results_dict['overlay'].items():
+            for part_id, neighbors in results_dict["overlay"].items():
                 num_empty_neighbors = len(dtype_neighbors) - 1 - len(neighbors)
-                data_neighbors.append((part_id,) + (*neighbors,) + ((None,) * num_empty_neighbors))
+                data_neighbors.append(
+                    (part_id,) + (*neighbors,) + ((None,) * num_empty_neighbors)
+                )
             data_neighbors = np.array(data_neighbors, dtype=dtype_neighbors)
-            sim_results_grp.create_dataset('overlay', data=data_neighbors)
+            sim_results_grp.create_dataset("overlay", data=data_neighbors)
 
             # Solution Points datasets
-            dtype_solution_points = [('part_id', 'S100')]
+            dtype_solution_points = [("part_id", "S100")]
             for i in range(len_of_schedules):
-                dtype_solution_points.append(((f'value_{i}', 'float64')))
+                dtype_solution_points.append(((f"value_{i}", "float64")))
             dtype_solution_points = np.dtype(dtype_solution_points)
 
-            for i, solution_point in enumerate(sorted(solution_candidate.solution_points)):
+            for i, solution_point in enumerate(
+                sorted(solution_candidate.solution_points)
+            ):
                 data_solution_points = []
                 for part_id, index in solution_point.idx.items():
-                    data_solution_points.append((part_id,) + tuple(solution_point.cluster_schedule[index]))
-                data_solution_points = np.array(data_solution_points, dtype=dtype_solution_points)
-                sim_results_grp.create_dataset(f'Solutionpoint_{i}', data=data_solution_points)
+                    data_solution_points.append(
+                        (part_id,) + tuple(solution_point.cluster_schedule[index])
+                    )
+                data_solution_points = np.array(
+                    data_solution_points, dtype=dtype_solution_points
+                )
+                sim_results_grp.create_dataset(
+                    f"Solutionpoint_{i}", data=data_solution_points
+                )
 
 
-async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num_solution_points: int,
-                                  pick_func: Callable, mutate_func: Callable,
-                                  num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                                  num_simulations: int) -> List[Dict[str, Any]]:
+async def simulate_mo_cohda_NSGA2(
+    *,
+    num_agents: int,
+    targets: List[Target],
+    num_solution_points: int,
+    pick_func: Callable,
+    mutate_func: Callable,
+    num_iterations: int,
+    check_inbox_interval: float,
+    topology_creator: Callable = None,
+    num_simulations: int,
+) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -226,8 +287,8 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
                 if random.random() < w:
                     random_agent = random.choice(unit_agents)
                     if (
-                            random_agent not in neighborhood[agent]
-                            and random_agent != agent
+                        random_agent not in neighborhood[agent]
+                        and random_agent != agent
                     ):
                         neighborhood[agent].append(random_agent)
                         neighborhood[random_agent].append(agent)
@@ -238,33 +299,40 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
-        schedules_per_agent = {}  # will be filled and returned (for storing in database)
+        schedules_per_agent = (
+            {}
+        )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
         container_list = []
-        container = await Container.factory(addr=('127.0.0.2', port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
         container_list.append(container)
         port += 1
         # create agents for negotiation
         for i in range(num_agents):
-            container = await Container.factory(addr=('127.0.0.2', port), codec=CODEC)
+            container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
             port += 1
             container_list.append(container)
-            a = RoleAgent(container, suggested_aid=f'UnitAgent_{i}')
+            a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(solution_point=None, agent_id=None):
-                p = get_problem('zdt3')
+                p = get_problem("zdt3")
                 algorithm = NSGA2(pop_size=num_solution_points)
 
                 if solution_point is None:
-                    example_sum = [0. for _ in range(len(p.xl))]
+                    example_sum = [0.0 for _ in range(len(p.xl))]
                 else:
                     # determine the sum of the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
                     # determine the schedule of the agent from the cluster schedule
-                    agent_schedule = solution_point.cluster_schedule[solution_point.idx[agent_id]]
+                    agent_schedule = solution_point.cluster_schedule[
+                        solution_point.idx[agent_id]
+                    ]
                     example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
                     # abstract the partition of the agent from the overall sum
-                    example_sum = [example_sum[idx] - agent_schedule[idx] for idx in range(len(example_sum))]
+                    example_sum = [
+                        example_sum[idx] - agent_schedule[idx]
+                        for idx in range(len(example_sum))
+                    ]
                     # assert that there is no entry below 0 or above 1 in the sum
                     assert all(0 <= x <= 1 for x in example_sum)
 
@@ -294,18 +362,26 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
                 solution = [np.asarray(sol) for sol in solution]
                 return solution
 
-            a.add_role(MultiObjectiveCOHDARole(
-                schedule_provider=provide_schedules,
-                targets=targets,
-                local_acceptable_func=lambda s: True,
-                num_solution_points=num_solution_points, num_iterations=num_iterations,
-                check_inbox_interval=check_inbox_interval,
-                pick_func=pick_func, mutate_func=mutate_func)
+            a.add_role(
+                MultiObjectiveCOHDARole(
+                    schedule_provider=provide_schedules,
+                    targets=targets,
+                    local_acceptable_func=lambda s: True,
+                    num_solution_points=num_solution_points,
+                    num_iterations=num_iterations,
+                    check_inbox_interval=check_inbox_interval,
+                    pick_func=pick_func,
+                    mutate_func=mutate_func,
+                )
             )
 
             a.add_role(CoalitionParticipantRole())
-            a.add_role(NegotiationTerminationParticipantRole(negotiation_model_class=MoCohdaNegotiationModel,
-                                                             negotiation_message_class=MoCohdaNegotiationMessage))
+            a.add_role(
+                NegotiationTerminationParticipantRole(
+                    negotiation_model_class=MoCohdaNegotiationModel,
+                    negotiation_message_class=MoCohdaNegotiationMessage,
+                )
+            )
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
@@ -313,40 +389,68 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
             schedules_per_agent[a.aid] = provide_schedules()
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await Container.factory(addr=('127.0.0.2', port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
         port += 1
         container_list.append(container)
         controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
-        controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic='',
-                                                         topology_creator=topology_creator))
+        controller_agent.add_role(
+            CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            )
+        )
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-        print('Done building a coalition.')
+        print("Done building a coalition.")
 
         # fill the overlay dictionary
         for a in agents:
-            assignment = next(iter(a.roles[0].context.get_or_create_model(CoalitionModel)._assignments.values()))
+            assignment = next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(CoalitionModel)
+                    ._assignments.values()
+                )
+            )
             overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
 
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            MoCohdaNegotiationDirectStarterRole(num_solution_points=num_solution_points, target_params=None))
+            MoCohdaNegotiationDirectStarterRole(
+                num_solution_points=num_solution_points, target_params=None
+            )
+        )
         await wait_for_term(controller_agent)
         end_time = time.time()
-        print('Negotiation terminated.')
+        print("Negotiation terminated.")
 
         # get final memory of first agent
-        final_memory = next(iter(agents[0].roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
-                                 _negotiations.values()))._memory
+        final_memory = next(
+            iter(
+                agents[0]
+                .roles[0]
+                .context.get_or_create_model(MoCohdaNegotiationModel)
+                ._negotiations.values()
+            )
+        )._memory
 
         # make sure all working memories are equal
         for a in agents:
-            assert final_memory == next(iter(a.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
-                                             _negotiations.values()))._memory, \
-                'Working memories of different agents are not equal.'
+            assert (
+                final_memory
+                == next(
+                    iter(
+                        a.roles[0]
+                        .context.get_or_create_model(MoCohdaNegotiationModel)
+                        ._negotiations.values()
+                    )
+                )._memory
+            ), "Working memories of different agents are not equal."
 
-        print('All working memories are equal!')
+        print("All working memories are equal!")
         # shutdown container
         for container in container_list:
             await container.shutdown()
@@ -354,20 +458,31 @@ async def simulate_mo_cohda_NSGA2(*, num_agents: int, targets: List[Target], num
         # append results
         results.append(
             {
-                'final_memory': final_memory,
-                'duration': end_time - start_time,
-                'schedules': schedules_per_agent,
-                'overlay': overlay,
+                "final_memory": final_memory,
+                "duration": end_time - start_time,
+                "schedules": schedules_per_agent,
+                "overlay": overlay,
             }
         )
 
     return results
 
 
-async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedules_all_equal: bool = False,
-                            targets: List[Target], num_solution_points: int, pick_func: Callable, mutate_func: Callable,
-                            num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                            num_simulations: int, store_updates_to_db: bool = False) -> List[Dict[str, Any]]:
+async def simulate_mo_cohda(
+    *,
+    num_agents: int,
+    possible_schedules: List,
+    schedules_all_equal: bool = False,
+    targets: List[Target],
+    num_solution_points: int,
+    pick_func: Callable,
+    mutate_func: Callable,
+    num_iterations: int,
+    check_inbox_interval: float,
+    topology_creator: Callable = None,
+    num_simulations: int,
+    store_updates_to_db: bool = False,
+) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -422,8 +537,8 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                 if random.random() < w:
                     random_agent = random.choice(unit_agents)
                     if (
-                            random_agent not in neighborhood[agent]
-                            and random_agent != agent
+                        random_agent not in neighborhood[agent]
+                        and random_agent != agent
                     ):
                         neighborhood[agent].append(random_agent)
                         neighborhood[random_agent].append(agent)
@@ -436,15 +551,17 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
-        schedules_per_agent = {}  # will be filled and returned (for storing in database)
+        schedules_per_agent = (
+            {}
+        )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
         container_list = []
         # create agents for negotiation
         for i in range(num_agents):
-            container = await Container.factory(addr=('127.0.0.2', port), codec=CODEC)
+            container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
             port += 1
             container_list.append(container)
-            a = RoleAgent(container, suggested_aid=f'UnitAgent_{i}')
+            a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(index):
                 # we need an inline function here, otherwise to let the lamda functions actually point to
@@ -454,62 +571,97 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                 else:
                     return lambda: possible_schedules
 
-            a.add_role(MultiObjectiveCOHDARole(
-                schedule_provider=provide_schedules(i),
-                targets=targets,
-                local_acceptable_func=lambda s: True,
-                num_solution_points=num_solution_points, num_iterations=num_iterations,
-                check_inbox_interval=check_inbox_interval,
-                pick_func=pick_func, mutate_func=mutate_func,
-                store_updates_to_db=store_updates_to_db)
+            a.add_role(
+                MultiObjectiveCOHDARole(
+                    schedule_provider=provide_schedules(i),
+                    targets=targets,
+                    local_acceptable_func=lambda s: True,
+                    num_solution_points=num_solution_points,
+                    num_iterations=num_iterations,
+                    check_inbox_interval=check_inbox_interval,
+                    pick_func=pick_func,
+                    mutate_func=mutate_func,
+                    store_updates_to_db=store_updates_to_db,
+                )
             )
 
             # Fill dictionary with schedules per agent (only import for return values for database purposes)
             schedules_per_agent[a.aid] = provide_schedules(i)()
 
             a.add_role(CoalitionParticipantRole())
-            a.add_role(NegotiationTerminationParticipantRole(negotiation_model_class=MoCohdaNegotiationModel,
-                                                             negotiation_message_class=MoCohdaNegotiationMessage))
+            a.add_role(
+                NegotiationTerminationParticipantRole(
+                    negotiation_model_class=MoCohdaNegotiationModel,
+                    negotiation_message_class=MoCohdaNegotiationMessage,
+                )
+            )
             agents.append(a)
             addrs.append((container.addr, a.aid))
 
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await Container.factory(addr=('127.0.0.2', port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
         port += 1
         container_list.append(container)
         controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
-        controller_agent.add_role(CoalitionInitiatorRole(participants=addrs, details='', topic='',
-                                                         topology_creator=topology_creator))
+        controller_agent.add_role(
+            CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            )
+        )
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-        print('Done building a coalition.')
+        print("Done building a coalition.")
 
         # fill the overlay dictionary
         for a in agents:
-            assignment = next(iter(a.roles[0].context.get_or_create_model(CoalitionModel)._assignments.values()))
+            assignment = next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(CoalitionModel)
+                    ._assignments.values()
+                )
+            )
             overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
 
         # start the negotiation
         start_time = time.time()
         agents[0].add_role(
-            MoCohdaNegotiationDirectStarterRole(num_solution_points=num_solution_points, target_params=None)
+            MoCohdaNegotiationDirectStarterRole(
+                num_solution_points=num_solution_points, target_params=None
+            )
         )
         await wait_for_term(controller_agent)
         end_time = time.time()
-        print('Negotiation terminated.')
+        print("Negotiation terminated.")
 
         # get final memory of first agent
-        final_memory = next(iter(agents[0].roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
-                                 _negotiations.values()))._memory
+        final_memory = next(
+            iter(
+                agents[0]
+                .roles[0]
+                .context.get_or_create_model(MoCohdaNegotiationModel)
+                ._negotiations.values()
+            )
+        )._memory
 
         # make sure all working memories are equal
         for a in agents:
-            assert final_memory == next(iter(a.roles[0].context.get_or_create_model(MoCohdaNegotiationModel).
-                                             _negotiations.values()))._memory, \
-                'Working memories of different agents are not equal.'
+            assert (
+                final_memory
+                == next(
+                    iter(
+                        a.roles[0]
+                        .context.get_or_create_model(MoCohdaNegotiationModel)
+                        ._negotiations.values()
+                    )
+                )._memory
+            ), "Working memories of different agents are not equal."
 
-        print('All working memories are equal!')
+        print("All working memories are equal!")
         # shutdown container
         for container in container_list:
             await container.shutdown()
@@ -517,10 +669,10 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         # append results
         results.append(
             {
-                'final_memory': final_memory,
-                'duration': end_time - start_time,
-                'schedules': schedules_per_agent,
-                'overlay': overlay,
+                "final_memory": final_memory,
+                "duration": end_time - start_time,
+                "schedules": schedules_per_agent,
+                "overlay": overlay,
             }
         )
 
@@ -529,13 +681,18 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
 async def wait_for_term(controller_agent):
     # Function that will return once the first weight map of the given agent equals to one
-    while (len(controller_agent.roles[0]._weight_map.values()) != 1 or
-           list(controller_agent.roles[0]._weight_map.values())[0] != 1):
+    while (
+        len(controller_agent.roles[0]._weight_map.values()) != 1
+        or list(controller_agent.roles[0]._weight_map.values())[0] != 1
+    ):
         await asyncio.sleep(0.05)
 
 
 async def wait_for_coalition_built(agents):
     # Function that will return once the given agent has one coalition assignment
     for agent in agents:
-        while len(agent.roles[0].context.get_or_create_model(CoalitionModel)._assignments) < 1:
+        while (
+            len(agent.roles[0].context.get_or_create_model(CoalitionModel)._assignments)
+            < 1
+        ):
             await asyncio.sleep(0.1)

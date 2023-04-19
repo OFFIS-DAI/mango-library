@@ -1,11 +1,18 @@
 import uuid
 from fractions import Fraction
 
-from mango.role.api import Role
+from mango import Role
 
 from mango_library.coalition.core import CoalitionModel, CoalitionBuildConfirm
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, StartCohdaNegotiationMessage
-from mango_library.negotiation.cohda.data_classes import WorkingMemory, SystemConfig, SolutionCandidate
+from mango_library.negotiation.cohda.cohda_messages import (
+    CohdaNegotiationMessage,
+    StartCohdaNegotiationMessage,
+)
+from mango_library.negotiation.cohda.data_classes import (
+    WorkingMemory,
+    SystemConfig,
+    SolutionCandidate,
+)
 
 
 class CohdaNegotiationInteractiveStarterRole(Role):
@@ -14,7 +21,13 @@ class CohdaNegotiationInteractiveStarterRole(Role):
     """
 
     # create an empty Working memory and send it together with the target params
-    def __init__(self, target_params, coalition_model_matcher=None, coalition_uuid=None, send_weight=True) -> None:
+    def __init__(
+        self,
+        target_params,
+        coalition_model_matcher=None,
+        coalition_uuid=None,
+        send_weight=True,
+    ) -> None:
         """
 
         :param target_params: Parameter that are necessary for the agents to calculate the performance. Could be e.g.
@@ -29,7 +42,9 @@ class CohdaNegotiationInteractiveStarterRole(Role):
 
         if coalition_uuid is not None:
             # if id is provided create matcher matching this id when the coalition is looked up
-            self._coalition_model_matcher = lambda coal: coal.coalition_id == coalition_uuid
+            self._coalition_model_matcher = (
+                lambda coal: coal.coalition_id == coalition_uuid
+            )
         elif coalition_model_matcher is not None:
             # when a matcher itself is provided use this if no uuid has been provided
             self._coalition_model_matcher = coalition_model_matcher
@@ -40,8 +55,11 @@ class CohdaNegotiationInteractiveStarterRole(Role):
     def setup(self):
         super().setup()
 
-        self.context.subscribe_message(self, self.handle_cohda_start,
-                                       lambda c, m: isinstance(c, StartCohdaNegotiationMessage))
+        self.context.subscribe_message(
+            self,
+            self.handle_cohda_start,
+            lambda c, m: isinstance(c, StartCohdaNegotiationMessage),
+        )
 
     def handle_cohda_start(self, msg, m):
         self.context.schedule_conditional_task(self.start(msg), self.is_startable)
@@ -68,13 +86,14 @@ class CohdaNegotiationInteractiveStarterRole(Role):
         return list(all_assignments)[0]
 
     async def start(self, start_msg: StartCohdaNegotiationMessage = None):
-        """Start a negotiation. Send all neighbors a starting negotiation message.
-        """
+        """Start a negotiation. Send all neighbors a starting negotiation message."""
 
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values(), start_msg)
+        matched_assignment = self._look_up_assignment(
+            coalition_model.assignments.values(), start_msg
+        )
 
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
@@ -88,7 +107,9 @@ class CohdaNegotiationInteractiveStarterRole(Role):
         empty_wm = WorkingMemory(
             target_params=self._target_params,
             system_config=SystemConfig({}),
-            solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
+            solution_candidate=SolutionCandidate(
+                agent_id=matched_assignment.part_id, schedules={}, perf=None
+            ),
         )
 
         # send message to all neighbors
@@ -96,18 +117,20 @@ class CohdaNegotiationInteractiveStarterRole(Role):
             neg_msg = CohdaNegotiationMessage(
                 working_memory=empty_wm,
                 negotiation_id=negotiation_uuid,
-                coalition_id=matched_assignment.coalition_id
+                coalition_id=matched_assignment.coalition_id,
             )
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_task(self.context.send_acl_message(
+            self.context.schedule_instant_acl_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
-                acl_metadata={'sender_addr': self.context.addr,
-                              'sender_id': self.context.aid}
-            ))
+                acl_metadata={
+                    "sender_addr": self.context.addr,
+                    "sender_id": self.context.aid,
+                },
+            )
 
 
 class CohdaNegotiationDirectStarterRole(Role):
@@ -116,7 +139,13 @@ class CohdaNegotiationDirectStarterRole(Role):
     """
 
     # create an empty Working memory and send it together with the target params
-    def __init__(self, target_params, coalition_model_matcher=None, coalition_uuid=None, send_weight=True) -> None:
+    def __init__(
+        self,
+        target_params,
+        coalition_model_matcher=None,
+        coalition_uuid=None,
+        send_weight=True,
+    ) -> None:
         """
 
         :param target_params: Parameter that are necessary for the agents to calculate the performance. Could be e.g.
@@ -131,7 +160,9 @@ class CohdaNegotiationDirectStarterRole(Role):
 
         if coalition_uuid is not None:
             # if id is provided create matcher matching this id when the coalition is looked up
-            self._coalition_model_matcher = lambda coal: coal.coalition_id == coalition_uuid
+            self._coalition_model_matcher = (
+                lambda coal: coal.coalition_id == coalition_uuid
+            )
         elif coalition_model_matcher is not None:
             # when a matcher itself is provided use this if no uuid has been provided
             self._coalition_model_matcher = coalition_model_matcher
@@ -144,8 +175,11 @@ class CohdaNegotiationDirectStarterRole(Role):
         super().setup()
 
         self.context.schedule_conditional_task(self.start(), self.is_startable)
-        self.context.subscribe_message(self, self.handle_coalition_build_confirm,
-                                       lambda c, m: isinstance(c, CoalitionBuildConfirm))
+        self.context.subscribe_message(
+            self,
+            self.handle_coalition_build_confirm,
+            lambda c, m: isinstance(c, CoalitionBuildConfirm),
+        )
 
     def handle_coalition_build_confirm(self, msg, m):
         self._coalitions.append(msg.coalition_id)
@@ -155,7 +189,10 @@ class CohdaNegotiationDirectStarterRole(Role):
 
         # check if there is a coalition that can be used
         for assignment in coalition_model.assignments.values():
-            if self._coalition_model_matcher(assignment) and assignment.coalition_id in self._coalitions:
+            if (
+                self._coalition_model_matcher(assignment)
+                and assignment.coalition_id in self._coalitions
+            ):
                 return True
 
         # no matching coalition has been found
@@ -169,13 +206,14 @@ class CohdaNegotiationDirectStarterRole(Role):
         return list(all_assignments)[0]
 
     async def start(self):
-        """Start a negotiation. Send all neighbors a starting negotiation message.
-        """
+        """Start a negotiation. Send all neighbors a starting negotiation message."""
 
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
-        matched_assignment = self._look_up_assignment(coalition_model.assignments.values())
+        matched_assignment = self._look_up_assignment(
+            coalition_model.assignments.values()
+        )
 
         # create a new negotiation id
         negotiation_uuid = uuid.uuid1()
@@ -183,7 +221,9 @@ class CohdaNegotiationDirectStarterRole(Role):
         empty_wm = WorkingMemory(
             target_params=self._target_params,
             system_config=SystemConfig({}),
-            solution_candidate=SolutionCandidate(agent_id=matched_assignment.part_id, schedules={}, perf=None),
+            solution_candidate=SolutionCandidate(
+                agent_id=matched_assignment.part_id, schedules={}, perf=None
+            ),
         )
 
         # send message to all neighbors
@@ -191,15 +231,17 @@ class CohdaNegotiationDirectStarterRole(Role):
             neg_msg = CohdaNegotiationMessage(
                 working_memory=empty_wm,
                 negotiation_id=negotiation_uuid,
-                coalition_id=matched_assignment.coalition_id
+                coalition_id=matched_assignment.coalition_id,
             )
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_task(self.context.send_acl_message(
+            self.context.schedule_instant_acl_message(
                 content=neg_msg,
                 receiver_addr=neighbor[1],
                 receiver_id=neighbor[2],
-                acl_metadata={'sender_addr': self.context.addr,
-                              'sender_id': self.context.aid}
-            ))
+                acl_metadata={
+                    "sender_addr": self.context.addr,
+                    "sender_id": self.context.aid,
+                },
+            )
