@@ -55,11 +55,11 @@ async def create_six_agents():
     tts = 10
     # create agents
     agent_a = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_a")
-    agent_b = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_b")
-    agent_c = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_c")
-    agent_d = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_d")
-    agent_e = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_e")
-    agent_f = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_f")
+    agent_b = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=2, name="agent_b")
+    agent_c = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=3, name="agent_c")
+    agent_d = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=4, name="agent_d")
+    agent_e = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=5, name="agent_e")
+    agent_f = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=6, name="agent_f")
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,
@@ -87,6 +87,9 @@ async def create_six_agents():
 
     agent_f.add_neighbor(aid=agent_a.aid, addr=addr)
     agent_a.add_neighbor(aid=agent_f.aid, addr=addr)
+
+    #agent_f.add_neighbor(aid=agent_b.aid, addr=addr)
+    #agent_b.add_neighbor(aid=agent_f.aid, addr=addr)
 
     return agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container
 

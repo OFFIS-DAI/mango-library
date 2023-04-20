@@ -71,7 +71,7 @@ class WinzentAgent(Agent):
     @property
     def solution_found(self):
         """
-        True, if a complete solution for a negotiation was found.
+        True if a complete solution for a negotiation was found.
         """
         return self._solution_found
 

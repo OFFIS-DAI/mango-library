@@ -1,5 +1,4 @@
 from mango_library.negotiation.winzent import xboole
-from negotiation.winzent.xboole.xboole_ethical_solver_strategy import XbooleEthicalPowerBalanceSolverStrategy
 
 
 class MessageJournal:
@@ -33,6 +32,8 @@ class MessageJournal:
     def clear(self):
         self._entries.clear()
 
+    def replace(self, dict):
+        self._entries = dict
 
 class Governor:
     # controlling business logic that ties all modules together
@@ -83,9 +84,10 @@ class Governor:
         # print("max" + str(self._power_balance._max))
         #print(self._power_balance_strategy.find_initial_requirement(self._power_balance, xboole.InitiatingParty.Local).message.value)
         # print(self.curr_requirement_value)
-        # print("ledger" + str(self._power_balance._ledger[0][1].message.value))
+        #for mess in self._power_balance._ledger[0]:
+            #if mess.message.msg_type == 5:
+                #print(self.id + ": " + str(mess.message.sender) + " offered " + str(mess.message.value[0]))
+        # print("ledger" + str(self._power_balance._ledger[0][1].message.value[0]))
         # print(("power balance ") + str(self._power_balance._ledger[0][0].message.ethics_score))
-        ethical_strategy = XbooleEthicalPowerBalanceSolverStrategy()
-        ethical_strategy.solve(self._power_balance, xboole.InitiatingParty.Local, self.curr_requirement_value)
         return self._power_balance_strategy.solve(
             self._power_balance, xboole.InitiatingParty.Local)
