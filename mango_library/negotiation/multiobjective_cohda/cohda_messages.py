@@ -1,35 +1,16 @@
+from typing import List
 from uuid import UUID
 from fractions import Fraction
 
 from mango.messages.codecs import json_serializable
 
-from mango_library.negotiation.cohda.data_classes import WorkingMemory, SolutionCandidate
+from mango_library.negotiation.multiobjective_cohda.data_classes import WorkingMemory, SolutionCandidate, SolutionPoint
 
 
 @json_serializable
-class StartCohdaNegotiationMessage:
+class MoCohdaNegotiationMessage:
     """
-        Message to start a COHDA negotiation.
-        Contains the coalition_id of the associated coalition
-        and the target parameters that are necessary for the agents to calculate the performance.
-        """
-    def __init__(self, coalition_id, send_weight, target_params = None):
-        self.coalition_id = coalition_id
-        self._send_weight = send_weight
-        self._target_params = target_params
-
-    @property
-    def send_weight(self):
-        return self._send_weight
-
-    @property
-    def target_params(self):
-        return self._target_params
-
-@json_serializable
-class CohdaNegotiationMessage:
-    """
-    Message for a COHDA negotiation.
+    Message for a COHDa negotiation.
     Contains the working memory of an agent.
     """
 
@@ -38,7 +19,7 @@ class CohdaNegotiationMessage:
         self._working_memory = working_memory
         self._negotiation_id = negotiation_id
         self._coalition_id = coalition_id
-        self._message_weight = message_weight   # for termination, can be set after initialization of the message
+        self._message_weight = message_weight  # for termination, can be set after initialization of the message
 
     @property
     def working_memory(self) -> WorkingMemory:
@@ -82,10 +63,19 @@ class CohdaNegotiationMessage:
 
 
 @json_serializable
+class MoCohdaNegotiationStartMessage:
+    def __init__(self, target_params, coalition_id, send_weight: bool):
+        self.target_params = target_params
+        self.coalition_id = coalition_id
+        self.send_weight = send_weight
+
+
+@json_serializable
 class StopNegotiationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
+
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
 
@@ -99,10 +89,11 @@ class StopNegotiationMessage:
 
 
 @json_serializable
-class CohdaSolutionRequestMessage:
+class MoCohdaSolutionRequestMessage:
     """
     Message that asks the agent for its current SolutionCandidate regarding a specific negotiation
     """
+
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
 
@@ -116,9 +107,9 @@ class CohdaSolutionRequestMessage:
 
 
 @json_serializable
-class CohdaProposedSolutionMessage:
+class MoCohdaProposedSolutionMessage:
     """
-    Message for a COHDA solution.
+    Message for a MoCOHDA solution front.
     Contains the candidate of an agent.
     """
 
@@ -144,23 +135,23 @@ class CohdaProposedSolutionMessage:
 
 
 @json_serializable
-class CohdaFinalSolutionMessage:
+class MoCohdaFinalSolutionMessage:
     """
-    Message for a final COHDA solution.
+    Message for a final MoCOHDA solution.
     Contains the final candidate after aggregation.
     """
 
-    def __init__(self, solution_candidate: SolutionCandidate, negotiation_id: UUID):
-        self._solution_candidate = solution_candidate
+    def __init__(self, solution_point: SolutionPoint, negotiation_id: UUID):
+        self._solution_point = solution_point
         self._negotiation_id = negotiation_id
 
     @property
-    def solution_candidate(self) -> SolutionCandidate:
+    def solution_point(self) -> SolutionPoint:
         """Return the solution candidate of the sender agent
 
         :return: the solution_candidate of the sender
         """
-        return self._solution_candidate
+        return self._solution_point
 
     @property
     def negotiation_id(self) -> UUID:
@@ -172,13 +163,22 @@ class CohdaFinalSolutionMessage:
 
 
 @json_serializable
-class ConfirmCohdaSolutionMessage:
+class ConfirmMoCohdaSolutionMessage:
     """
-    Message that is sent by unit Agents to the Aggregator Agent to confirm that they have received the final solution.
+    Message that is sent to the solution aggregator to confirm that the final solution was received.
     """
 
-    def __init__(self, negotiation_id: UUID):
+    def __init__(self, solution_point: SolutionPoint, negotiation_id: UUID):
+        self._solution_point = solution_point
         self._negotiation_id = negotiation_id
+
+    @property
+    def solution_point(self) -> SolutionPoint:
+        """Return the solution candidate of the sender agent
+
+        :return: the solution_candidate of the sender
+        """
+        return self._solution_point
 
     @property
     def negotiation_id(self) -> UUID:

@@ -1,9 +1,6 @@
-import uuid
-
 from mango_library.negotiation.cohda.cohda_negotiation import COHDANegotiation
 from mango_library.negotiation.cohda.data_classes import SystemConfig, ScheduleSelection, SolutionCandidate, \
     WorkingMemory
-from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage
 
 
 def create_cohda_object(schedule_provider, part_id, memory_target_params, is_local_acceptable=lambda x: True, counter=0,
