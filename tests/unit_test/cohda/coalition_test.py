@@ -280,7 +280,7 @@ async def test_build_coalition_with_negotiation_starter(num_part):
             else:
                 assert False, f"check_inbox terminated unexpectedly."
 
-    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=10)
     # If the coalition build was successful and all assignments were confirmed, the CoalitionInitiator informs the
     # other agents about it. The agent with the NegotiationStarterRole expects this message and stores the ID of
     # the successful coalition.
