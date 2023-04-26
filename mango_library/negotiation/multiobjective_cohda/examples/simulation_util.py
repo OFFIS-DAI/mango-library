@@ -43,17 +43,17 @@ for serializer in multi_objective_serializers:
 
 
 def store_in_db(
-    *,
-    db_file: str,
-    sim_name: str,
-    n_agents: int,
-    targets: List[Target],
-    n_solution_points: int,
-    check_inbox_interval: float,
-    mutate_func: Callable,
-    pick_func: Callable,
-    n_iterations: int,
-    results: List[Dict],
+        *,
+        db_file: str,
+        sim_name: str,
+        n_agents: int,
+        targets: List[Target],
+        n_solution_points: int,
+        check_inbox_interval: float,
+        mutate_func: Callable,
+        pick_func: Callable,
+        n_iterations: int,
+        results: List[Dict],
 ):
     """
     Function that creates a hdf5 file which stores the simulation configurations together with the simulation results.
@@ -205,7 +205,7 @@ def store_in_db(
             dtype_solution_points = np.dtype(dtype_solution_points)
 
             for i, solution_point in enumerate(
-                sorted(solution_candidate.solution_points)
+                    sorted(solution_candidate.solution_points)
             ):
                 data_solution_points = []
                 for part_id, index in solution_point.idx.items():
@@ -221,16 +221,16 @@ def store_in_db(
 
 
 async def simulate_mo_cohda_NSGA2(
-    *,
-    num_agents: int,
-    targets: List[Target],
-    num_solution_points: int,
-    pick_func: Callable,
-    mutate_func: Callable,
-    num_iterations: int,
-    check_inbox_interval: float,
-    topology_creator: Callable = None,
-    num_simulations: int,
+        *,
+        num_agents: int,
+        targets: List[Target],
+        num_solution_points: int,
+        pick_func: Callable,
+        mutate_func: Callable,
+        num_iterations: int,
+        check_inbox_interval: float,
+        topology_creator: Callable = None,
+        num_simulations: int,
 ) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
@@ -287,8 +287,8 @@ async def simulate_mo_cohda_NSGA2(
                 if random.random() < w:
                     random_agent = random.choice(unit_agents)
                     if (
-                        random_agent not in neighborhood[agent]
-                        and random_agent != agent
+                            random_agent not in neighborhood[agent]
+                            and random_agent != agent
                     ):
                         neighborhood[agent].append(random_agent)
                         neighborhood[random_agent].append(agent)
@@ -304,12 +304,12 @@ async def simulate_mo_cohda_NSGA2(
         )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
         container_list = []
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
         container_list.append(container)
         port += 1
         # create agents for negotiation
         for i in range(num_agents):
-            container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
+            container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
             port += 1
             container_list.append(container)
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
@@ -389,7 +389,7 @@ async def simulate_mo_cohda_NSGA2(
             schedules_per_agent[a.aid] = provide_schedules()
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
         port += 1
         container_list.append(container)
         controller_agent = RoleAgent(container)
@@ -440,14 +440,14 @@ async def simulate_mo_cohda_NSGA2(
         # make sure all working memories are equal
         for a in agents:
             assert (
-                final_memory
-                == next(
-                    iter(
-                        a.roles[0]
-                        .context.get_or_create_model(MoCohdaNegotiationModel)
-                        ._negotiations.values()
-                    )
-                )._memory
+                    final_memory
+                    == next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(MoCohdaNegotiationModel)
+                    ._negotiations.values()
+                )
+            )._memory
             ), "Working memories of different agents are not equal."
 
         print("All working memories are equal!")
@@ -469,19 +469,19 @@ async def simulate_mo_cohda_NSGA2(
 
 
 async def simulate_mo_cohda(
-    *,
-    num_agents: int,
-    possible_schedules: List,
-    schedules_all_equal: bool = False,
-    targets: List[Target],
-    num_solution_points: int,
-    pick_func: Callable,
-    mutate_func: Callable,
-    num_iterations: int,
-    check_inbox_interval: float,
-    topology_creator: Callable = None,
-    num_simulations: int,
-    store_updates_to_db: bool = False,
+        *,
+        num_agents: int,
+        possible_schedules: List,
+        schedules_all_equal: bool = False,
+        targets: List[Target],
+        num_solution_points: int,
+        pick_func: Callable,
+        mutate_func: Callable,
+        num_iterations: int,
+        check_inbox_interval: float,
+        topology_creator: Callable = None,
+        num_simulations: int,
+        store_updates_to_db: bool = False,
 ) -> List[Dict[str, Any]]:
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
@@ -537,8 +537,8 @@ async def simulate_mo_cohda(
                 if random.random() < w:
                     random_agent = random.choice(unit_agents)
                     if (
-                        random_agent not in neighborhood[agent]
-                        and random_agent != agent
+                            random_agent not in neighborhood[agent]
+                            and random_agent != agent
                     ):
                         neighborhood[agent].append(random_agent)
                         neighborhood[random_agent].append(agent)
@@ -558,7 +558,7 @@ async def simulate_mo_cohda(
         container_list = []
         # create agents for negotiation
         for i in range(num_agents):
-            container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
+            container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
             port += 1
             container_list.append(container)
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
@@ -600,7 +600,7 @@ async def simulate_mo_cohda(
 
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
         port += 1
         container_list.append(container)
         controller_agent = RoleAgent(container)
@@ -651,14 +651,14 @@ async def simulate_mo_cohda(
         # make sure all working memories are equal
         for a in agents:
             assert (
-                final_memory
-                == next(
-                    iter(
-                        a.roles[0]
-                        .context.get_or_create_model(MoCohdaNegotiationModel)
-                        ._negotiations.values()
-                    )
-                )._memory
+                    final_memory
+                    == next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(MoCohdaNegotiationModel)
+                    ._negotiations.values()
+                )
+            )._memory
             ), "Working memories of different agents are not equal."
 
         print("All working memories are equal!")
@@ -682,8 +682,8 @@ async def simulate_mo_cohda(
 async def wait_for_term(controller_agent):
     # Function that will return once the first weight map of the given agent equals to one
     while (
-        len(controller_agent.roles[0]._weight_map.values()) != 1
-        or list(controller_agent.roles[0]._weight_map.values())[0] != 1
+            len(controller_agent.roles[0]._weight_map.values()) != 1
+            or list(controller_agent.roles[0]._weight_map.values())[0] != 1
     ):
         await asyncio.sleep(0.05)
 
@@ -692,7 +692,7 @@ async def wait_for_coalition_built(agents):
     # Function that will return once the given agent has one coalition assignment
     for agent in agents:
         while (
-            len(agent.roles[0].context.get_or_create_model(CoalitionModel)._assignments)
-            < 1
+                len(agent.roles[0].context.get_or_create_model(CoalitionModel)._assignments)
+                < 1
         ):
             await asyncio.sleep(0.1)
