@@ -65,6 +65,13 @@ class Governor:
     def power_balance(self):
         return self._power_balance
 
+    def remove_from_power_balance(self, agent_id):
+        if self._power_balance is not None:
+            for offer in self._power_balance._ledger[0]:
+                if offer.message.sender == agent_id:
+                    self._power_balance._ledger[0].remove(offer)
+                    break
+
     @power_balance.setter
     def power_balance(self, power_balance):
         self._power_balance = power_balance

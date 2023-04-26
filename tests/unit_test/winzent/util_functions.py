@@ -52,7 +52,7 @@ async def create_six_agents():
 
     # multiple container are possible, here just one is taken
     container = await Container.factory(addr=addr)
-    tts = 10
+    tts = 3
     # create agents
     agent_a = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=1, name="agent_a")
     agent_b = WinzentEthicalAgent(container=container, ttl=2, time_to_sleep=tts, initial_ethics_score=2, name="agent_b")

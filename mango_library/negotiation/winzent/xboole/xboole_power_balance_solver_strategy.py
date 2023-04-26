@@ -94,7 +94,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
                             if abs(values[j]) > abs(i[1].forecast.second):
                                 values.insert(j, i[1].forecast.second)
                                 break
-                elif abs(values[-1]) < abs(i[1].forecast.second):
+                elif abs(values[-1]) <= abs(i[1].forecast.second):
                     values.append(i[1].forecast.second)
         return values
 
