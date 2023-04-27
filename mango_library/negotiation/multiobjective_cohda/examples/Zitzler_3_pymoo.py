@@ -12,7 +12,6 @@ FILE = 'Zitzler_3_pymoo.hdf5'
 SIM_NAME = 'Zitzler_3'
 
 NUM_AGENTS = 5
-NUM_SCHEDULES = 30
 NUM_SOLUTION_POINTS = 10
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
@@ -28,8 +27,7 @@ ALGORITHM = NSGA2(pop_size=NUM_SOLUTION_POINTS)
 def target_func_1(cs):
     """
     """
-
-    output = p.evaluate(cs, ALGORITHM)
+    output = p.evaluate(cs.astype(float), ALGORITHM)
     result_target_1 = output[0][0]
     return result_target_1
 
@@ -37,7 +35,7 @@ def target_func_1(cs):
 def target_func_2(cs):
     """
     """
-    output = p.evaluate(cs, ALGORITHM)
+    output = p.evaluate(cs.astype(float), ALGORITHM)
     result_target_2 = output[0][1]
     return result_target_2
 
