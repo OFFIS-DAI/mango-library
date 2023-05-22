@@ -15,7 +15,7 @@ async def run_six():
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_agents()
     agent_a.update_flexibility(t_start=0, min_p=0, max_p=10)
     agent_b.update_flexibility(t_start=0, min_p=0, max_p=30)
-    agent_c.update_flexibility(t_start=0, min_p=0, max_p=10)
+    agent_c.update_flexibility(t_start=0, min_p=0, max_p=85)
     agent_d.update_flexibility(t_start=0, min_p=0, max_p=100)
     agent_e.update_flexibility(t_start=0, min_p=0, max_p=100)
     agent_f.update_flexibility(t_start=0, min_p=0, max_p=100)

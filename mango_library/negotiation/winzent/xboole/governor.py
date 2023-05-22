@@ -1,5 +1,7 @@
-from mango_library.negotiation.winzent import xboole
+from datetime import datetime
 
+from mango_library.negotiation.winzent import xboole
+from watchpoints import watch
 
 class MessageJournal:
 
@@ -72,9 +74,16 @@ class Governor:
                     self._power_balance._ledger[0].remove(offer)
                     break
 
+    def get_from_power_balance(self, agent_id):
+        if self._power_balance is not None:
+            for offer in self._power_balance._ledger[0]:
+                if offer.message.sender == agent_id:
+                    return offer
+
     @power_balance.setter
     def power_balance(self, power_balance):
         self._power_balance = power_balance
+        #watch(self._power_balance)
 
     @property
     def power_balance_strategy(self):
@@ -87,14 +96,5 @@ class Governor:
     def try_balance(self):
         assert self._power_balance is not None
         assert self._power_balance_strategy is not None
-        # counts the amount of offers
-        # print("max" + str(self._power_balance._max))
-        #print(self._power_balance_strategy.find_initial_requirement(self._power_balance, xboole.InitiatingParty.Local).message.value)
-        # print(self.curr_requirement_value)
-        #for mess in self._power_balance._ledger[0]:
-            #if mess.message.msg_type == 5:
-                #print(self.id + ": " + str(mess.message.sender) + " offered " + str(mess.message.value[0]))
-        # print("ledger" + str(self._power_balance._ledger[0][1].message.value[0]))
-        # print(("power balance ") + str(self._power_balance._ledger[0][0].message.ethics_score))
         return self._power_balance_strategy.solve(
             self._power_balance, xboole.InitiatingParty.Local)

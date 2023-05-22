@@ -1,5 +1,6 @@
 from collections import namedtuple
-
+from datetime import datetime
+from copy import deepcopy
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.xboole import PowerBalanceSolverStrategy
 
@@ -35,7 +36,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             return self.power_balance_strategy.solve(power_balance, initiator)
         else:
             # in this case, there are more offers than needed to satisfy the initial requirement
-            most_ethical_requirements = power_balance
+            most_ethical_requirements = deepcopy(power_balance)
             most_ethical_requirements._ledger[0].remove(self.initial_requirement)
             # requirements are sorted by their ethics score, so that the most ethical
             # offers are transferred to the solving algorithm
