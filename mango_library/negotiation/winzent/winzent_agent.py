@@ -732,7 +732,6 @@ class WinzentAgent(Agent):
                 self.governor.solver_triggered = False
                 return
             else:
-                # TODO: check for functionality of this else case
                 # In this case, the problem could not be solved completely,
                 # but the timer stopped and the agent would not receive
                 # more flexibility. Therefore, take afforded flexibility
