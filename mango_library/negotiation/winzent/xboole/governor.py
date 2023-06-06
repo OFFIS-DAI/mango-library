@@ -1,7 +1,7 @@
 from datetime import datetime
 
 from mango_library.negotiation.winzent import xboole
-from watchpoints import watch
+
 
 class MessageJournal:
 
@@ -83,7 +83,6 @@ class Governor:
     @power_balance.setter
     def power_balance(self, power_balance):
         self._power_balance = power_balance
-        #watch(self._power_balance)
 
     @property
     def power_balance_strategy(self):

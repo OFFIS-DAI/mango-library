@@ -199,13 +199,6 @@ class WinzentEthicalAgent(Agent):
                 logger.debug(
                     f"*** {self._aid} did not receive all acknowledgements. Negotiation was not successful."
                 )
-                # PGASC add logging
-                logger.debug(
-                    "trigger_solver: stopped waiting for acknowledgments"
-                )
-                # PGASC adaption: reset final so unsuccessful negotiations are removed from final
-                # self.final = {}
-
                 self._waiting_for_acknowledgements = False
                 for acc_msg in self._curr_sent_acceptances:
                     withdrawal = WinzentMessage(time_span=acc_msg.time_span,
@@ -216,10 +209,7 @@ class WinzentEthicalAgent(Agent):
                                                 id=str(uuid.uuid4()),
                                                 sender=self._aid
                                                 )
-                    if self.send_message_paths:
-                        await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
-                    else:
-                        await self.send_message(withdrawal, receiver=acc_msg.receiver)
+                    await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
                 await asyncio.sleep(self._time_to_sleep)
                 await self.reset()
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
@@ -343,13 +333,10 @@ class WinzentEthicalAgent(Agent):
                 return True
         return False
 
-
     async def handle_external_request(self, requirement, message_path=None):
         """
         The agent received a negotiation request from another agent.
         """
-        if message_path is None:
-            message_path = []
         message = requirement.message
         self.ethics_score_of_others[message.sender] = message.ethics_score
         # await self.free_up_flex_from_less_important_offers(message)
@@ -374,10 +361,7 @@ class WinzentEthicalAgent(Agent):
                                             id=str(uuid.uuid4()),
                                             sender=self._aid
                                             )
-                if self.send_message_paths:
-                    await self.send_message(withdrawal, message_path=self.negotiation_connections[withdrawal.receiver])
-                else:
-                    await self.send_message(withdrawal)
+                await self.send_message(withdrawal, message_path=self.negotiation_connections[withdrawal.receiver])
                 await self.reset()
             else:
                 await self.forward_message(message, message_path)
@@ -416,20 +400,18 @@ class WinzentEthicalAgent(Agent):
                                    ethics_score=float(self.ethics_score))
             self.governor.message_journal.add(reply)
             self._current_inquiries_from_agents[reply.id] = reply
-            if self.send_message_paths:
-                message_path.append(self.aid)
-                message_path.reverse()
-                if message_path is not None:
-                    demander_index = message_path[-1]
-                    self.negotiation_connections[
-                        demander_index] = message_path
-                    # send offer and save established connection demander:[self.aid/supplier, ..., demander]
-                else:
-                    logger.error("message path none")
-                logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                await self.send_message(reply, message_path=message_path)
+            message_path.append(self.aid)
+            message_path.reverse()
+            if message_path is not None:
+                demander_index = message_path[-1]
+                self.negotiation_connections[
+                    demander_index] = message_path
+                # send offer and save established connection demander:[self.aid/supplier, ..., demander]
             else:
-                await self.send_message(reply)
+                logger.error("message path none")
+            logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
+            await self.send_message(reply, message_path=message_path)
+
         # elif available_value
         message.ttl -= 1
         if message.ttl <= 0:
@@ -490,12 +472,14 @@ class WinzentEthicalAgent(Agent):
             valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0] - previous_acknowledgement_value)
             if valid:
                 # self.original_flex = deepcopy(self.flex)
-                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - (reply.value[0] - previous_acknowledgement_value)
+                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - (
+                            reply.value[0] - previous_acknowledgement_value)
             else:
                 await self.withdraw_offers_with_lesser_ethics_score(reply)
                 valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0] - previous_acknowledgement_value)
                 if valid:
-                    self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - (reply.value[0] - previous_acknowledgement_value)
+                    self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - (
+                                reply.value[0] - previous_acknowledgement_value)
 
         else:
             valid = abs(self.flex[reply.time_span[0]][0]) >= abs(reply.value[0] - previous_acknowledgement_value)
@@ -504,7 +488,7 @@ class WinzentEthicalAgent(Agent):
                 self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
 
         if not valid:
-            print("flexibility of "+ self.aid +"is invalid. Reply from "+ reply.sender+" cannot be confirmed.")
+            print("flexibility of " + self.aid + "is invalid. Reply from " + reply.sender + " cannot be confirmed.")
 
         return valid
 
@@ -514,11 +498,8 @@ class WinzentEthicalAgent(Agent):
         DemandNotification, OfferNotification, AcceptanceNotification,
         AcceptanceAcknowledgementNotification, WithdrawalNotification
         """
-        if message_path is None:
-            message_path = []
         reply = requirement.message
         logger.debug(f"receiver of this reply is {reply.receiver}")
-
         if reply.receiver != self._aid:
             # The agent is not the receiver of the reply, therefore it needs
             # to forward it if the time to live is above 0.
@@ -628,7 +609,10 @@ class WinzentEthicalAgent(Agent):
             if self.governor.solution_journal.is_empty():
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
-                await self.reset()
+                await asyncio.sleep(self.grace_period_granted)
+                if self.governor.solution_journal.is_empty():
+                    await self.reset()
+
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
             # if the id is not saved, the agent already handled this
@@ -697,7 +681,6 @@ class WinzentEthicalAgent(Agent):
                     await self.send_message(withdrawal)
                 self.nullify_invalid_acknowledgement_sent(inquiry.receiver)
                 print(self.aid + " sent withdrawal to " + inquiry.receiver)
-                print("the withdrawal: " + str(withdrawal))
                 if inquiry.value[0] > value_to_withdraw:
                     inquiry.value[0] = inquiry.value[0] - value_to_withdraw
                 else:
@@ -769,21 +752,17 @@ class WinzentEthicalAgent(Agent):
                 self.governor.curr_requirement_value - self.original_flex[self.current_time_span][1]))
         else:
             lower_tier_end = (math.floor(self.ethics_score * 10) / 10)
-            print(lower_tier_end)
             temp_ethics_score = float("{:.2f}".format(self.ethics_score - self.decay_rate))
-            print(temp_ethics_score)
             if temp_ethics_score <= lower_tier_end:
                 self.ethics_score = lower_tier_end
             else:
                 self.ethics_score = temp_ethics_score
         print("new ethics score for " + self.name + ": " + str(self.ethics_score))
 
-
     def calc_result_sum(self):
         self.result_sum = 0
         for res in self.result.values():
-             self.result_sum += res
-
+            self.result_sum += res
 
     def acceptance_valid(self, msg):
         """
@@ -832,7 +811,7 @@ class WinzentEthicalAgent(Agent):
         else:
             act_value = -afforded_value
 
-        print(self.aid + " new sol: " + str(self.final))
+        # print(self.aid + " new sol: " + str(self.final))
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
             print(self.name + ": afforded value " + str(abs(afforded_value)) + " and inital value " + str(
@@ -858,7 +837,6 @@ class WinzentEthicalAgent(Agent):
                     return
         elif not self.grace_period_granted:
             # Grace period introduced
-            print(self.name + ": grace period activated")
             self.grace_period_granted = True
             await asyncio.sleep(0.5)
             self.final_solving_process_allowed = True
@@ -934,20 +912,15 @@ class WinzentEthicalAgent(Agent):
             self.governor.solver_triggered = False
             self.governor.triggered_due_to_timeout = False
 
-
     def nullify_invalid_acknowledgement_sent(self, receiver):
         ack_to_be_deleted = None
         for ack in self._acknowledgements_sent:
             if ack.receiver == receiver:
-                print(self.flex[0][1])
-                self.flex[0][1] += ack.value[0] #TODO: make flex valid for producers as well
-                print(ack.value[0])
-                print(self.flex[0][1])
+                self.flex[0][1] += ack.value[0]  # TODO: make flex valid for producers as well
                 ack_to_be_deleted = self._acknowledgements_sent.index(ack)
                 break
         if ack_to_be_deleted is not None:
             del self._acknowledgements_sent[ack_to_be_deleted]
-
 
     def nullify_invalid_acknowledgement_received(self, sender):
         ack_to_be_deleted = None
@@ -975,7 +948,6 @@ class WinzentEthicalAgent(Agent):
         """
         Trigger the solver and try to solve the problem.
         """
-        # print(self.name + ": solver running")
         # First, check whether the solver is currently triggered and if there
         # is already a solution
         if not self._negotiation_running:
@@ -986,7 +958,6 @@ class WinzentEthicalAgent(Agent):
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
         result = self.governor.try_balance()
         if result is None:
-            print("keine Lösung konnte gefunden werden")
             self.governor.solver_triggered = False
             if self.governor.triggered_due_to_timeout:
                 # solver was triggered after the timeout and yet there was
@@ -1045,17 +1016,18 @@ class WinzentEthicalAgent(Agent):
         if not self.governor.message_journal.contains_message(
                 content.id):
             self.governor.message_journal.add(content)
+            message_path = meta["ontology"]
             if content.is_answer:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_reply(req,
-                                                               message_path=meta["ontology"],
+                                                               message_path=message_path,
                                                                ))
             else:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_request(req,
-                                                                 message_path=meta["ontology"],
+                                                                 message_path=message_path,
                                                                  ))
 
     async def free_up_flex_from_less_important_offers(self, message):
@@ -1075,10 +1047,7 @@ class WinzentEthicalAgent(Agent):
                                                 id=str(uuid.uuid4()),
                                                 sender=self._aid
                                                 )
-                    if self.send_message_paths:
-                        await self.send_message(withdrawal, message_path=self.negotiation_connections[offer.receiver])
-                    else:
-                        await self.send_message(withdrawal, receiver=offer.receiver)
+                    await self.send_message(withdrawal, message_path=self.negotiation_connections[offer.receiver])
                     if summed_up_offer_values >= needed_value:
                         break
             else:
@@ -1093,7 +1062,6 @@ class WinzentEthicalAgent(Agent):
             if ack.receiver == receiver:
                 value += ack.value[0]
         return value
-
 
     async def send_message(self, winzent_message, receiver=None, message_path=None):
         """
@@ -1159,7 +1127,13 @@ class WinzentEthicalAgent(Agent):
 
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
-    """PGASC fix: deep copy of winzent3 message object (otherwise two agents manipulate the same object and its ttl)"""
+    """
+    This method creates a deep copy of a Winzent message to avoid manipulations
+    when the message is sent to multiple agents.
+
+    param message: a Winzent message to be copied
+    return: the copied Winzent message
+    """
     return WinzentMessage(
         msg_type=message.msg_type,
         sender=message.sender,

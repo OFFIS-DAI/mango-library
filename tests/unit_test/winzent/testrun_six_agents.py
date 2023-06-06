@@ -23,9 +23,8 @@ async def run_six():
     await agent_b.start_negotiation(ts=[0, 900], value=140)
     await agent_a.start_negotiation(ts=[0, 900], value=140)
     await agent_c.start_negotiation(ts=[0, 900], value=140)
-    await agent_b.negotiation_done
-    await agent_a.negotiation_done
-    await agent_c.negotiation_done
+    await agent_b.negotiation_done, agent_c.negotiation_done, agent_a.negotiation_done
+
     #print(agent_a.aid + str(agent_a.final))
     #print(agent_b.aid + str(agent_b.final))
     #print(agent_c.aid + str(agent_c.final))
