@@ -166,6 +166,7 @@ class WinzentEthicalAgent(Agent):
         print("internal request handled")
 
         self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
+        print("diff_to_real_value handled")
 
     async def trigger_solver(self):
         """
@@ -1017,6 +1018,7 @@ class WinzentEthicalAgent(Agent):
             self.governor.message_journal.add(content)
             message_path = meta["ontology"]
             if content.is_answer:
+                print(self.aid + "handle external reply")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_reply(req,
