@@ -379,48 +379,50 @@ class WinzentEthicalAgent(Agent):
             f"{message.is_answer} "
         )
         print("checking if value is available")
-        available_value = self.get_flexibility_for_interval(
-            t_start=message.time_span[0],
-            msg_type=message.msg_type)
-        print("now comes the if")
-        if (self.exists_flexibility(message.time_span[0])
-            and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
-                or (available_value >= message.value[0]
-                    and numpy.sign(available_value) == numpy.sign(message.value)):
-            print("value available!")
-            logger.debug(f"{self.aid} has enough flexibility")
-            # If the agent has flexibility for the requested time, it replies
-            # to the requesting agent
-            msg_type = xboole.MessageType.Null
-            # send message reply
-            if message.msg_type == xboole.MessageType.OfferNotification:
-                msg_type = xboole.MessageType.DemandNotification
-            elif message.msg_type == xboole.MessageType. \
-                    DemandNotification:
-                msg_type = xboole.MessageType.OfferNotification
-            print("creating message")
-            reply = WinzentMessage(msg_type=msg_type,
-                                   sender=self._aid,
-                                   is_answer=True,
-                                   receiver=message.sender,
-                                   time_span=message.time_span,
-                                   value=[available_value], ttl=self._current_ttl,
-                                   id=str(uuid.uuid4()),
-                                   ethics_score=float(self.ethics_score))
-            self.governor.message_journal.add(reply)
-            self._current_inquiries_from_agents[reply.id] = reply
-            message_path.append(self.aid)
-            message_path.reverse()
-            if message_path is not None:
-                demander_index = message_path[-1]
-                self.negotiation_connections[
-                    demander_index] = message_path
-                # send offer and save established connection demander:[self.aid/supplier, ..., demander]
-            else:
-                logger.error("message path none")
-            logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-            print("sending offer")
-            await self.send_message(reply, message_path=message_path)
+        if self.exists_flexibility(
+                message.time_span[0]):
+            available_value = self.get_flexibility_for_interval(
+                t_start=message.time_span[0],
+                msg_type=message.msg_type)
+            print("now comes the if")
+            if (self.exists_flexibility(message.time_span[0])
+                and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
+                    or (available_value >= message.value[0]
+                        and numpy.sign(available_value) == numpy.sign(message.value)):
+                print("value available!")
+                logger.debug(f"{self.aid} has enough flexibility")
+                # If the agent has flexibility for the requested time, it replies
+                # to the requesting agent
+                msg_type = xboole.MessageType.Null
+                # send message reply
+                if message.msg_type == xboole.MessageType.OfferNotification:
+                    msg_type = xboole.MessageType.DemandNotification
+                elif message.msg_type == xboole.MessageType. \
+                        DemandNotification:
+                    msg_type = xboole.MessageType.OfferNotification
+                print("creating message")
+                reply = WinzentMessage(msg_type=msg_type,
+                                       sender=self._aid,
+                                       is_answer=True,
+                                       receiver=message.sender,
+                                       time_span=message.time_span,
+                                       value=[available_value], ttl=self._current_ttl,
+                                       id=str(uuid.uuid4()),
+                                       ethics_score=float(self.ethics_score))
+                self.governor.message_journal.add(reply)
+                self._current_inquiries_from_agents[reply.id] = reply
+                message_path.append(self.aid)
+                message_path.reverse()
+                if message_path is not None:
+                    demander_index = message_path[-1]
+                    self.negotiation_connections[
+                        demander_index] = message_path
+                    # send offer and save established connection demander:[self.aid/supplier, ..., demander]
+                else:
+                    logger.error("message path none")
+                logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
+                print("sending offer")
+                await self.send_message(reply, message_path=message_path)
 
         # elif available_value
         message.ttl -= 1
