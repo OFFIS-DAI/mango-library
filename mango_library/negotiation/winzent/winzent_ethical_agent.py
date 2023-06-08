@@ -295,6 +295,7 @@ class WinzentEthicalAgent(Agent):
         Returns the flexibility for the given time interval according
         to the msg type.
         """
+        print("flex " + str(self.flex))
         flexibility = self.flex[t_start]
         if msg_type == xboole.MessageType.OfferNotification:
             # in this case, the upper part of the flexibility interval
