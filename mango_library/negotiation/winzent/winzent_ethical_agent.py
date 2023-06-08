@@ -1014,6 +1014,7 @@ class WinzentEthicalAgent(Agent):
         """
         Handle message object (content) from other agents.
         """
+        print("handle msg")
         if not self.governor.message_journal.contains_message(
                 content.id):
             self.governor.message_journal.add(content)
