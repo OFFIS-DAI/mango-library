@@ -413,6 +413,7 @@ class WinzentEthicalAgent(Agent):
             else:
                 logger.error("message path none")
             logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
+            print("sending offer")
             await self.send_message(reply, message_path=message_path)
 
         # elif available_value
@@ -450,6 +451,7 @@ class WinzentEthicalAgent(Agent):
         # val = message.value[0]
         # del message.value[:]
         # message.value.append(val - value)
+        print("forwarding..")
         await self.forward_message(message, message_path)
 
     async def forward_message(self, message, message_path):
