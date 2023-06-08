@@ -256,8 +256,6 @@ class WinzentAgent(Agent):
         message.value[:] = [message.value[0] - value]
         requirement.message = message
         requirement.forecast.second = message.value[0]
-        #this line seems to be a duplicate
-        #self.governor.message_journal.add(message)
         requirement.from_target = True
         self.governor.power_balance.add(requirement)
 

@@ -339,6 +339,7 @@ class WinzentEthicalAgent(Agent):
         """
         The agent received a negotiation request from another agent.
         """
+        print("handle external request")
         message = requirement.message
         self.ethics_score_of_others[message.sender] = message.ethics_score
         # await self.free_up_flex_from_less_important_offers(message)
@@ -352,7 +353,7 @@ class WinzentEthicalAgent(Agent):
             # first, check whether the value fulfills the own request
             if self.should_withdraw(message):
                 logger.debug(
-                    f"handle_external_request: {self.aid} should withdrawal"
+                    f"handle_external_request: {self.aid} should withdraw"
                 )
                 withdrawal = WinzentMessage(time_span=self._own_request.time_span,
                                             is_answer=True, answer_to=self._own_request.id,
