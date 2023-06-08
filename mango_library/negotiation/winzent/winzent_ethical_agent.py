@@ -345,6 +345,7 @@ class WinzentEthicalAgent(Agent):
         # await self.free_up_flex_from_less_important_offers(message)
         # If this agent already has its own negotiation running, it will deny the external
         # request by sending a withdrawal message.
+        print("is negotiation running?")
         if self._negotiation_running and self._own_request.time_span == message.time_span:
             # PGASC add logging
             logger.debug(
@@ -376,6 +377,7 @@ class WinzentEthicalAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
+        print("checking if value is available")
         available_value = self.get_flexibility_for_interval(
             t_start=message.time_span[0],
             msg_type=message.msg_type)
@@ -383,6 +385,7 @@ class WinzentEthicalAgent(Agent):
             and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
                 or (available_value >= message.value[0]
                     and numpy.sign(available_value) == numpy.sign(message.value)):
+            print("value available!")
             logger.debug(f"{self.aid} has enough flexibility")
             # If the agent has flexibility for the requested time, it replies
             # to the requesting agent
@@ -393,6 +396,7 @@ class WinzentEthicalAgent(Agent):
             elif message.msg_type == xboole.MessageType. \
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
+            print("creating message")
             reply = WinzentMessage(msg_type=msg_type,
                                    sender=self._aid,
                                    is_answer=True,
