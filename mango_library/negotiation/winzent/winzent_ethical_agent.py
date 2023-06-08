@@ -381,6 +381,7 @@ class WinzentEthicalAgent(Agent):
         available_value = self.get_flexibility_for_interval(
             t_start=message.time_span[0],
             msg_type=message.msg_type)
+        print("now comes the if")
         if (self.exists_flexibility(message.time_span[0])
             and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
                 or (available_value >= message.value[0]
