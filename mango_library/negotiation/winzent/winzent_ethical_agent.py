@@ -149,7 +149,7 @@ class WinzentEthicalAgent(Agent):
         """
         if not isinstance(value, int):
             value = value[1]
-
+        print("start negotiation")
         requirement = xboole.Requirement(
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
         requirement.from_target = True
@@ -163,6 +163,8 @@ class WinzentEthicalAgent(Agent):
         self.negotiation_done = asyncio.Future()
 
         await self.handle_internal_request(requirement)
+        print("internal request handled")
+
         self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
 
     async def trigger_solver(self):

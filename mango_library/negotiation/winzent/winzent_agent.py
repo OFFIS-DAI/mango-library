@@ -136,7 +136,6 @@ class WinzentAgent(Agent):
 
         requirement = xboole.Requirement(
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
-        print(requirement.message)
         requirement.from_target = True
         requirement.message.sender = self._aid
 
@@ -336,7 +335,6 @@ class WinzentAgent(Agent):
         """
         if message_path is None:
             message_path = []
-        # print(str(self.aid) + "received message: " + str(requirement.message))
         message = requirement.message
         # If this agent already has its own negotiation running, it will deny the external
         # request by sending a withdrawal message.
