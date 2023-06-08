@@ -336,7 +336,7 @@ class WinzentAgent(Agent):
         """
         if message_path is None:
             message_path = []
-        print(str(self.aid) + "received message: " + str(requirement.message))
+        # print(str(self.aid) + "received message: " + str(requirement.message))
         message = requirement.message
         # If this agent already has its own negotiation running, it will deny the external
         # request by sending a withdrawal message.
@@ -660,7 +660,6 @@ class WinzentAgent(Agent):
         """
         After a negotiation, reset the negotiation parameters.
         """
-        print("reset is called")
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -694,9 +693,6 @@ class WinzentAgent(Agent):
         # determine flexibility sign according to msg type
         positive = False if initial_msg_type == xboole.MessageType.DemandNotification else True
         afforded_value = 0
-        #print("soltuion" + str(solution[0]))
-        #print("gcd" + str(gcd[0]))
-        #print("a" + str(int(solution[0][-1])))
         # create dict with agents and used power value per agent
         for j in range(len(solution)):
             answer_objects.append(solution[j].split(':', 1)[0])
@@ -800,7 +796,6 @@ class WinzentAgent(Agent):
         now = datetime.now()
 
         current_time = now.strftime("%H:%M:%S")
-        print("Message sent at =", current_time)
         for key in zero_indeces:
             del self.final[key]
         self._waiting_for_acknowledgements = True
@@ -824,7 +819,6 @@ class WinzentAgent(Agent):
         """
         Trigger the solver and try to solve the problem.
         """
-        print("solver running")
         # First, check whether the solver is currently triggered and if there
         # is already a solution
         if not self._negotiation_running:
@@ -834,7 +828,6 @@ class WinzentAgent(Agent):
         self.governor.solver_triggered = True
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
         result = self.governor.try_balance()
-        print(result[0])
         if result is None:
             print("keine Lösung konnte gefunden werden")
             self.governor.solver_triggered = False

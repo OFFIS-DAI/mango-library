@@ -3,8 +3,6 @@ import logging
 import math
 import uuid
 from copy import deepcopy
-from datetime import datetime
-import random
 
 import numpy
 from mango.core.agent import Agent
@@ -72,6 +70,7 @@ class WinzentEthicalAgent(Agent):
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
         self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
         self._unsuccessful_negotiations = []  # negotiations for which no result at all was found
+        print("stop before task")
 
         # tasks which should be triggered regularly
         self.tasks = []
@@ -82,7 +81,7 @@ class WinzentEthicalAgent(Agent):
             t = asyncio.create_task(trigger_fkt())
             t.add_done_callback(self.raise_exceptions)
             self.tasks.append(t)
-
+        print("initiation successful")
     @property
     def solution_found(self):
         """
@@ -680,7 +679,6 @@ class WinzentEthicalAgent(Agent):
                 else:
                     await self.send_message(withdrawal)
                 self.nullify_invalid_acknowledgement_sent(inquiry.receiver)
-                print(self.aid + " sent withdrawal to " + inquiry.receiver)
                 if inquiry.value[0] > value_to_withdraw:
                     inquiry.value[0] = inquiry.value[0] - value_to_withdraw
                 else:
@@ -811,11 +809,10 @@ class WinzentEthicalAgent(Agent):
         else:
             act_value = -afforded_value
 
-        # print(self.aid + " new sol: " + str(self.final))
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            print(self.name + ": afforded value " + str(abs(afforded_value)) + " and inital value " + str(
-                abs(initial_value)))
+            #print(self.name + ": afforded value " + str(abs(afforded_value)) + " and inital value " + str(
+            #    abs(initial_value)))
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
