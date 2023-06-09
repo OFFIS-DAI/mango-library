@@ -514,7 +514,6 @@ class WinzentEthicalAgent(Agent):
         """
         reply = requirement.message
         logger.debug(f"receiver of this reply is {reply.receiver}")
-        print("handle external reply reached")
         if reply.receiver != self._aid:
             # The agent is not the receiver of the reply, therefore it needs
             # to forward it if the time to live is above 0.
@@ -530,7 +529,6 @@ class WinzentEthicalAgent(Agent):
                 logger.debug(
                     f"{self.aid} is not receiver {reply.receiver} of reply {reply.msg_type}, forward; "
                     f"path {message_path}")
-                print("forwarding the reply")
                 if self.send_message_paths:
                     await self.send_message(reply, message_path=message_path)
                 else:
@@ -976,7 +974,11 @@ class WinzentEthicalAgent(Agent):
         self.governor.solver_triggered = True
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
         #print("getting solution now...")
+        if self.grace_period_granted:
+            print("getting solution after grace")
         result = self.governor.try_balance()
+        if self.grace_period_granted:
+            print("got solution after grace")
         #print("solution generated!")
         if result is None:
             self.governor.solver_triggered = False
