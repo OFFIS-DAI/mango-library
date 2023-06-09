@@ -163,10 +163,10 @@ class WinzentEthicalAgent(Agent):
         self.negotiation_done = asyncio.Future()
 
         await self.handle_internal_request(requirement)
-        print("internal request handled")
+        #print("internal request handled")
 
         self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
-        print("diff_to_real_value handled")
+        #print("diff_to_real_value handled")
 
     async def trigger_solver(self):
         """
@@ -295,7 +295,7 @@ class WinzentEthicalAgent(Agent):
         Returns the flexibility for the given time interval according
         to the msg type.
         """
-        print("flex " + str(self.flex))
+        #print("flex " + str(self.flex))
         flexibility = self.flex[t_start]
         if msg_type == xboole.MessageType.OfferNotification:
             # in this case, the upper part of the flexibility interval
