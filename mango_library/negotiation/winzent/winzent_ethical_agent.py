@@ -864,6 +864,7 @@ class WinzentEthicalAgent(Agent):
             return
 
         if self.final_solving_process_allowed:
+            print("final solving process reached")
             i = 0
             zero_indeces = []
             self._curr_sent_acceptances.clear()
@@ -904,6 +905,7 @@ class WinzentEthicalAgent(Agent):
                     else:
                         continue
                 # create AcceptanceNotification
+                print("creating acceptance")
                 msg = WinzentMessage(
                     msg_type=xboole.MessageType.AcceptanceNotification,
                     sender=self._aid,
