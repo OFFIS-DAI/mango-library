@@ -402,7 +402,7 @@ class WinzentEthicalAgent(Agent):
                 elif message.msg_type == xboole.MessageType. \
                         DemandNotification:
                     msg_type = xboole.MessageType.OfferNotification
-                print("creating message")
+                # print("creating message")
                 reply = WinzentMessage(msg_type=msg_type,
                                        sender=self._aid,
                                        is_answer=True,
@@ -423,7 +423,7 @@ class WinzentEthicalAgent(Agent):
                 else:
                     logger.error("message path none")
                 logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                print("sending offer")
+                #print("sending offer")
                 await self.send_message(reply, message_path=message_path)
 
         # elif available_value
@@ -568,6 +568,7 @@ class WinzentEthicalAgent(Agent):
                         if ack_sent.receiver == reply.sender:
                             self._acknowledgements_sent.remove(ack_sent)
                             break
+                    print("sending acks")
                     answer = WinzentMessage(
                         msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                         is_answer=True, answer_to=reply.id,
@@ -1026,6 +1027,7 @@ class WinzentEthicalAgent(Agent):
         and stopped.
         """
         if self._solution_found:
+            print("_solution was found even though this method is called no_solution_after_timeout")
             return
         # PGASC changed logger.info to logging
         logger.debug(
