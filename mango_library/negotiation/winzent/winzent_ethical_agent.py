@@ -809,6 +809,8 @@ class WinzentEthicalAgent(Agent):
         for j in range(len(answer_objects)):
             sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
         old_final = self.final
+        if self.grace_period_granted:
+            print("before final calc")
         self.final = {}
         for k, v in sol.values.copy().items():
             if abs(afforded_value) + abs(v) >= abs(initial_value):
