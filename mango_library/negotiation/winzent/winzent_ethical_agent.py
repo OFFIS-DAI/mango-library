@@ -19,6 +19,7 @@ class WinzentEthicalAgent(Agent):
         #print("Version from 26.07.2022 18:05")
 
         # Determines if the message paths are stored in the message
+        self.final_solving_process_reached = False
         self.send_message_paths = send_message_paths
 
         # message paths of all agents that have established a connection in the negotiation
@@ -822,7 +823,7 @@ class WinzentEthicalAgent(Agent):
             self.final[self.governor.message_journal.get_message_for_id(
                 k).sender] = v
             afforded_value += v
-        if old_final == self.final:
+        if old_final == self.final and self.final_solving_process_reached:
             return
         if positive:
             act_value = afforded_value
@@ -869,6 +870,7 @@ class WinzentEthicalAgent(Agent):
 
         if self.final_solving_process_allowed:
             print("final solving process reached")
+            self.final_solving_process_reached = True
             i = 0
             zero_indeces = []
             self._curr_sent_acceptances.clear()
