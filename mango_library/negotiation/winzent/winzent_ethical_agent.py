@@ -379,18 +379,18 @@ class WinzentEthicalAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
-        # print("checking if value is available")
+        print("checking if value is available")
         if self.exists_flexibility(
                 message.time_span[0]):
             available_value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
                 msg_type=message.msg_type)
-            #print("now comes the if")
+            print("now comes the if")
             if (self.exists_flexibility(message.time_span[0])
                 and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
                     or (available_value >= message.value[0]
                         and numpy.sign(available_value) == numpy.sign(message.value)):
-                #print("value available!")
+                print("value available!")
                 logger.debug(f"{self.aid} has enough flexibility")
                 # If the agent has flexibility for the requested time, it replies
                 # to the requesting agent
@@ -401,7 +401,7 @@ class WinzentEthicalAgent(Agent):
                 elif message.msg_type == xboole.MessageType. \
                         DemandNotification:
                     msg_type = xboole.MessageType.OfferNotification
-                #print("creating message")
+                print("creating message")
                 reply = WinzentMessage(msg_type=msg_type,
                                        sender=self._aid,
                                        is_answer=True,
@@ -422,7 +422,7 @@ class WinzentEthicalAgent(Agent):
                 else:
                     logger.error("message path none")
                 logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                #print("sending offer")
+                print("sending offer")
                 await self.send_message(reply, message_path=message_path)
 
         # elif available_value
@@ -460,7 +460,7 @@ class WinzentEthicalAgent(Agent):
         # val = message.value[0]
         # del message.value[:]
         # message.value.append(val - value)
-        #print("forwarding..")
+        print("forwarding..")
         await self.forward_message(message, message_path)
 
     async def forward_message(self, message, message_path):
