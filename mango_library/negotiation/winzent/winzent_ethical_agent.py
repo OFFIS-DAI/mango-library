@@ -139,6 +139,7 @@ class WinzentEthicalAgent(Agent):
         self.flex[t_start] = [min_p, max_p]
         self.original_flex = deepcopy(self.flex)
         self.current_time_span = t_start
+        self.governor.curr_time = t_start
 
     async def start_negotiation(self, ts, value):
         """
@@ -641,7 +642,7 @@ class WinzentEthicalAgent(Agent):
                 )
             else:
                 if len(self.governor.power_balance.ledger) > 0:
-                    ledger = self.governor.power_balance.ledger[0]
+                    ledger = self.governor.power_balance.ledger[self.current_time_span]
                     for power_balance in ledger:
                         if power_balance.message.sender == reply.sender:
                             remaining_value = power_balance.message.value[0] - reply.value[0]
@@ -927,7 +928,7 @@ class WinzentEthicalAgent(Agent):
         ack_to_be_deleted = None
         for ack in self._acknowledgements_sent:
             if ack.receiver == receiver:
-                self.flex[0][1] += ack.value[0]  # TODO: make flex valid for producers as well
+                self.flex[self.current_time_span][1] += ack.value[0]  # TODO: make flex valid for producers as well
                 ack_to_be_deleted = self._acknowledgements_sent.index(ack)
                 break
         if ack_to_be_deleted is not None:

@@ -4,20 +4,23 @@ from copy import deepcopy
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.xboole import PowerBalanceSolverStrategy
 
+
 class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
     def __init__(self):
         self.power_balance_strategy = xboole.XboolePowerBalanceSolverStrategy()
         self.initial_requirement = None
+        self.start_time = 0
 
     def sum_up_offers(self, power_balance):
         sum = 0
-        for req in power_balance._ledger[0]:
-            sum = sum + req.power
+        for start_time, req_list in power_balance._ledger.items():
+            self.start_time = start_time
+            for req in req_list:
+                sum = sum + req.power
         return sum
 
     def get_ethics_score(self, requirement):
         return requirement.message.ethics_score
-
 
     def solve(self, power_balance, initiator):
         """
@@ -37,21 +40,20 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         else:
             # in this case, there are more offers than needed to satisfy the initial requirement
             most_ethical_requirements = deepcopy(power_balance)
-            most_ethical_requirements._ledger[0].remove(self.initial_requirement)
+            most_ethical_requirements._ledger[self.start_time].remove(self.initial_requirement)
             # requirements are sorted by their ethics score, so that the most ethical
             # offers are transferred to the solving algorithm
-            most_ethical_requirements._ledger[0].sort(key=self.get_ethics_score, reverse=True)
+            most_ethical_requirements._ledger[self.start_time].sort(key=self.get_ethics_score, reverse=True)
             temp_sum = 0
             index = 0
             # cut off unnecessary offers with low ethics score
-            for req in most_ethical_requirements._ledger[0]:
+            for req in most_ethical_requirements._ledger[self.start_time]:
                 if temp_sum + req.power >= ini:
                     index += 1
                     break
                 temp_sum += req.power
                 index += 1
-            most_ethical_requirements._ledger[0] = most_ethical_requirements._ledger[0][0:index]
+            most_ethical_requirements._ledger[self.start_time] = most_ethical_requirements._ledger[self.start_time][0:index]
             # add initial requirement to ensure the functioning of the solving algorithm
-            most_ethical_requirements._ledger[0].append(self.initial_requirement)
+            most_ethical_requirements._ledger[self.start_time].append(self.initial_requirement)
             return self.power_balance_strategy.solve(most_ethical_requirements, initiator)
-
