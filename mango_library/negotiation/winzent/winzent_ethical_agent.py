@@ -460,7 +460,7 @@ class WinzentEthicalAgent(Agent):
         # val = message.value[0]
         # del message.value[:]
         # message.value.append(val - value)
-        print("forwarding..")
+        #print("forwarding..")
         await self.forward_message(message, message_path)
 
     async def forward_message(self, message, message_path):
@@ -826,7 +826,8 @@ class WinzentEthicalAgent(Agent):
             act_value = afforded_value
         else:
             act_value = -afforded_value
-        print("final: " + str(self.final))
+        if self.grace_period_granted:
+            print("final: " + str(self.final))
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
             #print(self.name + ": afforded value " + str(abs(afforded_value)) + " and inital value " + str(
@@ -847,6 +848,8 @@ class WinzentEthicalAgent(Agent):
                 # more flexibility. Therefore, take afforded flexibility
                 # and send acknowledgements.
                 if act_value == 0:
+                    if self.grace_period_granted:
+                        print("this is why it fails")
                     await self.no_solution_after_timeout()
                     self.governor.triggered_due_to_timeout = False
                     return
