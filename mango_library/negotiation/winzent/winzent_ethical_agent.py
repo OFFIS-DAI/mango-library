@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class WinzentEthicalAgent(Agent):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, initial_ethics_score=1, name=""):
         super().__init__(container)
-        print("Version from 26.07.2022 18:05")
+        #print("Version from 26.07.2022 18:05")
 
         # Determines if the message paths are stored in the message
         self.send_message_paths = send_message_paths
@@ -70,7 +70,7 @@ class WinzentEthicalAgent(Agent):
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
         self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
         self._unsuccessful_negotiations = []  # negotiations for which no result at all was found
-        print("stop before task")
+        #print("stop before task")
 
         # tasks which should be triggered regularly
         self.tasks = []
@@ -81,7 +81,7 @@ class WinzentEthicalAgent(Agent):
             t = asyncio.create_task(trigger_fkt())
             t.add_done_callback(self.raise_exceptions)
             self.tasks.append(t)
-        print("initiation successful")
+        #print("initiation successful")
     @property
     def solution_found(self):
         """
@@ -795,6 +795,7 @@ class WinzentEthicalAgent(Agent):
         the gcd array (name and position are separated by a ":").
         The gcd includes the values that the agents in the solution variable are able to contribute.
         """
+        print("answer requirements reached!")
         answer_objects = []
         initial_value = initial_req.forecast.second
         logger.info(f"initial value is {initial_value}")
@@ -826,7 +827,7 @@ class WinzentEthicalAgent(Agent):
             act_value = afforded_value
         else:
             act_value = -afforded_value
-
+        print("final: " + str(self.final))
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
             #print(self.name + ": afforded value " + str(abs(afforded_value)) + " and inital value " + str(
@@ -852,6 +853,7 @@ class WinzentEthicalAgent(Agent):
                     return
         elif not self.grace_period_granted:
             # Grace period introduced
+            print("grace period reached")
             self.grace_period_granted = True
             await asyncio.sleep(0.5)
             self.final_solving_process_allowed = True
@@ -971,9 +973,9 @@ class WinzentEthicalAgent(Agent):
             return
         self.governor.solver_triggered = True
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
-        print("getting solution now...")
+        #print("getting solution now...")
         result = self.governor.try_balance()
-        print("solution generated!")
+        #print("solution generated!")
         if result is None:
             self.governor.solver_triggered = False
             if self.governor.triggered_due_to_timeout:
