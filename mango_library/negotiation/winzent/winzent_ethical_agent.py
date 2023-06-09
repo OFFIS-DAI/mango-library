@@ -379,18 +379,18 @@ class WinzentEthicalAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
-        print("checking if value is available")
+        #print("checking if value is available")
         if self.exists_flexibility(
                 message.time_span[0]):
             available_value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
                 msg_type=message.msg_type)
-            print("now comes the if")
+            #print("now comes the if")
             if (self.exists_flexibility(message.time_span[0])
                 and self.flex[message.time_span[0]] == self.original_flex[message.time_span[0]]) \
                     or (available_value >= message.value[0]
                         and numpy.sign(available_value) == numpy.sign(message.value)):
-                print("value available!")
+                #print("value available!")
                 logger.debug(f"{self.aid} has enough flexibility")
                 # If the agent has flexibility for the requested time, it replies
                 # to the requesting agent
@@ -793,7 +793,8 @@ class WinzentEthicalAgent(Agent):
         the gcd array (name and position are separated by a ":").
         The gcd includes the values that the agents in the solution variable are able to contribute.
         """
-        print("answer requirements reached!")
+        if self.grace_period_granted:
+            print("answer requirements reached after grace!")
         answer_objects = []
         initial_value = initial_req.forecast.second
         logger.info(f"initial value is {initial_value}")
@@ -851,7 +852,7 @@ class WinzentEthicalAgent(Agent):
                     return
         elif not self.grace_period_granted:
             # Grace period introduced
-            print("grace period reached")
+            print(self.aid + "grace period reached")
             self.grace_period_granted = True
             await asyncio.sleep(0.5)
             self.final_solving_process_allowed = True
@@ -978,7 +979,7 @@ class WinzentEthicalAgent(Agent):
             print("getting solution after grace")
         result = self.governor.try_balance()
         if self.grace_period_granted:
-            print("got solution after grace")
+            print("got solution after grace: " + str(result))
         #print("solution generated!")
         if result is None:
             self.governor.solver_triggered = False
@@ -987,6 +988,7 @@ class WinzentEthicalAgent(Agent):
                 # still no solution
                 self.governor.triggered_due_to_timeout = False
                 await self.no_solution_after_timeout()
+                print("result was none")
             return
         solution = result[0]
         self.result.clear()
