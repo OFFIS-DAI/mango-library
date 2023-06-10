@@ -757,6 +757,7 @@ class WinzentEthicalAgent(Agent):
         self.ethics_score_of_others = []
 
     def calculate_new_ethics_score(self):
+        self.calc_result_sum()
         if self.result_sum / (self.governor.curr_requirement_value - self.original_flex[self.current_time_span][1]) < 1:
             temp = math.floor(self.ethics_score * 10) / 10
             if (math.floor(float(temp)) + 1) > (float(temp) + 0.19):
