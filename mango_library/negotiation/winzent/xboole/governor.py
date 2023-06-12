@@ -80,6 +80,14 @@ class Governor:
                 if offer.message.sender == agent_id:
                     return offer
 
+    def get_msg_from_message_journal(self, sender, type):
+        return_msg = None
+        for msg in self.message_journal._entries.values():
+            if msg.sender == sender and msg.msg_type == type:
+                return_msg = msg
+        return return_msg
+
+
     @power_balance.setter
     def power_balance(self, power_balance):
         self._power_balance = power_balance
