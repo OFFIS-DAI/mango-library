@@ -643,6 +643,8 @@ class WinzentEthicalAgent(Agent):
                     f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
                 )
+                print(f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
+                    f"{reply.value} ")
             else:
                 if len(self.governor.power_balance.ledger) > 0:
                     ledger = self.governor.power_balance.ledger[self.current_time_span]
