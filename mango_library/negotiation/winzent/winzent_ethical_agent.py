@@ -634,6 +634,8 @@ class WinzentEthicalAgent(Agent):
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
             # if the id is not saved, the agent already handled this
             # WithdrawalNotification
+            print(f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
+                  f"{reply.value} ")
             if reply.answer_to in self._adapted_flex_according_to_msgs:
                 self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] + reply.value[0]
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
@@ -643,8 +645,7 @@ class WinzentEthicalAgent(Agent):
                     f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
                 )
-                print(f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
-                    f"{reply.value} ")
+                print("if case")
             else:
                 if len(self.governor.power_balance.ledger) > 0:
                     ledger = self.governor.power_balance.ledger[self.current_time_span]
