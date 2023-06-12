@@ -16,9 +16,9 @@ async def run_six():
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=10)
     agent_b.update_flexibility(t_start=2700, min_p=0, max_p=30)
     agent_c.update_flexibility(t_start=2700, min_p=0, max_p=10)
-    agent_d.update_flexibility(t_start=2700, min_p=0, max_p=100)
-    agent_e.update_flexibility(t_start=2700, min_p=0, max_p=100)
-    agent_f.update_flexibility(t_start=2700, min_p=0, max_p=100)
+    agent_d.update_flexibility(t_start=2700, min_p=0, max_p=10)
+    agent_e.update_flexibility(t_start=2700, min_p=0, max_p=10)
+    agent_f.update_flexibility(t_start=2700, min_p=0, max_p=10)
 
     await agent_b.start_negotiation(ts=[2700, 3600], value=140)
     await agent_a.start_negotiation(ts=[2700, 3600], value=140)

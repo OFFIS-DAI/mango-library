@@ -213,7 +213,10 @@ class WinzentEthicalAgent(Agent):
                                                 id=str(uuid.uuid4()),
                                                 sender=self._aid
                                                 )
-                    await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
+                    if self.send_message_paths:
+                        await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
+                    else:
+                        await self.send_message(withdrawal, receiver=acc_msg.receiver)
                 await asyncio.sleep(self._time_to_sleep)
                 await self.reset()
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
@@ -555,7 +558,7 @@ class WinzentEthicalAgent(Agent):
                     self.negotiation_connections[
                         message_path[-1]] = message_path  # received offer; establish connection
                     # supplier:[self.aid/demander, ..., supplier]
-                print("solver action!")
+                print(self.aid + " starts the solver.")
                 await self.solve()
 
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
