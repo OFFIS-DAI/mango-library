@@ -400,7 +400,7 @@ class WinzentSimpleEthicalAgent(Agent):
                 self._current_inquiries_from_agents[message.sender] = message
                 if not self.first_demand_received:
                     self.first_demand_received = True
-                    await asyncio.sleep(0.3)
+                    # await asyncio.sleep(0.3)
                     offers = list(self._current_inquiries_from_agents.values())
                     offers.sort(key=self.get_ethics_score, reverse=True)
                 else:
@@ -690,6 +690,8 @@ class WinzentSimpleEthicalAgent(Agent):
         self.result_sum = 0
         self._acknowledgements_sent = []
         self.negotiation_connections = {}
+        self.first_offer_received = False
+        self.first_demand_received = False
 
     def acceptance_valid(self, msg):
         """
