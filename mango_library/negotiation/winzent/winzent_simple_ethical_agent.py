@@ -130,6 +130,7 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         self.flex[t_start] = [min_p, max_p]
         self.current_time_span = t_start
+        self.first_demand_received = False
 
     async def start_negotiation(self, ts, value):
         """
@@ -145,7 +146,7 @@ class WinzentSimpleEthicalAgent(Agent):
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
         requirement.from_target = True
         requirement.message.sender = self._aid
-
+        print(f"{self.aid} starts negotiation, needs {value}")
         message = requirement.message
         message.sender = self._aid
         self.governor.message_journal.add(message)
@@ -288,6 +289,7 @@ class WinzentSimpleEthicalAgent(Agent):
         self._own_request = requirement.message
         self._negotiation_running = True
         logger.debug(f"{self.aid} sends negotiation start notification")
+        print(f"{self.aid} sends neg msg")
         await self.send_message(neg_msg)
 
     def get_flexibility_for_interval(self, t_start, msg_type):
@@ -379,6 +381,7 @@ class WinzentSimpleEthicalAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
+        print(f"{self.aid} received message, exists flex: {self.exists_flexibility(message.time_span[0])}")
         if self.exists_flexibility(
                 message.time_span[0]):
             logger.debug(f"{self.aid} has flexibility")
@@ -387,6 +390,7 @@ class WinzentSimpleEthicalAgent(Agent):
             value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
                 msg_type=message.msg_type)
+            print(f"{self.aid}: value for this interval is: {value}")
             if value != 0:
                 msg_type = xboole.MessageType.Null
                 # send message reply

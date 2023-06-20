@@ -39,9 +39,11 @@ async def run_six():
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
 
 async def run_six_simple():
-    now = datetime.now()
-    current_time = now.strftime("%H:%M:%S")
-    print("Current Time =", current_time)
+    #now = datetime.now()
+    #current_time = now.strftime("%H:%M:%S")
+    start_time = 2700
+    end_time = start_time + 900
+    #print("Current Time =", current_time)
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_simple_ethical_agents()
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=10)
@@ -54,6 +56,18 @@ async def run_six_simple():
     await agent_b.start_negotiation(ts=[2700, 3600], value=140)
     await agent_a.start_negotiation(ts=[2700, 3600], value=140)
     await agent_c.start_negotiation(ts=[2700, 3600], value=140)
+    await agent_b.negotiation_done
+    await agent_c.negotiation_done
+    await agent_a.negotiation_done
+    agent_a.update_flexibility(t_start=3600, min_p=0, max_p=10)
+    agent_b.update_flexibility(t_start=3600, min_p=0, max_p=30)
+    agent_c.update_flexibility(t_start=3600, min_p=0, max_p=10)
+    agent_d.update_flexibility(t_start=3600, min_p=0, max_p=1000)
+    agent_e.update_flexibility(t_start=3600, min_p=0, max_p=1000)
+    agent_f.update_flexibility(t_start=3600, min_p=0, max_p=1000)
+    await agent_b.start_negotiation(ts=[3600, 4500], value=140)
+    await agent_a.start_negotiation(ts=[3600, 4500], value=140)
+    await agent_c.start_negotiation(ts=[3600, 4500], value=140)
     await agent_b.negotiation_done
     await agent_c.negotiation_done
     await agent_a.negotiation_done
