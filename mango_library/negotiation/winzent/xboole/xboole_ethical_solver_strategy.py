@@ -35,7 +35,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         # no special solving strategy is needed
         sum = abs(self.sum_up_offers(power_balance))
         ini = abs(self.initial_requirement.power)
-        print(len(power_balance._ledger[self.start_time]))
+        # print(len(power_balance._ledger[self.start_time]))
         if ini > sum:
             return self.power_balance_strategy.solve(power_balance, initiator)
         else:
@@ -57,5 +57,5 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             most_ethical_requirements._ledger[self.start_time] = most_ethical_requirements._ledger[self.start_time][0:index]
             # add initial requirement to ensure the functioning of the solving algorithm
             most_ethical_requirements._ledger[self.start_time].append(self.initial_requirement)
-            print(most_ethical_requirements._ledger[self.start_time])
+            # print(most_ethical_requirements._ledger[self.start_time])
             return self.power_balance_strategy.solve(most_ethical_requirements, initiator)

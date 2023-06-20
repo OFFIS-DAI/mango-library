@@ -339,7 +339,6 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         The agent received a negotiation request from another agent.
         """
-        # print(f"message is: {requirement.message}")
         if message_path is None:
             message_path = []
         message = requirement.message
@@ -400,7 +399,7 @@ class WinzentSimpleEthicalAgent(Agent):
                 self._current_inquiries_from_agents[message.sender] = message
                 if not self.first_demand_received:
                     self.first_demand_received = True
-                    # await asyncio.sleep(0.3)
+                    await asyncio.sleep(1)
                     offers = list(self._current_inquiries_from_agents.values())
                     offers.sort(key=self.get_ethics_score, reverse=True)
                 else:
@@ -439,6 +438,8 @@ class WinzentSimpleEthicalAgent(Agent):
                         # self.first_offer_received = False
                         break
                 self.flex[self.current_time_span] = [0, value]
+            else:
+                print("no flexibility to offer")
 
     def get_ethics_score(self, message):
         return message.ethics_score
