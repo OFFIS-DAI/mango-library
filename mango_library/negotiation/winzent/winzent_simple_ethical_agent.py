@@ -399,6 +399,7 @@ class WinzentSimpleEthicalAgent(Agent):
                 self.governor.message_journal.add(message)
                 self._current_inquiries_from_agents[message.sender] = message
                 if not self.first_demand_received:
+                    print(self.aid + " received its first demand.")
                     self.first_demand_received = True
                     await asyncio.sleep(1)
                     offers = list(self._current_inquiries_from_agents.values())
@@ -412,6 +413,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     else:
                         value = value - offer.value[0]
                         value_to_offer = offer.value[0]
+                    print("sending offer to " + offer.sender)
                     reply = WinzentMessage(msg_type=msg_type,
                                            sender=self._aid,
                                            is_answer=True,
