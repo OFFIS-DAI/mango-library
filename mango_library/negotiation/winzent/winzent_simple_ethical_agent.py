@@ -413,7 +413,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     else:
                         value = value - offer.value[0]
                         value_to_offer = offer.value[0]
-                    print("sending offer to " + offer.sender)
+                    print(self.aid + " sending offer to " + offer.sender)
                     reply = WinzentMessage(msg_type=msg_type,
                                            sender=self._aid,
                                            is_answer=True,
@@ -542,7 +542,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     # supplier:[self.aid/demander, ..., supplier]
                 if not self.first_offer_received:
                     self.first_offer_received = True
-                    await asyncio.sleep(1)
+                    await asyncio.sleep(0.5)
                     print(f"slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
                     await self.solve()
 
