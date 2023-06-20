@@ -309,7 +309,6 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         Returns whether there exists flexibility for the given time interval.
         """
-        print(self.flex)
         return t_start in self.flex.keys()
 
     async def stop_agent(self):
@@ -441,8 +440,6 @@ class WinzentSimpleEthicalAgent(Agent):
                         # self.first_offer_received = False
                         break
                 self.flex[self.current_time_span] = [0, value]
-            else:
-                print("no flexibility to offer")
 
     def get_ethics_score(self, message):
         return message.ethics_score
@@ -522,6 +519,7 @@ class WinzentSimpleEthicalAgent(Agent):
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
                 or reply.msg_type == xboole.MessageType.OfferNotification:
+            print(self.aid + " received offer from " + reply.sender)
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
