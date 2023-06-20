@@ -309,6 +309,7 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         Returns whether there exists flexibility for the given time interval.
         """
+        print(self.flex)
         return t_start in self.flex.keys()
 
     async def stop_agent(self):
