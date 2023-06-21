@@ -690,7 +690,6 @@ class WinzentSimpleEthicalAgent(Agent):
         self._waiting_for_acknowledgements = False
         self.governor.power_balance.clear()
         self._curr_sent_acceptances = []
-        self.calculate_new_ethics_score()
         if not self.negotiation_done.done():
             self.negotiation_done.set_result(True)
         self.result_sum = 0
