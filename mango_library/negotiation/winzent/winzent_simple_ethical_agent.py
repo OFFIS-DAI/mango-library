@@ -416,7 +416,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     else:
                         value = value - offer.value[0]
                         value_to_offer = offer.value[0]
-                    print(self.aid + " sending offer to " + offer.sender)
+                    # print(self.aid + " sending offer to " + offer.sender)
                     reply = WinzentMessage(msg_type=msg_type,
                                            sender=self._aid,
                                            is_answer=True,
@@ -439,7 +439,7 @@ class WinzentSimpleEthicalAgent(Agent):
                         await self.send_message(reply, message_path=message_path)
                     else:
                         await self.send_message(reply)
-                        print(f"{self.aid} sends message to {offer.sender}")
+                        # print(f"{self.aid} sends message to {offer.sender}")
                     if value <= 0:
                         # self.first_offer_received = False
                         break
@@ -523,7 +523,7 @@ class WinzentSimpleEthicalAgent(Agent):
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
                 or reply.msg_type == xboole.MessageType.OfferNotification:
-            print(self.aid + " received offer from " + reply.sender)
+            # print(self.aid + " received offer from " + reply.sender)
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
@@ -533,7 +533,7 @@ class WinzentSimpleEthicalAgent(Agent):
             # to find a new solution. Therefore, trigger solver.
             if not self._solution_found:
                 self.governor.power_balance.add(requirement)
-                print(self.aid + "added offer from " + reply.sender + " over " + str(reply.value[0]) + "to power_balance")
+                # print(self.aid + "added offer from " + reply.sender + " over " + str(reply.value[0]) + "to power_balance")
                 if not self.governor.solver_triggered:
                     self.governor.triggered_due_to_timeout = False
                 # Save the established connection
