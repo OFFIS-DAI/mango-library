@@ -381,7 +381,7 @@ class WinzentSimpleEthicalAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
-        print(f"{self.aid} received message, exists flex: {self.exists_flexibility(message.time_span[0])}")
+        # print(f"{self.aid} received message, exists flex: {self.exists_flexibility(message.time_span[0])}")
         if self.exists_flexibility(
                 message.time_span[0]):
             logger.debug(f"{self.aid} has flexibility")
@@ -390,7 +390,7 @@ class WinzentSimpleEthicalAgent(Agent):
             value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
                 msg_type=message.msg_type)
-            print(f"{self.aid}: value for this interval is: {value}")
+            # print(f"{self.aid}: value for this interval is: {value}")
             if value != 0:
                 msg_type = xboole.MessageType.Null
                 # send message reply
@@ -895,27 +895,6 @@ class WinzentSimpleEthicalAgent(Agent):
         for res in self.result.values():
             self.result_sum += res
 
-    def calculate_new_ethics_score(self):
-        self.calc_result_sum()
-        if self.result_sum / (
-                self.governor.curr_requirement_value - self.original_flex[self.current_time_span][1]) < 1:
-            temp = math.floor(self.ethics_score * 10) / 10
-            if (math.floor(float(temp)) + 1) > (float(temp) + 0.19):
-                self.ethics_score = float("{:.2f}".format(float(self.ethics_score) + 0.19))
-            else:
-                self.ethics_score = float(
-                    "{:.2f}".format((math.floor(float(self.ethics_score)) + 1) - self.decay_rate))
-            print(str(self.aid) + ": need could not be satisfied: result is " + str(
-                self.result_sum) + " and requirement is " + str(
-                self.governor.curr_requirement_value - self.original_flex[self.current_time_span][1]))
-        else:
-            lower_tier_end = (math.floor(self.ethics_score * 10) / 10)
-            temp_ethics_score = float("{:.2f}".format(self.ethics_score - self.decay_rate))
-            if temp_ethics_score <= lower_tier_end:
-                self.ethics_score = lower_tier_end
-            else:
-                self.ethics_score = temp_ethics_score
-        print("new ethics score for " + self.aid + ": " + str(self.ethics_score))
 
     async def no_solution_after_timeout(self):
         """

@@ -167,7 +167,7 @@ class WinzentAgent(Agent):
                 now = datetime.now()
 
                 current_time = now.strftime("%H:%M:%S")
-                print("Timer ran out at =", current_time)
+                print(f"{self.aid}: Timer ran out at =", current_time)
                 # After sleeping, the solver is triggered. This is necessary
                 # in case when not the complete negotiation problem can be
                 # solved. The solver is triggered after the timeout to
@@ -825,7 +825,6 @@ class WinzentAgent(Agent):
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
         result = self.governor.try_balance()
         if result is None:
-            print("keine Lösung konnte gefunden werden")
             self.governor.solver_triggered = False
             if self.governor.triggered_due_to_timeout:
                 # solver was triggered after the timeout and yet there was
