@@ -120,9 +120,9 @@ async def run_six_simple():
     await agent_c.negotiation_done
     await agent_a.negotiation_done
     print("now shutting down" + str(agent_c.negotiation_done))
-    # print(agent_a.aid + str(agent_a.final))
-    # print(agent_b.aid + str(agent_b.final))
-    # print(agent_c.aid + str(agent_c.final))
+    print(agent_a.aid + str(agent_a.final))
+    print(agent_b.aid + str(agent_b.final))
+    print(agent_c.aid + str(agent_c.final))
     # after the negotiation, the agents should have updated their flexibility
     # assert agent_a.flex[0] == [0, 0]
     # assert agent_b.flex[0] == [0, 0]
@@ -134,12 +134,7 @@ async def run_six_simple():
 
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
 
-test2 = ""
-
-found = any(string in "Surheide Households" for string in ['Households', 'Abfall'])
-print(found)
-
-# asyncio.run(run_six_simple())
+asyncio.run(run_six_simple())
 # test = {3: ["Klinikum", "PV", "Wind"], 2: ["Households", "Abfall"], 1: [""]}
 # ethics_score = 2.0
 # ethics_score = calculate_new_ethics_score(True, ethics_score)
