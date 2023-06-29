@@ -404,7 +404,7 @@ class WinzentSimpleEthicalAgent(Agent):
                 if not self.first_demand_received:
                     # print(self.aid + " received its first demand.")
                     self.first_demand_received = True
-                    # await asyncio.sleep(1)
+                    await asyncio.sleep(0.5)
                     offers = list(self._current_inquiries_from_agents.values())
                     offers.sort(key=self.get_ethics_score, reverse=True)
                 else:
@@ -544,7 +544,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     # supplier:[self.aid/demander, ..., supplier]
                 if not self.first_offer_received:
                     self.first_offer_received = True
-                    # await asyncio.sleep(0.5)
+                    await asyncio.sleep(0.5)
                     print(f"slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
                     await self.solve()
 
