@@ -31,8 +31,10 @@ class WinzentSimpleEthicalAgent(Agent):
 
         self.ethics_score = ethics_score
         # store flexibility as interval with maximum and minimum value per time
+        self.offer_list = []
         self.flex = {}
         self.original_flex = {}
+        self.internal_reserved_flex = 0
         self._adapted_flex_according_to_msgs = []
         self.first_offer_received = False
         self.first_demand_received = False
@@ -175,7 +177,7 @@ class WinzentSimpleEthicalAgent(Agent):
                 now = datetime.now()
 
                 current_time = now.strftime("%H:%M:%S")
-                print("Timer ran out at =", current_time)
+                print(f"{self.aid}: Timer ran out at =", current_time)
                 # After sleeping, the solver is triggered. This is necessary
                 # in case when not the complete negotiation problem can be
                 # solved. The solver is triggered after the timeout to
@@ -401,49 +403,56 @@ class WinzentSimpleEthicalAgent(Agent):
                     msg_type = xboole.MessageType.OfferNotification
                 self.governor.message_journal.add(message)
                 self._current_inquiries_from_agents[message.sender] = message
+
+                self.offer_list.append(message)
                 if not self.first_demand_received:
                     # print(self.aid + " received its first demand.")
                     self.first_demand_received = True
                     await asyncio.sleep(0.5)
-                    offers = list(self._current_inquiries_from_agents.values())
+                    offers = deepcopy(self.offer_list)
+                    self.offer_list.clear()
+                    # offers = list(self._current_inquiries_from_agents.values())
                     offers.sort(key=self.get_ethics_score, reverse=True)
+                    for offer in offers:
+                        if offer.value[0] >= value:
+                            value_to_offer = value
+                            value = 0
+                        else:
+                            value = value - offer.value[0]
+                            value_to_offer = offer.value[0]
+                        # print(self.aid + " sending offer to " + offer.sender)
+                        reply = WinzentMessage(msg_type=msg_type,
+                                               sender=self._aid,
+                                               is_answer=True,
+                                               receiver=offer.sender,
+                                               time_span=offer.time_span,
+                                               value=[value_to_offer], ttl=self._current_ttl,
+                                               id=str(uuid.uuid4()),
+                                               ethics_score=self.ethics_score)
+                        if self.send_message_paths:
+                            message_path.append(self.aid)
+                            message_path.reverse()
+                            if message_path is not None:
+                                demander_index = message_path[-1]
+                                self.negotiation_connections[
+                                    demander_index] = message_path
+                                # send offer and save established connection demander:[self.aid/supplier, ..., demander]
+                            else:
+                                logger.error("message path none")
+                            logger.debug(
+                                f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
+                            await self.send_message(reply, message_path=message_path)
+                        else:
+                            await self.send_message(reply)
+                            # print(f"{self.aid} sends message to {offer.sender}")
+                        if value <= 0:
+                            # self.first_offer_received = False
+                            break
+                    self.first_demand_received = False
                 else:
                     return
-                for offer in offers:
-                    if offer.value[0] >= value:
-                        value_to_offer = value
-                        value = 0
-                    else:
-                        value = value - offer.value[0]
-                        value_to_offer = offer.value[0]
-                    # print(self.aid + " sending offer to " + offer.sender)
-                    reply = WinzentMessage(msg_type=msg_type,
-                                           sender=self._aid,
-                                           is_answer=True,
-                                           receiver=offer.sender,
-                                           time_span=offer.time_span,
-                                           value=[value_to_offer], ttl=self._current_ttl,
-                                           id=str(uuid.uuid4()),
-                                           ethics_score=self.ethics_score)
-                    if self.send_message_paths:
-                        message_path.append(self.aid)
-                        message_path.reverse()
-                        if message_path is not None:
-                            demander_index = message_path[-1]
-                            self.negotiation_connections[
-                                demander_index] = message_path
-                            # send offer and save established connection demander:[self.aid/supplier, ..., demander]
-                        else:
-                            logger.error("message path none")
-                        logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                        await self.send_message(reply, message_path=message_path)
-                    else:
-                        await self.send_message(reply)
-                        # print(f"{self.aid} sends message to {offer.sender}")
-                    if value <= 0:
-                        # self.first_offer_received = False
-                        break
-                self.flex[self.current_time_span] = [0, value]
+
+                # self.flex[self.current_time_span] = [0, value]
 
     def get_ethics_score(self, message):
         return message.ethics_score
@@ -547,6 +556,7 @@ class WinzentSimpleEthicalAgent(Agent):
                     await asyncio.sleep(0.5)
                     print(f"slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
                     await self.solve()
+                    self.first_offer_received = False
 
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
             # First, check whether the AcceptanceNotification is still valid
@@ -567,7 +577,8 @@ class WinzentSimpleEthicalAgent(Agent):
                     await self.send_message(answer)
                 self._adapted_flex_according_to_msgs.append(reply.id)
                 self._acknowledgements_sent.append(reply.id)
-
+                current_flex = self.flex[self.current_time_span][1]
+                self.flex[self.current_time_span] = [0, current_flex - reply.value[0]]
                 del self._current_inquiries_from_agents[reply.sender]
             return
         elif reply.msg_type == \
@@ -684,6 +695,8 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         After a negotiation, reset the negotiation parameters.
         """
+        self.result[self.aid] = self.internal_reserved_flex
+        self.result_sum += self.internal_reserved_flex
         print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
