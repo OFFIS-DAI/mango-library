@@ -34,7 +34,6 @@ class WinzentSimpleEthicalAgent(Agent):
         self.offer_list = []
         self.flex = {}
         self.original_flex = {}
-        self.internal_reserved_flex = 0
         self._adapted_flex_according_to_msgs = []
         self.first_offer_received = False
         self.first_demand_received = False
@@ -695,8 +694,6 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         After a negotiation, reset the negotiation parameters.
         """
-        self.result[self.aid] = self.internal_reserved_flex
-        self.result_sum += self.internal_reserved_flex
         print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
