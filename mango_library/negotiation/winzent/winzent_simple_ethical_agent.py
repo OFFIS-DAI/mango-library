@@ -254,10 +254,10 @@ class WinzentSimpleEthicalAgent(Agent):
         logger.debug(
             f"handle_internal_request: {self.aid} own forecast not sufficient, needs help"
         )
-        if message.msg_type == xboole.MessageType.DemandNotification:
-            self.flex[message.time_span[0]][0] = 0
-        else:
-            self.flex[message.time_span[0]][1] = 0
+        # if message.msg_type == xboole.MessageType.DemandNotification:
+        #     self.flex[message.time_span[0]][0] = 0
+        # else:
+        #     self.flex[message.time_span[0]][1] = 0
 
         # In this case, there is still a value to negotiate about. Therefore,
         # add the message regarding the request to the own message journal
@@ -293,7 +293,7 @@ class WinzentSimpleEthicalAgent(Agent):
         print(f"{self.aid} sends neg msg")
         await self.send_message(neg_msg)
 
-    def get_flexibility_for_interval(self, t_start, msg_type):
+    def get_flexibility_for_interval(self, t_start, msg_type=6):
         """
         Returns the flexibility for the given time interval according
         to the msg type.
@@ -694,6 +694,10 @@ class WinzentSimpleEthicalAgent(Agent):
         """
         After a negotiation, reset the negotiation parameters.
         """
+        flex = self.get_flexibility_for_interval(self.current_time_span)
+        if flex > 0:
+            self.result[self.aid] = flex
+            self.result_sum += flex
         print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
@@ -890,8 +894,6 @@ class WinzentSimpleEthicalAgent(Agent):
             if len(answers) > 0:
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} found solution. ***')
-                logger.info(f'\n*** {self._aid} found solution. ***')
-                logger.info(f'\n*** {self._aid} found solution.{answers} is something. {gcd_p} is something else ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 

@@ -844,8 +844,6 @@ class WinzentAgent(Agent):
             if len(answers) > 0:
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} found solution. ***')
-                logger.info(f'\n*** {self._aid} found solution. ***')
-                logger.info(f'\n*** {self._aid} found solution.{answers} is something. {gcd_p} is something else ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 

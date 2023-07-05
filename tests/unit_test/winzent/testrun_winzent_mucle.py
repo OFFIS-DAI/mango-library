@@ -114,17 +114,17 @@ async def run_muscle():
     agent_e.update_flexibility(t_start=2700, min_p=0, max_p=100)
     agent_f.update_flexibility(t_start=2700, min_p=0, max_p=100)
 
-    agent_b_values = 140
+    agent_b_values = 100
     await agent_b.start_negotiation(ts=[2700, 3600], value=agent_b_values)
     rounded_load_values[agent_b.aid] = agent_b_values
     agents_with_started_negotiation.append(agent_b)
 
-    agent_a_values = 140
+    agent_a_values = 100
     await agent_a.start_negotiation(ts=[2700, 3600], value=agent_a_values)
     agents_with_started_negotiation.append(agent_a)
     rounded_load_values[agent_a.aid] = agent_a_values
 
-    agent_c_values = 140
+    agent_c_values = 100
     await agent_c.start_negotiation(ts=[2700, 3600], value=agent_c_values)
     agents_with_started_negotiation.append(agent_c)
     rounded_load_values[agent_c.aid] = agent_c_values
