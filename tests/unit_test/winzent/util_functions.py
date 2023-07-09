@@ -1,6 +1,7 @@
 from mango.core.container import Container
 
-from mango_library.negotiation.winzent.winzent_classic_agent import WinzentAgent
+from mango_library.negotiation.winzent.winzent_classic_agent import WinzentClassicAgent
+from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 from negotiation.winzent.winzent_ethical_agent import WinzentEthicalAgent
 from negotiation.winzent.winzent_simple_ethical_agent import WinzentSimpleEthicalAgent
 
@@ -28,9 +29,9 @@ async def create_three_agents():
     container = await Container.factory(addr=addr)
 
     # create agents
-    agent_a = WinzentAgent(container=container, ttl=2)
-    agent_b = WinzentAgent(container=container, ttl=2)
-    agent_c = WinzentAgent(container=container, ttl=2)
+    agent_a = WinzentClassicAgent(container=container, ttl=2)
+    agent_b = WinzentClassicAgent(container=container, ttl=2)
+    agent_c = WinzentClassicAgent(container=container, ttl=2)
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,
@@ -55,12 +56,12 @@ async def create_six_agents():
     container = await Container.factory(addr=addr)
     tts = 1
     # create agents
-    agent_a = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1, name="agent_a")
-    agent_b = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2, name="agent_b")
-    agent_c = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=3, name="agent_c")
-    agent_d = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=4, name="agent_d")
-    agent_e = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5, name="agent_e")
-    agent_f = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6, name="agent_f")
+    agent_a = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
+    agent_b = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2)
+    agent_c = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=3)
+    agent_d = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=4)
+    agent_e = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5)
+    agent_f = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6)
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,
@@ -160,7 +161,7 @@ async def create_agents(number_of_agents, ttl, time_to_sleep):
 
     # create agents
     for idx in range(number_of_agents):
-        agents.append(WinzentAgent(container=container, ttl=ttl, time_to_sleep=time_to_sleep))
+        agents.append(WinzentClassicAgent(container=container, ttl=ttl, time_to_sleep=time_to_sleep))
 
     # create ring
     for agent_idx in range(len(agents)):

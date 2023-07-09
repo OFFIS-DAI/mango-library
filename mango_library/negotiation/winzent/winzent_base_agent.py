@@ -5,17 +5,17 @@ import uuid
 from copy import deepcopy
 from datetime import datetime
 
+from mango.core.agent import Agent
+
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
-from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 
 logger = logging.getLogger(__name__)
 
 
-class WinzentClassicAgent(WinzentBaseAgent):
+class WinzentBaseAgent(Agent):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0):
         super().__init__(container)
-        print("Version from 26.07.2022 18:05")
 
         # PGASC: if true stores the message path in the message
         self.send_message_paths = send_message_paths
@@ -32,6 +32,8 @@ class WinzentClassicAgent(WinzentBaseAgent):
         # create Governor with PowerBalance
         self.governor = xboole.Governor()
         self.governor.power_balance = xboole.PowerBalance()
+        # The base agent is using the not-ethical solving strategy as a default.
+        # This can be overriden by agent subclasses.
         self.governor.power_balance_strategy = \
             xboole.XboolePowerBalanceSolverStrategy()
 
@@ -125,7 +127,7 @@ class WinzentClassicAgent(WinzentBaseAgent):
 
     async def start_negotiation(self, ts, value):
         """
-        Start a negotiation with other agents for the given timestamp and 
+        Start a negotiation with other agents for the given timestamp and
         value. The negotiation is started by calling handle_internal_request.
         :param ts: timespan for the negotiation
         :param value: power value to negotiate about
@@ -137,13 +139,13 @@ class WinzentClassicAgent(WinzentBaseAgent):
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
         requirement.from_target = True
         requirement.message.sender = self._aid
-
         message = requirement.message
         message.sender = self._aid
         self.governor.message_journal.add(message)
         self.governor.curr_requirement_value = value
         self.negotiation_done = asyncio.Future()
-
+        logger.debug(f"{self.aid} starts negotiation, needs {value}")
+        print("negotiation started")
         await self.handle_internal_request(requirement)
         self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
 
@@ -204,6 +206,7 @@ class WinzentClassicAgent(WinzentBaseAgent):
                     else:
                         await self.send_message(withdrawal, receiver=acc_msg.receiver)
                 await asyncio.sleep(self._time_to_sleep)
+                print("reset 4")
                 await self.reset()
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
                 self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
@@ -281,26 +284,23 @@ class WinzentClassicAgent(WinzentBaseAgent):
         logger.debug(f"{self.aid} sends negotiation start notification")
         await self.send_message(neg_msg)
 
-    def get_flexibility_for_interval(self, t_start, msg_type):
+    def get_flexibility_for_interval(self, t_start, msg_type=6):
         """
         Returns the flexibility for the given time interval according
         to the msg type.
         """
-        flexibility = self.flex[t_start]
-        if msg_type == xboole.MessageType.OfferNotification:
-            # in this case, the upper part of the flexibility interval
-            # is considered
-            return flexibility[1]
-        elif msg_type == xboole.MessageType.DemandNotification:
-            # in this case, the lower part of the flexibility interval
-            # is considered
-            return flexibility[0]
-
-    def exists_flexibility(self, t_start):
-        """
-        Returns whether there exists flexibility for the given time interval.
-        """
-        return t_start in self.flex.keys()
+        if t_start in self.flex.keys():
+            flexibility = self.flex[t_start]
+            if msg_type == xboole.MessageType.OfferNotification:
+                # in this case, the upper part of the flexibility interval
+                # is considered
+                return flexibility[1]
+            elif msg_type == xboole.MessageType.DemandNotification:
+                # in this case, the lower part of the flexibility interval
+                # is considered
+                return flexibility[0]
+        else:
+            return 0
 
     async def stop_agent(self):
         """
@@ -314,17 +314,44 @@ class WinzentClassicAgent(WinzentBaseAgent):
             except asyncio.CancelledError:
                 pass
 
-    def should_withdraw(self, message):
-        """
-        Check whether the agent should withdraw its own negotiation request according to the given method. True, if
-        for the same interval the opposite request with the same amount was sent.
-        """
-        if message.msg_type == xboole.MessageType.OfferNotification and self._own_request.msg_type == \
-                xboole.MessageType.DemandNotification or message.msg_type == xboole.MessageType.DemandNotification \
-                and self._own_request.msg_type == xboole.MessageType.OfferNotification:
-            if message.value[0] >= self._own_request.value[0]:
-                return True
-        return False
+    async def answer_external_request(self, message, message_path, value):
+        msg_type = xboole.MessageType.Null
+        # send message reply
+        if message.msg_type == xboole.MessageType.OfferNotification:
+            msg_type = xboole.MessageType.DemandNotification
+        elif message.msg_type == xboole.MessageType.DemandNotification:
+            msg_type = xboole.MessageType.OfferNotification
+
+        reply = WinzentMessage(
+            msg_type=msg_type,
+            sender=self._aid,
+            is_answer=True,
+            receiver=message.sender,
+            time_span=message.time_span,
+            value=[value],
+            ttl=self._current_ttl,
+            id=str(uuid.uuid4())
+        )
+        self.governor.message_journal.add(reply)
+        self._current_inquiries_from_agents[reply.id] = reply
+
+        if self.send_message_paths:
+            message_path_copy = message_path.copy()
+            message_path_copy.append(self.aid)
+            message_path_copy.reverse()
+
+            if message_path_copy:
+                demander_index = message_path_copy[-1]
+                self.negotiation_connections[demander_index] = message_path_copy
+                # send offer and save established connection demander:[self.aid/supplier, ..., demander]
+            else:
+                logger.error("message path is empty")
+
+            logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path_copy}")
+            await self.send_message(reply, message_path=message_path_copy)
+        else:
+            await self.send_message(reply)
+        return
 
     async def handle_external_request(self, requirement, message_path=None):
         """
@@ -332,83 +359,34 @@ class WinzentClassicAgent(WinzentBaseAgent):
         """
         if message_path is None:
             message_path = []
+
         message = requirement.message
-        # If this agent already has its own negotiation running, it will deny the external
-        # request by sending a withdrawal message.
-        if self._negotiation_running and self._own_request.time_span == message.time_span:
-            # PGASC add logging
-            logger.debug(
-                f"handle_external_request: {self.aid} negotiation is already running"
-            )
-            # first, check whether the value fulfills the own request
-            if self.should_withdraw(message):
-                logger.debug(
-                    f"handle_external_request: {self.aid} should withdrawal"
-                )
-                withdrawal = WinzentMessage(time_span=self._own_request.time_span,
-                                            is_answer=True, answer_to=self._own_request.id,
-                                            msg_type=xboole.MessageType.WithdrawalNotification,
-                                            ttl=self._current_ttl, receiver=message.sender,  # PGASC: added sender
-                                            # because this message will be sent endlessly otherwise
-                                            value=self._own_request.value,
-                                            id=str(uuid.uuid4()),
-                                            sender=self._aid
-                                            )
-                if self.send_message_paths:
-                    await self.send_message(withdrawal, message_path=self.negotiation_connections[withdrawal.receiver])
-                else:
-                    await self.send_message(withdrawal)
-                await self.reset()
-            else:
-                # no withdrawal, still keep the negotiation running
-                return
         logger.debug(
-            f"{self.aid} received message with object id={id(message)} and ttl={message.ttl}"
-        )
-        logger.debug(
+            f"{self.aid} received message with object id={id(message)} and ttl={message.ttl}\n"
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
-        value = 0
-        if self.exists_flexibility(
-                message.time_span[0]):
-            logger.debug(f"{self.aid} has flexibility")
-            # If the agent has flexibility for the requested time, it replies
-            # to the requesting agent
+
+        # If the agent has flexibility for the requested time, it replies
+        # to the requesting agent
+        try:
             value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
-                msg_type=message.msg_type)
-            if value != 0:
-                msg_type = xboole.MessageType.Null
-                # send message reply
-                if message.msg_type == xboole.MessageType.OfferNotification:
-                    msg_type = xboole.MessageType.DemandNotification
-                elif message.msg_type == xboole.MessageType. \
-                        DemandNotification:
-                    msg_type = xboole.MessageType.OfferNotification
-                reply = WinzentMessage(msg_type=msg_type,
-                                       sender=self._aid,
-                                       is_answer=True,
-                                       receiver=message.sender,
-                                       time_span=message.time_span,
-                                       value=[value], ttl=self._current_ttl,
-                                       id=str(uuid.uuid4()))
-                self.governor.message_journal.add(reply)
-                self._current_inquiries_from_agents[reply.id] = reply
-                if self.send_message_paths:
-                    message_path.append(self.aid)
-                    message_path.reverse()
-                    if message_path is not None:
-                        demander_index = message_path[-1]
-                        self.negotiation_connections[
-                            demander_index] = message_path
-                        # send offer and save established connection demander:[self.aid/supplier, ..., demander]
-                    else:
-                        logger.error("message path none")
-                    logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                    await self.send_message(reply, message_path=message_path)
-                else:
-                    await self.send_message(reply)
+                msg_type=message.msg_type
+            )
+        except:
+            print(f" ERROR! {message}")
+            value = 0
+        request_completed = False
+        if value != 0:
+            request_completed = await self.answer_external_request(message, message_path, value)
+        await self.handle_forwarding_request(value, message, message_path, request_completed)
+
+
+    def get_ethics_score(self, message):
+        return message.ethics_score
+
+    async def handle_forwarding_request(self, value, message, message_path, request_completed=False):
         message.ttl -= 1
         if message.ttl <= 0:
             # PGASC add logging
@@ -417,13 +395,10 @@ class WinzentClassicAgent(WinzentBaseAgent):
             )
             # do not forward the message to other agents
             return
-        # PGASC add logging
         logger.debug(
             f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
         )
-
-        if abs(message.value[0]) - abs(value) == 0:
-            # PGASC add logging
+        if request_completed:
             logger.debug(
                 f"handle_external_request: {self.aid} does not forward the message to other agents "
                 f"because value is completely fulfilled"
@@ -431,6 +406,7 @@ class WinzentClassicAgent(WinzentBaseAgent):
             # The value in the negotiation request is completely fulfilled.
             # Therefore, the message is not forwarded to other agents.
             return
+
         # In this case, the power value of the request cannot be completely
         # fulfilled yet. Therefore, the remaining power of the request is
         # forwarded to other agents.
@@ -439,8 +415,11 @@ class WinzentClassicAgent(WinzentBaseAgent):
         message.value.append(val - value)
         message.is_answer = False
         message.receiver = ''
+
         logger.debug(
-            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}")
+            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}"
+        )
+
         if self.send_message_paths:
             await self.send_message(message, message_path=message_path)
         else:
@@ -452,7 +431,6 @@ class WinzentClassicAgent(WinzentBaseAgent):
         flexibility value for the given interval).
         """
         message_type = self._current_inquiries_from_agents[reply.answer_to].msg_type
-
         if message_type == xboole.MessageType.DemandNotification:
             valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0])
             if valid:
@@ -465,6 +443,145 @@ class WinzentClassicAgent(WinzentBaseAgent):
                 self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
         return valid
 
+    async def forward_message(self, message, message_path):
+        message.ttl -= 1
+        if message.ttl <= 0:
+            # PGASC add logging
+            logger.debug(
+                f"handle_external_request: {self.aid} does not forward the message to other agents because ttl<=0"
+            )
+            # do not forward the message to other agents
+            return
+        logger.debug(
+            f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
+        )
+        # print(f"{self.aid} sends {message}")
+        # message.is_answer = False
+        # message.receiver = ''
+        logger.debug(
+            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}")
+        if self.send_message_paths:
+            await self.send_message(message, message_path=message_path)
+        else:
+            await self.send_message(message)
+
+    async def handle_demand_or_offer_reply(self, requirement, message_path):
+        # The agent received an offer or demand notification as reply.
+        # If the power_balance is empty, the reply is not considered
+        # because the negotiation is already done.
+        if self.governor.power_balance.empty():
+            return
+        # If there is no solution found already, the reply is considered
+        # to find a new solution. Therefore, trigger solver.
+        if not self._solution_found:
+            self.governor.power_balance.add(requirement)
+            if not self.governor.solver_triggered:
+                self.governor.triggered_due_to_timeout = False
+            # Save the established connection
+            if self.send_message_paths:
+                message_path.reverse()
+                self.negotiation_connections[
+                    message_path[-1]] = message_path  # received offer; establish connection
+                # supplier:[self.aid/demander, ..., supplier]
+            await self.solve()
+
+    async def handle_acceptance_reply(self, reply):
+        # First, check whether the AcceptanceNotification is still valid
+        if self.acceptance_valid(reply):
+            # Send an AcceptanceAcknowledgementNotification for the
+            # acceptance
+            if await self.flexibility_valid(reply):
+                answer = WinzentMessage(
+                    msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
+                    is_answer=True, answer_to=reply.id,
+                    sender=self._aid, receiver=reply.sender,
+                    value=reply.value,  # PGASC added value to AAN messages to confirm the results
+                    ttl=self._current_ttl, id=str(uuid.uuid4()))
+                if self.send_message_paths:
+                    await self.send_message(answer,
+                                            message_path=self.negotiation_connections[answer.receiver])
+                else:
+                    await self.send_message(answer)
+                self._adapted_flex_according_to_msgs.append(reply.id)
+                self._acknowledgements_sent.append(reply.id)
+                del self._current_inquiries_from_agents[reply.answer_to]
+
+    async def handle_acceptance_acknowledgement_notification(self, reply):
+        # If there is no message in solution journal or
+        # the solution journal does not contain this message, it is
+        # irrelevant
+        if self.governor.solution_journal.is_empty():
+            return
+        if not self.governor.solution_journal.contains_message(
+                reply.answer_to):
+            return
+        # Remove the Acknowledgement from the solution journal
+        self.governor.solution_journal.remove_message(reply.answer_to)
+
+        # PGASC: Save the acknowledged value in result
+        if self.acknowledgement_valid(reply):
+            if not self.solution_overshoots_requirement(reply):
+                self.save_accepted_values(reply)
+            else:
+                logger.info(f"{self._aid} has thrown out reply {reply.value}")
+                withdrawal = WinzentMessage(time_span=self._own_request.time_span,
+                                            is_answer=True, answer_to=self._own_request.id,
+                                            msg_type=xboole.MessageType.WithdrawalNotification,
+                                            ttl=self._current_ttl, receiver=reply.sender,  # PGASC: added sender
+                                            # because this message will be sent endlessly otherwise
+                                            value=self._own_request.value,
+                                            id=str(uuid.uuid4()),
+                                            sender=self._aid
+                                            )
+                if self.send_message_paths:
+                    await self.send_message(withdrawal,
+                                            message_path=self.negotiation_connections[withdrawal.receiver])
+                else:
+                    await self.send_message(withdrawal)
+        else:
+            logger.debug(
+                f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
+                f"was not valid "
+            )
+
+        # if the solution journal is empty afterwards, the agent does not
+        # wait for any further acknowledgments and can stop the negotiation
+        if self.governor.solution_journal.is_empty():
+            # PGASC changed logger.info to logging
+            logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
+            await self.reset()
+
+    def handle_withdrawal_notification(self, reply):
+        # if the id is not saved, the agent already handled this
+        # WithdrawalNotification
+        if reply.answer_to in self._acknowledgements_sent:
+            # Withdraw flexibility for this interval, therefore
+            # it is possible to participate in a negotiation for
+            # this time span
+            if reply.answer_to in self._adapted_flex_according_to_msgs:
+                self._acknowledgements_sent.remove(reply.answer_to)
+                self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
+                self._adapted_flex_according_to_msgs.remove(reply.answer_to)
+
+                logger.debug(
+                    f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
+                    f"{reply.value} "
+                )
+            else:
+                pass
+                logger.debug(
+                    f"Withdrawal received: {reply.answer_to} not in {self._adapted_flex_according_to_msgs}"
+                )
+        else:
+            logger.debug(
+                f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
+                f"{reply.id} which is not in {self._acknowledgements_sent} "
+            )
+
+    async def handle_forwarding(self, reply, message_path):
+        await self.forward_message(reply, message_path)
+        return
+
     async def handle_external_reply(self, requirement, message_path=None):
         """
         Handle a reply from other agents. Reply may be from types:
@@ -475,145 +592,25 @@ class WinzentClassicAgent(WinzentBaseAgent):
             message_path = []
 
         reply = requirement.message
-        # PGASC add logging
         logger.debug(f"receiver of this reply is {reply.receiver}")
+        # print(f"{self.aid} receives {reply}")
         if reply.receiver != self._aid:
-            # The agent is not the receiver of the reply, therefore it needs
-            # to forward it if the time to live is above 0.
-
-            # PGASC add logging
-            logger.debug(
-                f"handle_external_reply: {self.aid} is not the receiver; "
-                f"received type={reply.msg_type} with value={reply.value} "
-                f"from {reply.sender} to {reply.receiver} with ttl={reply.ttl}"
-            )
-            reply.ttl = reply.ttl - 1
-            if reply.ttl > 0:
-                logger.debug(
-                    f"{self.aid} is not receiver {reply.receiver} of reply {reply.msg_type}, forward; "
-                    f"path {message_path}")
-                if self.send_message_paths:
-                    await self.send_message(reply, message_path=message_path)
-                else:
-                    await self.send_message(reply)
+            await self.handle_forwarding(reply, message_path)
             return
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
                 or reply.msg_type == xboole.MessageType.OfferNotification:
-            # The agent received an offer or demand notification as reply.
-            # If the power_balance is empty, the reply is not considered
-            # because the negotiation is already done.
-            if self.governor.power_balance.empty():
-                return
-            # If there is no solution found already, the reply is considered
-            # to find a new solution. Therefore, trigger solver.
-            if not self._solution_found:
-                self.governor.power_balance.add(requirement)
-                if not self.governor.solver_triggered:
-                    self.governor.triggered_due_to_timeout = False
-                # Save the established connection
-                if self.send_message_paths:
-                    message_path.reverse()
-                    self.negotiation_connections[
-                        message_path[-1]] = message_path  # received offer; establish connection
-                    # supplier:[self.aid/demander, ..., supplier]
-                await self.solve()
+            await self.handle_demand_or_offer_reply(requirement, message_path)
 
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
-            # First, check whether the AcceptanceNotification is still valid
-            if self.acceptance_valid(reply):
-                # Send an AcceptanceAcknowledgementNotification for the
-                # acceptance
-                if await self.flexibility_valid(reply):
-                    answer = WinzentMessage(
-                        msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
-                        is_answer=True, answer_to=reply.id,
-                        sender=self._aid, receiver=reply.sender,
-                        value=reply.value,  # PGASC added value to AAN messages to confirm the results
-                        ttl=self._current_ttl, id=str(uuid.uuid4()))
-                    if self.send_message_paths:
-                        await self.send_message(answer,
-                                                message_path=self.negotiation_connections[answer.receiver])
-                    else:
-                        await self.send_message(answer)
-                    self._adapted_flex_according_to_msgs.append(reply.id)
-                    self._acknowledgements_sent.append(reply.id)
+            await self.handle_acceptance_reply(reply)
 
-                    del self._current_inquiries_from_agents[reply.answer_to]
-            return
         elif reply.msg_type == \
                 xboole.MessageType.AcceptanceAcknowledgementNotification:
-            # If there is no message in solution journal or
-            # the solution journal does not contain this message, it is
-            # irrelevant
-            if self.governor.solution_journal.is_empty():
-                return
-            if not self.governor.solution_journal.contains_message(
-                    reply.answer_to):
-                return
-            # Remove the Acknowledgement from the solution journal
-            self.governor.solution_journal.remove_message(reply.answer_to)
-
-            # PGASC: Save the acknowledged value in result
-            if self.acknowledgement_valid(reply):
-                if not self.solution_overshoots_requirement(reply):
-                    self.save_accepted_values(reply)
-                else:
-                    logger.info(f"{self._aid} has thrown out reply {reply.value}")
-                    withdrawal = WinzentMessage(time_span=self._own_request.time_span,
-                                                is_answer=True, answer_to=self._own_request.id,
-                                                msg_type=xboole.MessageType.WithdrawalNotification,
-                                                ttl=self._current_ttl, receiver=reply.sender,  # PGASC: added sender
-                                                # because this message will be sent endlessly otherwise
-                                                value=self._own_request.value,
-                                                id=str(uuid.uuid4()),
-                                                sender=self._aid
-                                                )
-                    if self.send_message_paths:
-                        await self.send_message(withdrawal,
-                                                message_path=self.negotiation_connections[withdrawal.receiver])
-                    else:
-                        await self.send_message(withdrawal)
-            else:
-                logger.debug(
-                    f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
-                    f"was not valid "
-                )
-
-            # if the solution journal is empty afterwards, the agent does not
-            # wait for any further acknowledgments and can stop the negotiation
-            if self.governor.solution_journal.is_empty():
-                # PGASC changed logger.info to logging
-                logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
-                await self.reset()
+            await self.handle_acceptance_acknowledgement_notification(reply)
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
-            # if the id is not saved, the agent already handled this
-            # WithdrawalNotification
-            if reply.answer_to in self._acknowledgements_sent:
-                # Withdraw flexibility for this interval, therefore
-                # it is possible to participate in a negotiation for
-                # this time span
-                if reply.answer_to in self._adapted_flex_according_to_msgs:
-                    self._acknowledgements_sent.remove(reply.answer_to)
-                    self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
-                    self._adapted_flex_according_to_msgs.remove(reply.answer_to)
-
-                    # PGASC add logging
-                    logger.debug(
-                        f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
-                        f"{reply.value} "
-                    )
-                else:
-                    pass
-                    logger.debug(
-                        f"Withdrawal received: {reply.answer_to} not in {self._adapted_flex_according_to_msgs}"
-                    )
-            else:
-                logger.debug(
-                    f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
-                    f"{reply.id} which is not in {self._acknowledgements_sent} "
-                )
+            self.handle_withdrawal_notification(reply)
 
     def solution_overshoots_requirement(self, reply) -> bool:
         if (self.result_sum + reply.value[0]) > self.governor.curr_requirement_value:
@@ -641,7 +638,6 @@ class WinzentClassicAgent(WinzentBaseAgent):
             return False
 
     def save_accepted_values(self, message):
-        # PGASC add logging
         logger.debug(
             f"AcceptanceAcknowledgeNotification: load {message.receiver} ({self.aid}) gets {message.value[0]} "
             f"from sgen {message.sender}"
@@ -655,6 +651,7 @@ class WinzentClassicAgent(WinzentBaseAgent):
         """
         After a negotiation, reset the negotiation parameters.
         """
+        print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -785,12 +782,10 @@ class WinzentClassicAgent(WinzentBaseAgent):
             self.governor.solution_journal.add(msg)
             if self.send_message_paths:
                 logger.debug(f"receiver {msg.receiver} in connections {self.negotiation_connections}?")
-                await self.send_message(msg, message_path=self.negotiation_connections[msg.receiver])
+                await self.send_message(msg, msg.receiver, message_path=self.negotiation_connections[msg.receiver])
             else:
-                await self.send_message(msg)
-        now = datetime.now()
+                await self.send_message(msg, msg.receiver)
 
-        current_time = now.strftime("%H:%M:%S")
         for key in zero_indeces:
             del self.final[key]
         self._waiting_for_acknowledgements = True
@@ -869,6 +864,7 @@ class WinzentClassicAgent(WinzentBaseAgent):
         self.governor.power_balance.clear()
         self.governor.solution_journal.clear()
         self._waiting_for_acknowledgements = False
+        print("reset 3")
         await self.reset()
 
     def handle_msg(self, content, meta):
@@ -939,7 +935,6 @@ class WinzentClassicAgent(WinzentBaseAgent):
         else:
             # send message to every neighbor
             for neighbor in self.neighbors.keys():
-                # PGASC added deep copy of messages - every neighbor gets own message object
                 message = copy_winzent_message(winzent_message)
                 if message.sender == neighbor:
                     continue
@@ -956,9 +951,14 @@ class WinzentClassicAgent(WinzentBaseAgent):
                     create_acl=True
                 )
 
-
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
-    """PGASC fix: deep copy of winzent message object (otherwise two agents manipulate the same object and its ttl)"""
+    """
+    This method creates a deep copy of a Winzent message to avoid manipulations
+    when the message is sent to multiple agents.
+
+    param message: a Winzent message to be copied
+    return: the copied Winzent message
+    """
     return WinzentMessage(
         msg_type=message.msg_type,
         sender=message.sender,
@@ -969,6 +969,7 @@ def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
         ttl=message.ttl,
         id=message.id,
         answer_to=message.answer_to,
+        ethics_score=message.ethics_score
     )
 
 
