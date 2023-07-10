@@ -44,6 +44,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
 
     async def answer_external_request(self, message, message_path, value):
         if self.use_consumer_ethics_score:
+            print("using consumer ethics score")
             await self.forward_message(message, message_path)
             msg_type = xboole.MessageType.Null
             # send message reply
@@ -127,6 +128,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
         if self.use_producer_ethics_score:
+            print("using producer ethics score")
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
