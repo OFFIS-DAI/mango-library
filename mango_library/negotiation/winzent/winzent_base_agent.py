@@ -291,6 +291,8 @@ class WinzentBaseAgent(Agent):
         Returns the flexibility for the given time interval according
         to the msg type.
         """
+        print(f"self flex{self.flex}")
+        print(f"t_start {t_start}")
         if t_start in self.flex.keys():
             flexibility = self.flex[t_start]
             print(flexibility)
