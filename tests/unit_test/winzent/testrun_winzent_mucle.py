@@ -124,12 +124,12 @@ async def run_muscle():
     agents_with_started_negotiation.append(agent_a)
     rounded_load_values[agent_a.aid] = agent_a_values
 
-    agent_c_values = 0
+    agent_c_values = 100
     await agent_c.start_negotiation(ts=[2700, 3600], value=agent_c_values)
     agents_with_started_negotiation.append(agent_c)
     rounded_load_values[agent_c.aid] = agent_c_values
 
-    number_of_restarted_negotiations = 2
+    number_of_restarted_negotiations = 6
     ethics_score_list = {1.0: [0.0, 0, 0], 2.0: [0.0, 0, 0], 3.0: [0.0, 0, 0]}
     while len(agents_with_started_negotiation) > 0:
         agent = agents_with_started_negotiation.pop(0)

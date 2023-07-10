@@ -28,6 +28,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
+        print("Winzent Simple Ethical Agent initialized")
 
     def update_flexibility(self, t_start, min_p, max_p):
         super().update_flexibility(t_start, min_p, max_p)
