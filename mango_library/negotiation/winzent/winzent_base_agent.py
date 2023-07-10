@@ -273,6 +273,7 @@ class WinzentBaseAgent(Agent):
                                  id=message.id,
                                  time_span=requirement.time_span,
                                  sender=self._aid,
+                                 ethics_score=self.ethics_score
                                  )
         # PGASC add logging
         logger.debug(
@@ -330,7 +331,8 @@ class WinzentBaseAgent(Agent):
             time_span=message.time_span,
             value=[value],
             ttl=self._current_ttl,
-            id=str(uuid.uuid4())
+            id=str(uuid.uuid4()),
+            ethics_score=self.ethics_score
         )
         self.governor.message_journal.add(reply)
         self._current_inquiries_from_agents[reply.id] = reply
@@ -366,6 +368,9 @@ class WinzentBaseAgent(Agent):
             f"message content: {message.msg_type}, {message.value[0]}, {message.sender}, {message.receiver}, "
             f"{message.is_answer} "
         )
+        if self._negotiation_running:
+            await self.forward_message(message, message_path)
+            return
 
         # If the agent has flexibility for the requested time, it replies
         # to the requesting agent
@@ -380,8 +385,7 @@ class WinzentBaseAgent(Agent):
         request_completed = False
         if value != 0:
             request_completed = await self.answer_external_request(message, message_path, value)
-        await self.handle_forwarding_request(value, message, message_path, request_completed)
-
+        # await self.handle_forwarding_request(value, message, message_path, request_completed)
 
     def get_ethics_score(self, message):
         return message.ethics_score
@@ -708,7 +712,7 @@ class WinzentBaseAgent(Agent):
             act_value = -afforded_value
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            print("afforded value " + str(abs(afforded_value)) + " and inital value "+ str(abs(initial_value)))
+            print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
@@ -950,6 +954,7 @@ class WinzentBaseAgent(Agent):
                     # copy to avoid neighbors working on the same object
                     create_acl=True
                 )
+
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
     """

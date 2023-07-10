@@ -44,6 +44,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent):
         await self.forward_message(message, message_path=None)
 
     async def answer_external_request(self, message, message_path, value):
+        await self.forward_message(message, message_path)
         msg_type = xboole.MessageType.Null
         # send message reply
         if message.msg_type == xboole.MessageType.OfferNotification:
@@ -57,7 +58,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent):
         if not self.first_demand_received:
             # print(self.aid + " received its first demand.")
             self.first_demand_received = True
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(1)
             offers = deepcopy(self.offer_list)
             self.offer_list.clear()
             offers.sort(key=self.get_ethics_score, reverse=True)
@@ -77,6 +78,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent):
                                        value=[value_to_offer], ttl=self._current_ttl,
                                        id=str(uuid.uuid4()),
                                        ethics_score=self.ethics_score)
+                print(f"{self.aid} sends offer to {reply.receiver}. Offer list is {len(offers)}")
                 self._current_inquiries_from_agents[reply.id] = reply
                 if self.send_message_paths:
                     message_path.append(self.aid)
@@ -144,7 +146,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent):
                 self.first_offer_received = True
                 await asyncio.sleep(0.5)
                 print(
-                    f"slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
+                    f"{self.aid}: slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
                 await self.solve()
                 self.first_offer_received = False
 

@@ -45,7 +45,7 @@ async def create_three_agents():
     return agent_a, agent_b, agent_c, container
 
 
-async def create_six_agents():
+async def create_six_base_agents(agent_tts=5):
     """
     Creates 6 simple agents, all living in one container and a neighborhood.
     """
@@ -54,7 +54,7 @@ async def create_six_agents():
 
     # multiple container are possible, here just one is taken
     container = await Container.factory(addr=addr)
-    tts = 1
+    tts = agent_tts
     # create agents
     agent_a = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
     agent_b = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2)
