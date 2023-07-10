@@ -385,6 +385,7 @@ class WinzentBaseAgent(Agent):
             print(f" ERROR! {message}")
             value = 0
         request_completed = False
+        print(f"value: {value}")
         if value != 0:
             request_completed = await self.answer_external_request(message, message_path, value)
         # await self.handle_forwarding_request(value, message, message_path, request_completed)
