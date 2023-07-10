@@ -44,6 +44,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         await self.forward_message(message, message_path=None)
 
     async def answer_external_request(self, message, message_path, value):
+        print("ethical external request")
         if self.use_consumer_ethics_score:
             print("using consumer ethics score")
             await self.forward_message(message, message_path)
