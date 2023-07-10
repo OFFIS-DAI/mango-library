@@ -317,6 +317,7 @@ class WinzentBaseAgent(Agent):
                 pass
 
     async def answer_external_request(self, message, message_path, value):
+        print("hello?")
         msg_type = xboole.MessageType.Null
         # send message reply
         if message.msg_type == xboole.MessageType.OfferNotification:
