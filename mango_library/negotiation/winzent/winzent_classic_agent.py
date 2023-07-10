@@ -7,7 +7,7 @@ from datetime import datetime
 
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
-from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
+from mango_library.negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 
 logger = logging.getLogger(__name__)
 
