@@ -293,6 +293,7 @@ class WinzentBaseAgent(Agent):
         """
         if t_start in self.flex.keys():
             flexibility = self.flex[t_start]
+            print(flexibility)
             if msg_type == xboole.MessageType.OfferNotification:
                 # in this case, the upper part of the flexibility interval
                 # is considered
