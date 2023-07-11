@@ -123,6 +123,8 @@ class WinzentBaseAgent(Agent):
         Update the own flexibility. Flexibility is a range from power from
         min_p to max_p for a given time interval beginning with t_start.
         """
+        if self.aid == "agent18":
+            print(self.neighbors)
         self.flex[t_start] = [min_p, max_p]
 
     async def start_negotiation(self, ts, value):
