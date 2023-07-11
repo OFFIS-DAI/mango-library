@@ -132,6 +132,8 @@ class WinzentSimpleEthicalAgent(Agent):
         self.flex[t_start] = [min_p, max_p]
         self.current_time_span = t_start
         self.first_demand_received = False
+        if self.aid == "agent18":
+            print(f"neighbors: {self.neighbors}")
 
     async def start_negotiation(self, ts, value):
         """
