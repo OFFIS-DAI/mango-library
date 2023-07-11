@@ -13,7 +13,7 @@ from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
 logger = logging.getLogger(__name__)
 
 
-class WinzentAgent(Agent):
+class WinzentClassicAgent(Agent):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0):
         super().__init__(container)
         print("Version from 26.07.2022 18:05")
