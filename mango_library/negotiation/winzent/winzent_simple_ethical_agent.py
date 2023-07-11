@@ -77,7 +77,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                                            value=[value_to_offer], ttl=self._current_ttl,
                                            id=str(uuid.uuid4()),
                                            ethics_score=self.ethics_score)
-                    print(f"{self.aid} sends offer to {reply.receiver}. Offer list is {len(offers)}")
+                    # print(f"{self.aid} sends offer to {reply.receiver}. Offer list is {len(offers)}")
                     self._current_inquiries_from_agents[reply.id] = reply
                     if self.send_message_paths:
                         message_path.append(self.aid)
