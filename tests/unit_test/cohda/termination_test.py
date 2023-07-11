@@ -53,7 +53,7 @@ async def test_order_handle_negotiation_msg():
     negot_model.add(1, Negotiation(None, None, True))
     
     # WHEN
-    role_agent._agent_context.handle_msg(NegotMsg(1, 0.5), None)
+    role_agent._agent_context.handle_message(NegotMsg(1, 0.5), None)
 
     # THEN
     assert order_check_list == [0, 1, 2]

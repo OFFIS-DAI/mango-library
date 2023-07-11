@@ -389,11 +389,11 @@ class WinzentBaseAgent(Agent):
         except:
             print(f" ERROR! {message}")
             value = 0
-        request_completed = False
         print(f"value: {value}")
         if value != 0:
-            request_completed = await self.answer_external_request(message, message_path, value)
-        # await self.handle_forwarding_request(value, message, message_path, request_completed)
+            await self.answer_external_request(message, message_path, value)
+        else:
+            await self.forward_message(message, message_path)
 
     def get_ethics_score(self, message):
         return message.ethics_score
@@ -880,7 +880,7 @@ class WinzentBaseAgent(Agent):
         print("reset 3")
         await self.reset()
 
-    def handle_msg(self, content, meta):
+    def handle_message(self, content, meta):
         """
         Handle message object (content) from other agents.
         """

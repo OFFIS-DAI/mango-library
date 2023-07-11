@@ -871,27 +871,6 @@ class WinzentClassicAgent(WinzentBaseAgent):
         self._waiting_for_acknowledgements = False
         await self.reset()
 
-    def handle_msg(self, content, meta):
-        """
-        Handle message object (content) from other agents.
-        """
-        if content.msg_type == xboole.MessageType. \
-                WithdrawalNotification:
-            # withdraw the message the content refers to
-            self.governor.message_journal.remove_message(
-                content.answer_to)
-        if not self.governor.message_journal.contains_message(
-                content.id):
-            self.governor.message_journal.add(content)
-            if content.is_answer:
-                req = xboole.Requirement(content,
-                                         content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_reply(req, message_path=meta["ontology"]))
-            else:
-                req = xboole.Requirement(content,
-                                         content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_request(req, message_path=meta["ontology"]))
-
     async def send_message(self, winzent_message, receiver=None, message_path=None):
         """
         Sends the given message to all neighbors unless the receiver is given.
