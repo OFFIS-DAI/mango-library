@@ -57,7 +57,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             self.offer_list.append(message)
             if not self.first_demand_received:
                 self.first_demand_received = True
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
                 offers = deepcopy(self.offer_list)
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
