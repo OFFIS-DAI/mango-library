@@ -123,8 +123,6 @@ class WinzentBaseAgent(Agent):
         Update the own flexibility. Flexibility is a range from power from
         min_p to max_p for a given time interval beginning with t_start.
         """
-        if self.aid == "agent18":
-            print(self.neighbors)
         self.flex[t_start] = [min_p, max_p]
 
     async def start_negotiation(self, ts, value):
@@ -293,11 +291,8 @@ class WinzentBaseAgent(Agent):
         Returns the flexibility for the given time interval according
         to the msg type.
         """
-        print(f"self flex{self.flex}")
-        print(f"t_start {t_start}")
         if t_start in self.flex.keys():
             flexibility = self.flex[t_start]
-            print(flexibility)
             if msg_type == xboole.MessageType.OfferNotification:
                 # in this case, the upper part of the flexibility interval
                 # is considered
@@ -322,7 +317,6 @@ class WinzentBaseAgent(Agent):
                 pass
 
     async def answer_external_request(self, message, message_path, value):
-        print("hello?")
         msg_type = xboole.MessageType.Null
         # send message reply
         if message.msg_type == xboole.MessageType.OfferNotification:
@@ -378,7 +372,6 @@ class WinzentBaseAgent(Agent):
         if self._negotiation_running:
             await self.forward_message(message, message_path)
             return
-        print(f"{self.aid}: external request has arrived")
         # If the agent has flexibility for the requested time, it replies
         # to the requesting agent
         try:
@@ -389,7 +382,6 @@ class WinzentBaseAgent(Agent):
         except:
             print(f" ERROR! {message}")
             value = 0
-        print(f"value: {value}")
         if value != 0:
             await self.answer_external_request(message, message_path, value)
         else:
@@ -442,7 +434,6 @@ class WinzentBaseAgent(Agent):
         Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
         flexibility value for the given interval).
         """
-        print("this should not be printed")
         message_type = self._current_inquiries_from_agents[reply.answer_to].msg_type
         if message_type == xboole.MessageType.DemandNotification:
             valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0])
@@ -468,11 +459,6 @@ class WinzentBaseAgent(Agent):
         logger.debug(
             f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
         )
-        # print(f"{self.aid} sends {message}")
-        # message.is_answer = False
-        # message.receiver = ''
-        logger.debug(
-            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}")
         if self.send_message_paths:
             await self.send_message(message, message_path=message_path)
         else:
@@ -884,8 +870,6 @@ class WinzentBaseAgent(Agent):
         """
         Handle message object (content) from other agents.
         """
-        if self.aid == "agent18":
-            print("hi")
         if content.msg_type == xboole.MessageType. \
                 WithdrawalNotification:
             # withdraw the message the content refers to
