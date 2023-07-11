@@ -34,6 +34,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         super().update_flexibility(t_start, min_p, max_p)
         self.current_time_span = t_start
         self.first_demand_received = False
+        print(f"flex updated: {self.flex}")
 
     async def handle_forwarding(self, reply, message_path):
         await self.forward_message(reply, message_path)
