@@ -440,6 +440,7 @@ class WinzentBaseAgent(Agent):
         Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
         flexibility value for the given interval).
         """
+        print("this should not be printed")
         message_type = self._current_inquiries_from_agents[reply.answer_to].msg_type
         if message_type == xboole.MessageType.DemandNotification:
             valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0])
@@ -881,6 +882,8 @@ class WinzentBaseAgent(Agent):
         """
         Handle message object (content) from other agents.
         """
+        if self.aid == "agent18":
+            print("hi")
         if content.msg_type == xboole.MessageType. \
                 WithdrawalNotification:
             # withdraw the message the content refers to
