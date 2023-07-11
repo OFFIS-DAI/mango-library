@@ -376,7 +376,7 @@ class WinzentBaseAgent(Agent):
         if self._negotiation_running:
             await self.forward_message(message, message_path)
             return
-        print("external request has arrived")
+        print(f"{self.aid}: external request has arrived")
         # If the agent has flexibility for the requested time, it replies
         # to the requesting agent
         try:

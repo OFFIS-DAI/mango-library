@@ -34,7 +34,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         super().update_flexibility(t_start, min_p, max_p)
         self.current_time_span = t_start
         self.first_demand_received = False
-        print(f"flex updated: {self.flex}")
+        print(f"{self.aid}: flex updated: {self.flex}")
 
     async def handle_forwarding(self, reply, message_path):
         await self.forward_message(reply, message_path)
@@ -108,26 +108,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 return
         else:
             await super().answer_external_request(self, message, message_path)
-
-    async def flexibility_valid(self, reply):
-        #TODO: vereinheitlichen
-        """
-        Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
-        flexibility value for the given interval).
-        """
-        message_type = self.stored_offers_and_demands[reply.sender].msg_type
-
-        if message_type == xboole.MessageType.OfferNotification:
-            valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0])
-            if valid:
-                self.original_flex = deepcopy(self.flex)
-                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
-        else:
-            valid = abs(self.flex[reply.time_span[0]][0]) >= abs(reply.value[0])
-            if valid:
-                self.original_flex = deepcopy(self.flex)
-                self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
-        return valid
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
         if self.use_producer_ethics_score:
