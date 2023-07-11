@@ -28,13 +28,11 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
-        print("Winzent Simple Ethical Agent initialized")
 
     def update_flexibility(self, t_start, min_p, max_p):
         super().update_flexibility(t_start, min_p, max_p)
         self.current_time_span = t_start
         self.first_demand_received = False
-        print(f"{self.aid}: flex updated: {self.flex}")
 
     async def handle_forwarding(self, reply, message_path):
         await self.forward_message(reply, message_path)
@@ -45,9 +43,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         await self.forward_message(message, message_path=None)
 
     async def answer_external_request(self, message, message_path, value):
-        print("ethical external request")
         if self.use_consumer_ethics_score:
-            print("using consumer ethics score")
             await self.forward_message(message, message_path)
             msg_type = xboole.MessageType.Null
             # send message reply
@@ -60,7 +56,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             self.stored_offers_and_demands[message.sender] = message
             self.offer_list.append(message)
             if not self.first_demand_received:
-                # print(self.aid + " received its first demand.")
                 self.first_demand_received = True
                 await asyncio.sleep(1)
                 offers = deepcopy(self.offer_list)
@@ -111,7 +106,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
         if self.use_producer_ethics_score:
-            print("using producer ethics score")
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
