@@ -28,6 +28,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
+        self.lock = asyncio.Lock()
 
     def update_flexibility(self, t_start, min_p, max_p):
         super().update_flexibility(t_start, min_p, max_p)
@@ -153,8 +154,9 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 await self.send_message(answer)
             self._adapted_flex_according_to_msgs.append(reply.id)
             self._acknowledgements_sent.append(reply.id)
-            current_flex = self.flex[self.current_time_span][1]
-            self.flex[self.current_time_span] = [0, current_flex - reply.value[0]]
+            async with self.lock:
+                current_flex = self.flex[self.current_time_span][1]
+                self.flex[self.current_time_span] = [0, current_flex - reply.value[0]]
             del self.stored_offers_and_demands[reply.sender]
         return
 

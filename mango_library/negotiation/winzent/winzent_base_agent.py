@@ -433,25 +433,32 @@ class WinzentBaseAgent(Agent, ABC):
         else:
             await self.send_message(message)
 
+    def check_flex(self, reply):
+        distributed_value = 0
+        for ack in self._list_of_acknowledgements_sent:
+            distributed_value += ack.value[0]
+        if self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]:
+            return True
+        else:
+            print(
+                f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent since the current flex is not consistent with "
+                f"the values already distributed."
+                f"Distributed value is {distributed_value} and original flex is "
+                f"{self.original_flex[reply.time_span[0]][1]}."
+                f"Current flex is {self.flex[reply.time_span[0]][1]}")
+            self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
+            if self.flex[reply.time_span[0]][1] <= 0:
+                return False
+        return True
+
     async def flexibility_valid(self, reply):
         """
         Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
         flexibility value for the given interval).
         """
-        distributed_value = 0
-        for ack in self._list_of_acknowledgements_sent:
-            distributed_value += ack.value[0]
-        valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and \
-                self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]
+        valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and self.check_flex(reply)
         if valid:
             self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
-        else:
-            print(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent since the current flex is not consistent with "
-                        f"the values already distributed."
-                        f"Distributed value is {distributed_value} and original flex is "
-                        f"{self.original_flex[reply.time_span[0]][1]}."
-                        f"Current flex is {self.flex[reply.time_span[0]][1]}")
-        print(valid)
         return valid
 
     async def forward_message(self, message, message_path):
