@@ -106,7 +106,7 @@ async def run_muscle():
     time_span = [start_time, end_time]
     # print("Current Time =", current_time)
 
-    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_simple_ethical_agents()
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_base_agents()
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_b.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_c.update_flexibility(t_start=2700, min_p=0, max_p=0)
@@ -134,7 +134,7 @@ async def run_muscle():
     while len(agents_with_started_negotiation) > 0:
         agent = agents_with_started_negotiation.pop(0)
         try:
-            await asyncio.wait_for(agent.negotiation_done, timeout=8)
+            await asyncio.wait_for(agent.negotiation_done, timeout=16)
         except asyncio.TimeoutError:
             print(f"{agent.aid} could not finish its negotiation in time. Result is set to zero.")
             agent.result = {}
