@@ -168,7 +168,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         if flex > 0:
             self.result[self.aid] = flex
             self.result_sum += flex
-        print("the result for " + self.aid + " is " + str(self.result))
         self.first_offer_received = False
         self.first_demand_received = False
         await super().reset()
