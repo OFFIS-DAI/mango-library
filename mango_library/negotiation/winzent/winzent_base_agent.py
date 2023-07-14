@@ -2,6 +2,7 @@ import asyncio
 import logging
 import math
 import uuid
+from abc import ABC
 from copy import deepcopy
 from datetime import datetime
 
@@ -13,7 +14,7 @@ from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
 logger = logging.getLogger(__name__)
 
 
-class WinzentBaseAgent(Agent):
+class WinzentBaseAgent(Agent, ABC):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0):
         super().__init__(container)
 
