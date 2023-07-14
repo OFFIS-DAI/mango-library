@@ -126,6 +126,7 @@ class WinzentBaseAgent(Agent, ABC):
         min_p to max_p for a given time interval beginning with t_start.
         """
         self.flex[t_start] = [min_p, max_p]
+        self.original_flex[t_start] = [min_p, max_p]
 
     async def start_negotiation(self, ts, value):
         """
@@ -440,16 +441,17 @@ class WinzentBaseAgent(Agent, ABC):
         distributed_value = 0
         for ack in self._list_of_acknowledgements_sent:
             distributed_value += ack.value[0]
-        valid = abs(self.flex[reply.time_span[0]][0]) >= abs(reply.value[0]) and \
-                self.original_flex[reply.time_span[0]][0] - distributed_value == self.flex[reply.time_span[0]][0]
+        valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and \
+                self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]
         if valid:
-            self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
+            self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
         else:
-            logger.info(f"{self.aid}: Acknowledgement cannot be sent since the current flex is not consistent with "
+            print(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent since the current flex is not consistent with "
                         f"the values already distributed."
                         f"Distributed value is {distributed_value} and original flex is "
-                        f"{self.original_flex[reply.time_span[0]][0]}."
-                        f"Current flex is {self.flex[reply.time_span[0]][0]}")
+                        f"{self.original_flex[reply.time_span[0]][1]}."
+                        f"Current flex is {self.flex[reply.time_span[0]][1]}")
+        print(valid)
         return valid
 
     async def forward_message(self, message, message_path):
