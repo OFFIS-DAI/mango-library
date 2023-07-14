@@ -60,7 +60,7 @@ class WinzentBaseAgent(Agent, ABC):
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
         self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
         self._unsuccessful_negotiations = []  # negotiations for which no result at all was found
-
+        self._lock = asyncio.Lock()
         # tasks which should be triggered regularly
         self.tasks = []
         task_settings = [
@@ -127,6 +127,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         self.flex[t_start] = [min_p, max_p]
         self.original_flex[t_start] = [min_p, max_p]
+        self._list_of_acknowledgements_sent.clear()
 
     async def start_negotiation(self, ts, value):
         """
@@ -433,7 +434,7 @@ class WinzentBaseAgent(Agent, ABC):
         else:
             await self.send_message(message)
 
-    def check_flex(self, reply):
+    async def check_flex(self, reply):
         distributed_value = 0
         for ack in self._list_of_acknowledgements_sent:
             distributed_value += ack.value[0]
@@ -446,7 +447,8 @@ class WinzentBaseAgent(Agent, ABC):
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[0]][1]}."
                 f"Current flex is {self.flex[reply.time_span[0]][1]}")
-            self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
+            async with self._lock:
+                self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
             if self.flex[reply.time_span[0]][1] <= 0:
                 return False
         return True
@@ -456,9 +458,10 @@ class WinzentBaseAgent(Agent, ABC):
         Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
         flexibility value for the given interval).
         """
-        valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and self.check_flex(reply)
+        valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and await self.check_flex(reply)
         if valid:
-            self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
+            async with self._lock:
+                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
         return valid
 
     async def forward_message(self, message, message_path):
@@ -886,7 +889,6 @@ class WinzentBaseAgent(Agent, ABC):
         self.governor.power_balance.clear()
         self.governor.solution_journal.clear()
         self._waiting_for_acknowledgements = False
-        print("reset 3")
         await self.reset()
 
     def handle_message(self, content, meta):
