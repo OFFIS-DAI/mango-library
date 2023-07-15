@@ -106,7 +106,7 @@ async def run_muscle():
     time_span = [start_time, end_time]
     # print("Current Time =", current_time)
 
-    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_base_agents()
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_simple_ethical_agents()
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_b.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_c.update_flexibility(t_start=2700, min_p=0, max_p=0)

@@ -135,31 +135,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         else:
             await super().handle_demand_or_offer_reply(self, requirement, message_path)
 
-    async def handle_acceptance_reply(self, reply):
-        # First, check whether the AcceptanceNotification is still valid
-        if self.acceptance_valid(reply):
-            # Send an AcceptanceAcknowledgementNotification for the
-            # acceptance
-            # if await self.flexibility_valid(reply):
-            answer = WinzentMessage(
-                msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
-                is_answer=True, answer_to=reply.id,
-                sender=self._aid, receiver=reply.sender,
-                value=reply.value,  # PGASC added value to AAN messages to confirm the results
-                ttl=self._current_ttl, id=str(uuid.uuid4()))
-            if self.send_message_paths:
-                await self.send_message(answer,
-                                        message_path=self.negotiation_connections[answer.receiver])
-            else:
-                await self.send_message(answer)
-            self._adapted_flex_according_to_msgs.append(reply.id)
-            self._acknowledgements_sent.append(reply.id)
-            async with self.lock:
-                current_flex = self.flex[self.current_time_span][1]
-                self.flex[self.current_time_span] = [0, current_flex - reply.value[0]]
-            del self.stored_offers_and_demands[reply.sender]
-        return
-
     async def reset(self):
         """
         After a negotiation, reset the negotiation parameters.
@@ -171,18 +146,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.first_offer_received = False
         self.first_demand_received = False
         await super().reset()
-
-    def acceptance_valid(self, msg):
-        #TODO: vereinheitlichen
-        """
-        Returns whether the message is still valid by checking whether it is
-        in the current inquiries the agent received from others
-        """
-        offer_message = self.stored_offers_and_demands[msg.sender]
-        if offer_message is not None:
-            if offer_message.value[0] >= msg.value[0]:
-                return True
-        return False
 
     def calc_result_sum(self):
         self.result_sum = 0
