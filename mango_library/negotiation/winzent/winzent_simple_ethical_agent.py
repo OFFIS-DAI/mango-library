@@ -18,7 +18,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
 
         self.current_time_span = 0
-        self.stored_offers_and_demands = {}
         # store flexibility as interval with maximum and minimum value per time
         self.offer_list = []
         self.first_offer_received = False
@@ -37,6 +36,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
 
     async def handle_forwarding(self, reply, message_path):
         await self.forward_message(reply, message_path)
+        # Don't forward the message if it is already an answer to one of this agent's previous messages.
         if reply.is_answer:
             return
 
@@ -54,7 +54,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
             self.governor.message_journal.add(message)
-            self.stored_offers_and_demands[message.sender] = message
             self.offer_list.append(message)
             if not self.first_demand_received:
                 self.first_demand_received = True
@@ -97,7 +96,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                         await self.send_message(reply)
                         # print(f"{self.aid} sends message to {offer.sender}")
                     if value <= 0:
-                        # self.first_offer_received = False
                         break
                 self.first_demand_received = False
             else:
@@ -116,7 +114,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             # to find a new solution. Therefore, trigger solver.
             if not self._solution_found:
                 self.governor.power_balance.add(requirement)
-                self.stored_offers_and_demands[requirement.message.sender] = requirement.message
                 if not self.governor.solver_triggered:
                     self.governor.triggered_due_to_timeout = False
                 # Save the established connection
@@ -133,7 +130,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     await self.solve()
                     self.first_offer_received = False
         else:
-            await super().handle_demand_or_offer_reply(self, requirement, message_path)
+            await super().handle_demand_or_offer_reply(requirement, message_path)
 
     async def reset(self):
         """

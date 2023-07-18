@@ -189,13 +189,7 @@ class WinzentBaseAgent(Agent, ABC):
                 logger.debug(
                     f"*** {self._aid} did not receive all acknowledgements. Negotiation was not successful."
                 )
-                # PGASC add logging
-                logger.debug(
-                    "trigger_solver: stopped waiting for acknowledgments"
-                )
-                # PGASC adaption: reset final so unsuccessful negotiations are removed from final
                 # self.final = {}
-
                 self._waiting_for_acknowledgements = False
                 for acc_msg in self._curr_sent_acceptances:
                     withdrawal = WinzentMessage(time_span=acc_msg.time_span,
@@ -210,12 +204,11 @@ class WinzentBaseAgent(Agent, ABC):
                         await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
                     else:
                         await self.send_message(withdrawal, receiver=acc_msg.receiver)
-                await asyncio.sleep(self._time_to_sleep)
-                print("reset 4")
-                await self.reset()
+                logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
+                            f"is over.")
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
-                self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
                 self._curr_sent_acceptances = []
+                await self.reset()
 
     async def handle_internal_request(self, requirement):
         """
@@ -248,7 +241,6 @@ class WinzentBaseAgent(Agent, ABC):
                 self.flex[message.time_span[0]][1] = new_flex
             return
 
-        # PGASC add logging
         logger.debug(
             f"handle_internal_request: {self.aid} own forecast not sufficient, needs help"
         )
@@ -460,8 +452,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and await self.check_flex(reply)
         if valid:
-            async with self._lock:
-                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
+            self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
         return valid
 
     async def forward_message(self, message, message_path):
@@ -489,8 +480,6 @@ class WinzentBaseAgent(Agent, ABC):
             return
         # If there is no solution found already, the reply is considered
         # to find a new solution. Therefore, trigger solver.
-        if self.aid == "agent1":
-            print(f"handling offer. {self._solution_found}")
         if not self._solution_found:
             self.governor.power_balance.add(requirement)
             if not self.governor.solver_triggered:
@@ -499,19 +488,16 @@ class WinzentBaseAgent(Agent, ABC):
             if self.send_message_paths:
                 message_path.reverse()
                 self.negotiation_connections[
-                    message_path[-1]] = message_path  # received offer; establish connection
-                # supplier:[self.aid/demander, ..., supplier]
-            if self.aid == "agent1":
-                print(f"starting solving process with {len(self.governor.power_balance._ledger)} offers.\n"
-                      f"sol found: {self._solution_found}")
+                    message_path[-1]] = message_path
             await self.solve()
 
     async def handle_acceptance_reply(self, reply):
         # First, check whether the AcceptanceNotification is still valid
         if self.acceptance_valid(reply):
-            # Send an AcceptanceAcknowledgementNotification for the
-            # acceptance
-            if await self.flexibility_valid(reply):
+            # Send an AcceptanceAcknowledgementNotification for the acceptance
+            async with self._lock:
+                flex_valid = await self.flexibility_valid(reply)
+            if flex_valid:
                 answer = WinzentMessage(
                     msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                     is_answer=True, answer_to=reply.id,
@@ -528,7 +514,7 @@ class WinzentBaseAgent(Agent, ABC):
                 self._list_of_acknowledgements_sent.append(answer)
                 del self._current_inquiries_from_agents[reply.answer_to]
 
-    async def handle_acceptance_acknowledgement_notification(self, reply):
+    async def handle_acceptance_acknowledgement_reply(self, reply):
         # If there is no message in solution journal or
         # the solution journal does not contain this message, it is
         # irrelevant
@@ -539,8 +525,6 @@ class WinzentBaseAgent(Agent, ABC):
             return
         # Remove the Acknowledgement from the solution journal
         self.governor.solution_journal.remove_message(reply.answer_to)
-
-        # PGASC: Save the acknowledged value in result
         if self.acknowledgement_valid(reply):
             if not self.solution_overshoots_requirement(reply):
                 self.save_accepted_values(reply)
@@ -581,6 +565,7 @@ class WinzentBaseAgent(Agent, ABC):
             # it is possible to participate in a negotiation for
             # this time span
             if reply.answer_to in self._adapted_flex_according_to_msgs:
+                print("we are never here")
                 self._acknowledgements_sent.remove(reply.answer_to)
                 self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
@@ -629,7 +614,7 @@ class WinzentBaseAgent(Agent, ABC):
 
         elif reply.msg_type == \
                 xboole.MessageType.AcceptanceAcknowledgementNotification:
-            await self.handle_acceptance_acknowledgement_notification(reply)
+            await self.handle_acceptance_acknowledgement_reply(reply)
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
             self.handle_withdrawal_notification(reply)
@@ -700,34 +685,22 @@ class WinzentBaseAgent(Agent, ABC):
         the gcd array (name and position are separated by a ":").
         The gcd includes the values that the agents in the solution variable are able to contribute.
         """
-        answer_objects = []
         initial_value = initial_req.forecast.second
-        logger.info(f"initial value is {initial_value}")
-        initial_msg_type = initial_req.message.msg_type
-        # determine flexibility sign according to msg type
-        positive = False if initial_msg_type == xboole.MessageType.DemandNotification else True
-        afforded_value = 0
-        # create dict with agents and used power value per agent
-        for j in range(len(solution)):
-            answer_objects.append(solution[j].split(':', 1)[0])
+        answer_objects = [solution[j].split(':', 1)[0] for j in range(len(solution))]
+        positive = False if initial_req.message.msg_type == xboole.MessageType.DemandNotification else True
         sol = DictList()
         for j in range(len(answer_objects)):
             sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
+
         self.final = {}
+        afforded_value = 0
         for k, v in sol.values.copy().items():
-            if abs(afforded_value) + abs(v) >= abs(initial_value):
-                diff = abs(initial_value) - abs(afforded_value)
-                self.final[self.governor.message_journal.get_message_for_id(
-                    k).sender] = diff
-                afforded_value += diff
-                break
-            self.final[self.governor.message_journal.get_message_for_id(
-                k).sender] = v
-            afforded_value += v
-        if positive:
-            act_value = afforded_value
-        else:
-            act_value = -afforded_value
+            diff = min(abs(initial_value) - abs(afforded_value), abs(v))
+            self.final[self.governor.message_journal.get_message_for_id(k).sender] = diff
+            afforded_value += diff
+
+        act_value = afforded_value if positive else -afforded_value
+
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
             print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
@@ -808,8 +781,6 @@ class WinzentBaseAgent(Agent, ABC):
                                         message_path=self.negotiation_connections[reply.receiver])
             else:
                 await self.send_message(reply, reply.receiver)
-            if self.aid == "agent1":
-                print(f"{self.aid} sent acceptance to {reply.receiver}")
         for key in zero_indeces:
             del self.final[key]
         self._waiting_for_acknowledgements = True
@@ -974,7 +945,6 @@ class WinzentBaseAgent(Agent, ABC):
                     # copy to avoid neighbors working on the same object
                     create_acl=True
                 )
-
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
     """
