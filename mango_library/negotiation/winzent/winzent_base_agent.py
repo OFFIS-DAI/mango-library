@@ -504,12 +504,12 @@ class WinzentBaseAgent(Agent, ABC):
             # it is possible to participate in a negotiation for
             # this time span
             if reply.answer_to in self._adapted_flex_according_to_msgs:
-                print("we are never here")
                 self._acknowledgements_sent.remove(reply.answer_to)
-                self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
+                async with self._lock:
+                    self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] + reply.value[0]
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
 
-                logger.debug(
+                logger.info(
                     f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
                 )
