@@ -496,7 +496,7 @@ class WinzentBaseAgent(Agent, ABC):
             logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
             await self.reset()
 
-    def handle_withdrawal_reply(self, reply):
+    async def handle_withdrawal_reply(self, reply):
         # if the id is not saved, the agent already handled this
         # WithdrawalNotification
         if reply.answer_to in self._acknowledgements_sent:
@@ -552,7 +552,7 @@ class WinzentBaseAgent(Agent, ABC):
             await self.handle_acceptance_acknowledgement_reply(reply)
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
-            self.handle_withdrawal_reply(reply)
+            await self.handle_withdrawal_reply(reply)
 
     def solution_overshoots_requirement(self, reply) -> bool:
         if (self.result_sum + reply.value[0]) > self.governor.curr_requirement_value:
