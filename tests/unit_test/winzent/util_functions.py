@@ -1,6 +1,5 @@
 from mango.core.container import Container
 
-from mango_library.negotiation.winzent.winzent_classic_agent import WinzentClassicAgent
 from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 from negotiation.winzent.winzent_simple_ethical_agent import WinzentSimpleEthicalAgent
 

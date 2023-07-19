@@ -6,6 +6,7 @@ from abc import ABC
 from copy import deepcopy
 from datetime import datetime
 
+import self
 from mango.core.agent import Agent
 
 from mango_library.negotiation.winzent import xboole
@@ -201,7 +202,7 @@ class WinzentBaseAgent(Agent, ABC):
                                                 sender=self._aid
                                                 )
                     if self.send_message_paths:
-                        await self.send_message(withdrawal, message_path=self.negotiation_connections[acc_msg.receiver])
+                        await self.send_message(withdrawal, msg_path=self.negotiation_connections[acc_msg.receiver])
                     else:
                         await self.send_message(withdrawal, receiver=acc_msg.receiver)
                 logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
@@ -219,7 +220,6 @@ class WinzentBaseAgent(Agent, ABC):
         requirement.
         """
         message = requirement.message
-        self.original_flex = deepcopy(self.flex)
         value = self.get_flexibility_for_interval(t_start=message.time_span[0], msg_type=message.msg_type)
 
         if abs(message.value[0]) - abs(value) <= 0:
@@ -348,7 +348,7 @@ class WinzentBaseAgent(Agent, ABC):
                 logger.error("message path is empty")
 
             logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path_copy}")
-            await self.send_message(reply, message_path=message_path_copy)
+            await self.send_message(reply, msg_path=message_path_copy)
         else:
             await self.send_message(reply)
         return
@@ -367,7 +367,7 @@ class WinzentBaseAgent(Agent, ABC):
             f"{message.is_answer} "
         )
         if self._negotiation_running:
-            await self.forward_message(message, message_path)
+            await self.send_message(msg=message, forwarding=True)
             return
         # If the agent has flexibility for the requested time, it replies
         # to the requesting agent
@@ -382,49 +382,10 @@ class WinzentBaseAgent(Agent, ABC):
         if value != 0:
             await self.answer_external_request(message, message_path, value)
         else:
-            await self.forward_message(message, message_path)
+            await self.send_message(message, msg_path=message_path, forwarding=True)
 
     def get_ethics_score(self, message):
         return message.ethics_score
-
-    async def handle_forwarding_request(self, value, message, message_path, request_completed=False):
-        message.ttl -= 1
-        if message.ttl <= 0:
-            # PGASC add logging
-            logger.debug(
-                f"handle_external_request: {self.aid} does not forward the message to other agents because ttl<=0"
-            )
-            # do not forward the message to other agents
-            return
-        logger.debug(
-            f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
-        )
-        if request_completed:
-            logger.debug(
-                f"handle_external_request: {self.aid} does not forward the message to other agents "
-                f"because value is completely fulfilled"
-            )
-            # The value in the negotiation request is completely fulfilled.
-            # Therefore, the message is not forwarded to other agents.
-            return
-
-        # In this case, the power value of the request cannot be completely
-        # fulfilled yet. Therefore, the remaining power of the request is
-        # forwarded to other agents.
-        val = message.value[0]
-        del message.value[:]
-        message.value.append(val - value)
-        message.is_answer = False
-        message.receiver = ''
-
-        logger.debug(
-            f"demand not fulfilled yet, send {message.msg_type} request further through neighbors, path {message_path}"
-        )
-
-        if self.send_message_paths:
-            await self.send_message(message, message_path=message_path)
-        else:
-            await self.send_message(message)
 
     async def check_flex(self, reply):
         distributed_value = 0
@@ -454,23 +415,6 @@ class WinzentBaseAgent(Agent, ABC):
         if valid:
             self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
         return valid
-
-    async def forward_message(self, message, message_path):
-        message.ttl -= 1
-        if message.ttl <= 0:
-            # PGASC add logging
-            logger.debug(
-                f"handle_external_request: {self.aid} does not forward the message to other agents because ttl<=0"
-            )
-            # do not forward the message to other agents
-            return
-        logger.debug(
-            f"handle_external_request: {self.aid} forward request to other agents ttl={message.ttl}"
-        )
-        if self.send_message_paths:
-            await self.send_message(message, message_path=message_path)
-        else:
-            await self.send_message(message)
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
         # The agent received an offer or demand notification as reply.
@@ -504,15 +448,14 @@ class WinzentBaseAgent(Agent, ABC):
                     sender=self._aid, receiver=reply.sender,
                     value=reply.value,  # PGASC added value to AAN messages to confirm the results
                     ttl=self._current_ttl, id=str(uuid.uuid4()))
-                if self.send_message_paths:
-                    await self.send_message(answer,
-                                            message_path=self.negotiation_connections[answer.receiver])
-                else:
-                    await self.send_message(answer)
+                await self.send_message(answer)
                 self._adapted_flex_according_to_msgs.append(reply.id)
                 self._acknowledgements_sent.append(reply.id)
                 self._list_of_acknowledgements_sent.append(answer)
                 del self._current_inquiries_from_agents[reply.answer_to]
+            else:
+                logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
+                            f" {self.flex[reply.time_span[0]][1]}")
 
     async def handle_acceptance_acknowledgement_reply(self, reply):
         # If there is no message in solution journal or
@@ -539,11 +482,7 @@ class WinzentBaseAgent(Agent, ABC):
                                             id=str(uuid.uuid4()),
                                             sender=self._aid
                                             )
-                if self.send_message_paths:
-                    await self.send_message(withdrawal,
-                                            message_path=self.negotiation_connections[withdrawal.receiver])
-                else:
-                    await self.send_message(withdrawal)
+                await self.send_message(withdrawal)
         else:
             logger.debug(
                 f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
@@ -557,7 +496,7 @@ class WinzentBaseAgent(Agent, ABC):
             logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
             await self.reset()
 
-    def handle_withdrawal_notification(self, reply):
+    def handle_withdrawal_reply(self, reply):
         # if the id is not saved, the agent already handled this
         # WithdrawalNotification
         if reply.answer_to in self._acknowledgements_sent:
@@ -585,10 +524,6 @@ class WinzentBaseAgent(Agent, ABC):
                 f"{reply.id} which is not in {self._acknowledgements_sent} "
             )
 
-    async def handle_forwarding(self, reply, message_path):
-        await self.forward_message(reply, message_path)
-        return
-
     async def handle_external_reply(self, requirement, message_path=None):
         """
         Handle a reply from other agents. Reply may be from types:
@@ -602,7 +537,7 @@ class WinzentBaseAgent(Agent, ABC):
         logger.debug(f"receiver of this reply is {reply.receiver}")
         # print(f"{self.aid} receives {reply}")
         if reply.receiver != self._aid:
-            await self.handle_forwarding(reply, message_path)
+            await self.send_message(reply, msg_path=message_path, forwarding=True)
             return
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
@@ -617,7 +552,7 @@ class WinzentBaseAgent(Agent, ABC):
             await self.handle_acceptance_acknowledgement_reply(reply)
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
-            self.handle_withdrawal_notification(reply)
+            self.handle_withdrawal_reply(reply)
 
     def solution_overshoots_requirement(self, reply) -> bool:
         if (self.result_sum + reply.value[0]) > self.governor.curr_requirement_value:
@@ -777,10 +712,10 @@ class WinzentBaseAgent(Agent, ABC):
             self.governor.solution_journal.add(reply)
             if self.send_message_paths:
                 logger.debug(f"receiver {reply.receiver} in connections {self.negotiation_connections}?")
-                await self.send_message(reply, reply.receiver,
-                                        message_path=self.negotiation_connections[reply.receiver])
+                await self.send_message(reply, receiver=reply.receiver,
+                                        msg_path=self.negotiation_connections[reply.receiver])
             else:
-                await self.send_message(reply, reply.receiver)
+                await self.send_message(reply, receiver=reply.receiver)
         for key in zero_indeces:
             del self.final[key]
         self._waiting_for_acknowledgements = True
@@ -883,54 +818,64 @@ class WinzentBaseAgent(Agent, ABC):
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_request(req, message_path=meta["ontology"]))
 
-    async def send_message(self, winzent_message, receiver=None, message_path=None):
+    async def send_message(self, msg, receiver=None, msg_path=None, forwarding=False):
         """
         Sends the given message to all neighbors unless the receiver is given.
         """
-        if message_path is None:
-            message_path = []
+        if msg_path is None:
+            msg_path = []
 
-        logger.debug(
-            f"*** {self._aid} sends message with type {winzent_message.msg_type}. ***")
+        if forwarding:
+            msg.ttl -= 1
+            if msg.ttl <= 0:
+                # PGASC add logging
+                logger.debug(
+                    f"handle_external_request: {self.aid} does not forward the message to other agents because ttl<=0"
+                )
+                # do not forward the message to other agents
+                return
+            logger.debug(
+                f"handle_external_request: {self.aid} forward request to other agents ttl={msg.ttl}"
+            )
 
         if self.send_message_paths:
             # for first connection establishment (demand notifications) append aid of this agent to the message path
-            if not winzent_message.is_answer:
-                if self.aid in message_path:
+            if not msg.is_answer:
+                if self.aid in msg_path:
                     # remove old message loops
-                    index_of_self = message_path.index(self.aid)
-                    message_path = message_path[0:index_of_self - 1]
-                message_path.append(self.aid)
+                    index_of_self = msg_path.index(self.aid)
+                    msg_path = msg_path[0:index_of_self - 1]
+                msg_path.append(self.aid)
 
             # sending over the message path, so next receiver in the neighborhood is known
             else:
                 logger.debug(
-                    f"{self.aid} sends {winzent_message.msg_type} on the message path in message_path: {message_path}")
-                if len(message_path) == 0:
+                    f"{self.aid} sends {msg.msg_type} on the message path in message_path: {msg_path}")
+                if len(msg_path) == 0:
                     logger.error("message_path has length zero")
                     return
-                index_of_next_on_path = message_path.index(self.aid) + 1
-                receiver = message_path[index_of_next_on_path]
+                index_of_next_on_path = msg_path.index(self.aid) + 1
+                receiver = msg_path[index_of_next_on_path]
                 if receiver not in self.neighbors.keys():
                     logger.error(
-                        f"message_path at {self.aid} with message_path {message_path} failed because "
+                        f"message_path at {self.aid} with message_path {msg_path} failed because "
                         f"receiver {receiver} not in {self.neighbors.keys()}")
                     return
 
         if receiver is not None and receiver in self.neighbors.keys():
             # receiver is a neighbor
-            message = copy_winzent_message(winzent_message)
+            message = copy_winzent_message(msg)
             self.messages_sent += 1
             await self._container.send_message(
                 content=message, receiver_addr=self.neighbors[receiver],
                 receiver_id=receiver,
                 acl_metadata={'sender_addr': self._container.addr,
                               'sender_id': self._aid,
-                              'ontology': message_path.copy()}, create_acl=True)
+                              'ontology': msg_path.copy()}, create_acl=True)
         else:
             # send message to every neighbor
             for neighbor in self.neighbors.keys():
-                message = copy_winzent_message(winzent_message)
+                message = copy_winzent_message(msg)
                 if message.sender == neighbor:
                     continue
                 if message.receiver is None:
@@ -941,10 +886,11 @@ class WinzentBaseAgent(Agent, ABC):
                     receiver_id=neighbor,
                     acl_metadata={'sender_addr': self._container.addr,
                                   'sender_id': self._aid,
-                                  'ontology': message_path.copy()},
+                                  'ontology': msg_path.copy()},
                     # copy to avoid neighbors working on the same object
                     create_acl=True
                 )
+
 
 def copy_winzent_message(message: WinzentMessage) -> WinzentMessage:
     """

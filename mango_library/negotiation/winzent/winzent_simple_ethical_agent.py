@@ -34,18 +34,9 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.current_time_span = t_start
         self.first_demand_received = False
 
-    async def handle_forwarding(self, reply, message_path):
-        await self.forward_message(reply, message_path)
-        # Don't forward the message if it is already an answer to one of this agent's previous messages.
-        if reply.is_answer:
-            return
-
-    async def handle_forwarding_request(self, value, message, message_path, request_completed):
-        await self.forward_message(message, message_path=None)
-
     async def answer_external_request(self, message, message_path, value):
         if self.use_consumer_ethics_score:
-            await self.forward_message(message, message_path)
+            await self.send_message(message, msg_path=message_path, forwarding=True)
             msg_type = xboole.MessageType.Null
             # send message reply
             if message.msg_type == xboole.MessageType.OfferNotification:
@@ -68,7 +59,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     else:
                         value = value - offer.value[0]
                         value_to_offer = offer.value[0]
-                    #print(self.aid + " sending offer to " + offer.sender)
                     reply = WinzentMessage(msg_type=msg_type,
                                            sender=self._aid,
                                            is_answer=True,
@@ -79,22 +69,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                                            ethics_score=self.ethics_score)
                     # print(f"{self.aid} sends offer to {reply.receiver}. Offer list is {len(offers)}")
                     self._current_inquiries_from_agents[reply.id] = reply
-                    if self.send_message_paths:
-                        message_path.append(self.aid)
-                        message_path.reverse()
-                        if message_path is not None:
-                            demander_index = message_path[-1]
-                            self.negotiation_connections[
-                                demander_index] = message_path
-                            # send offer and save established connection demander:[self.aid/supplier, ..., demander]
-                        else:
-                            logger.error("message path none")
-                        logger.debug(
-                            f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path}")
-                        await self.send_message(reply, message_path=message_path)
-                    else:
-                        await self.send_message(reply)
-                        # print(f"{self.aid} sends message to {offer.sender}")
+                    await self.send_message(reply)
                     if value <= 0:
                         break
                 self.first_demand_received = False
