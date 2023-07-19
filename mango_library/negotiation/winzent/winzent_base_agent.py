@@ -149,7 +149,6 @@ class WinzentBaseAgent(Agent, ABC):
         self.governor.solution_journal.clear()
         self.negotiation_done = asyncio.Future()
         logger.debug(f"{self.aid} starts negotiation, needs {value}")
-        print("negotiation started")
         await self.handle_internal_request(requirement)
         self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
 
@@ -277,7 +276,6 @@ class WinzentBaseAgent(Agent, ABC):
         )
         self._own_request = requirement.message
         self._negotiation_running = True
-        print("internal negotiation handled")
         logger.debug(f"{self.aid} sends negotiation start notification")
         await self.send_message(neg_msg)
 
@@ -590,7 +588,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         After a negotiation, reset the negotiation parameters.
         """
-        print("the result for " + self.aid + " is " + str(self.result))
+        logger.info("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
