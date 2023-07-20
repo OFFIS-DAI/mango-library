@@ -71,7 +71,8 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                                            value=[value_to_offer], ttl=self._current_ttl,
                                            id=str(uuid.uuid4()),
                                            ethics_score=self.ethics_score)
-                    # print(f"{self.aid} sends offer to {reply.receiver}. Offer list is {len(offers)}")
+                    if self.aid == "agent14":
+                        print(f"{self.aid} sends offer to {reply.receiver}")
                     self._current_inquiries_from_agents[reply.id] = reply
                     await self.send_message(reply)
                     if value <= 0:

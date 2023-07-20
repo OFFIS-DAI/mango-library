@@ -399,8 +399,7 @@ class WinzentBaseAgent(Agent, ABC):
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[0]][1]}."
                 f"Current flex is {self.flex[reply.time_span[0]][1]}")
-            async with self._lock:
-                self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
+            self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
             if self.flex[reply.time_span[0]][1] <= 0:
                 return False
         return True
