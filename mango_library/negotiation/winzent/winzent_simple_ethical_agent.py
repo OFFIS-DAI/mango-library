@@ -52,6 +52,9 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 offers = deepcopy(self.offer_list)
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
+                if self.aid == "agent14":
+                    for offer in offers:
+                        print(f"{offer.sender} needs {offer.value[0]}")
                 for offer in offers:
                     if offer.value[0] >= value:
                         value_to_offer = value
@@ -91,12 +94,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 self.governor.power_balance.add(requirement)
                 if not self.governor.solver_triggered:
                     self.governor.triggered_due_to_timeout = False
-                # Save the established connection
-                if self.send_message_paths:
-                    message_path.reverse()
-                    self.negotiation_connections[
-                        message_path[-1]] = message_path  # received offer; establish connection
-                    # supplier:[self.aid/demander, ..., supplier]
                 if not self.first_offer_received:
                     self.first_offer_received = True
                     await asyncio.sleep(0.5)

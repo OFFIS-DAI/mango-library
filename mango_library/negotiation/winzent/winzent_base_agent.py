@@ -127,6 +127,7 @@ class WinzentBaseAgent(Agent, ABC):
         self.flex[t_start] = [min_p, max_p]
         self.original_flex[t_start] = [min_p, max_p]
         self._list_of_acknowledgements_sent.clear()
+        self._current_inquiries_from_agents.clear()
 
     async def start_negotiation(self, ts, value):
         """
@@ -171,7 +172,7 @@ class WinzentBaseAgent(Agent, ABC):
                 now = datetime.now()
 
                 current_time = now.strftime("%H:%M:%S")
-                print(f"{self.aid}: Timer ran out at =", current_time)
+                logger.debug(f"{self.aid}: Timer ran out at =", current_time)
                 # After sleeping, the solver is triggered. This is necessary
                 # in case when not the complete negotiation problem can be
                 # solved. The solver is triggered after the timeout to
@@ -378,6 +379,8 @@ class WinzentBaseAgent(Agent, ABC):
         if value != 0:
             await self.answer_external_request(message, message_path, value)
         else:
+            if self.aid == "agent14":
+                print(f"current flex is {self.flex}")
             await self.send_message(message, msg_path=message_path, forwarding=True)
 
     def get_ethics_score(self, message):
@@ -451,7 +454,8 @@ class WinzentBaseAgent(Agent, ABC):
                 del self._current_inquiries_from_agents[reply.answer_to]
             else:
                 logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
-                            f" {self.flex[reply.time_span[0]][1]}")
+                            f" {self.flex[reply.time_span[0]][1]}."
+                            f"Wanted flex by other agent: {reply.value[0]}")
 
     async def handle_acceptance_acknowledgement_reply(self, reply):
         # If there is no message in solution journal or
@@ -504,7 +508,10 @@ class WinzentBaseAgent(Agent, ABC):
                 async with self._lock:
                     self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] + reply.value[0]
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
-
+                for ack in self._list_of_acknowledgements_sent:
+                    if ack.receiver == reply.receiver:
+                        self._list_of_acknowledgements_sent.remove(ack)
+                        break
                 logger.info(
                     f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
@@ -763,7 +770,6 @@ class WinzentBaseAgent(Agent, ABC):
             if len(answers) > 0:
                 # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} found solution. ***')
-                print(f'\n*** {self._aid} found solution. ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 
