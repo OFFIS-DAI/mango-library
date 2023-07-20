@@ -441,6 +441,8 @@ class WinzentBaseAgent(Agent, ABC):
             async with self._lock:
                 flex_valid = await self.flexibility_valid(reply)
             if flex_valid:
+                if self.aid == "agent14":
+                    print(f"sending ack to {reply.sender}")
                 answer = WinzentMessage(
                     msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                     is_answer=True, answer_to=reply.id,
@@ -456,6 +458,8 @@ class WinzentBaseAgent(Agent, ABC):
                 logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
                             f" {self.flex[reply.time_span[0]][1]}."
                             f"Wanted flex by other agent: {reply.value[0]}")
+        else:
+            logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
 
     async def handle_acceptance_acknowledgement_reply(self, reply):
         # If there is no message in solution journal or

@@ -53,6 +53,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
                 if self.aid == "agent14":
+                    print(f"own flex: {self.flex[self.current_time_span][1]} and value: {value}")
                     for offer in offers:
                         print(f"{offer.sender} needs {offer.value[0]}")
                 for offer in offers:
