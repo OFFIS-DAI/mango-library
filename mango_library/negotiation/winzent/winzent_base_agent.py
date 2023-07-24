@@ -436,29 +436,40 @@ class WinzentBaseAgent(Agent, ABC):
     async def handle_acceptance_reply(self, reply):
         # First, check whether the AcceptanceNotification is still valid
         if self.acceptance_valid(reply):
-            # Send an AcceptanceAcknowledgementNotification for the acceptance
             async with self._lock:
                 flex_valid = await self.flexibility_valid(reply)
+            # after checking for the validity of the reply, delete it to make duplicates invalid
+            del self._current_inquiries_from_agents[reply.answer_to]
             if flex_valid:
-                if self.aid == "agent14":
-                    print(f"sending ack to {reply.sender}")
+                # Send an AcceptanceAcknowledgementNotification for the acceptance
                 answer = WinzentMessage(
                     msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                     is_answer=True, answer_to=reply.id,
                     sender=self._aid, receiver=reply.sender,
-                    value=reply.value,  # PGASC added value to AAN messages to confirm the results
+                    value=reply.value,
                     ttl=self._current_ttl, id=str(uuid.uuid4()))
                 await self.send_message(answer)
                 self._adapted_flex_according_to_msgs.append(reply.id)
                 self._acknowledgements_sent.append(reply.id)
                 self._list_of_acknowledgements_sent.append(answer)
-                del self._current_inquiries_from_agents[reply.answer_to]
+                return
             else:
                 logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
                             f" {self.flex[reply.time_span[0]][1]}."
                             f"Wanted flex by other agent: {reply.value[0]}")
+
         else:
             logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
+        logger.debug(f"{self.aid}: Sending withdrawal to {reply.sender}")
+        withdrawal = WinzentMessage(time_span=self._own_request.time_span,
+                                    is_answer=True, answer_to=reply.id,
+                                    msg_type=xboole.MessageType.WithdrawalNotification,
+                                    ttl=self._current_ttl, receiver=reply.sender,
+                                    value=reply.value[0],
+                                    id=str(uuid.uuid4()),
+                                    sender=self._aid
+                                    )
+        await self.send_message(withdrawal)
 
     async def handle_acceptance_acknowledgement_reply(self, reply):
         # If there is no message in solution journal or
@@ -524,6 +535,12 @@ class WinzentBaseAgent(Agent, ABC):
                 logger.debug(
                     f"Withdrawal received: {reply.answer_to} not in {self._adapted_flex_according_to_msgs}"
                 )
+        elif reply.answer_to in self._curr_sent_acceptances:
+            # An agent who was part of the solution withdrew its offer and will be removed from the solution.
+            if reply.answer_to in self.governor.solution_journal:
+                self.governor.solution_journal.remove_message(reply.answer_to)
+                del self.result[reply.sender]
+                self._curr_sent_acceptances.remove(reply.answer_to)
         else:
             logger.debug(
                 f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
