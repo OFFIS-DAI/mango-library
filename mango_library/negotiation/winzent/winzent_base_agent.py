@@ -540,6 +540,7 @@ class WinzentBaseAgent(Agent, ABC):
             if reply.answer_to in self.governor.solution_journal:
                 self.governor.solution_journal.remove_message(reply.answer_to)
                 del self.result[reply.sender]
+                self.result_sum -= reply.value[0]
                 self._curr_sent_acceptances.remove(reply.answer_to)
         else:
             logger.debug(
@@ -613,7 +614,7 @@ class WinzentBaseAgent(Agent, ABC):
 
     async def reset(self):
         """
-        After a negotiation, reset the negotiation parameters.
+        After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
         logger.info("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
