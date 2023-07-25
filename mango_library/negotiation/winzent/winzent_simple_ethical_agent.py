@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1,
+                 request_processing_waiting_time=0.2,
+                 reply_processing_waiting_time=0.2,
                  use_producer_ethics_score=True,
                  use_consumer_ethics_score=True):
         super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
@@ -24,6 +26,8 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.first_demand_received = False
         self.use_producer_ethics_score = use_producer_ethics_score
         self.use_consumer_ethics_score = use_consumer_ethics_score
+        self.request_processing_waiting_time = request_processing_waiting_time
+        self.reply_processing_waiting_time = reply_processing_waiting_time
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
@@ -48,14 +52,14 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             self.offer_list.append(message)
             if not self.first_demand_received:
                 self.first_demand_received = True
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(self.request_processing_waiting_time)
                 offers = deepcopy(self.offer_list)
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
-                if self.aid == "agent14":
-                    print(f"own flex: {self.flex[self.current_time_span][1]} and value: {value}")
-                    for offer in offers:
-                        print(f"{offer.sender} needs {offer.value[0]}")
+                # if self.aid == "agent14":
+                #    print(f"own flex: {self.flex[self.current_time_span][1]} and value: {value}")
+                # for offer in offers:
+                #    print(f"{offer.sender} needs {offer.value[0]}")
                 for offer in offers:
                     if offer.value[0] >= value:
                         value_to_offer = value
@@ -98,9 +102,9 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     self.governor.triggered_due_to_timeout = False
                 if not self.first_offer_received:
                     self.first_offer_received = True
-                    await asyncio.sleep(0.5)
-                    print(
-                        f"{self.aid}: slept enough. power ledger len is {len(self.governor.power_balance._ledger[self.current_time_span])}")
+                    await asyncio.sleep(self.reply_processing_waiting_time )
+                    # print( f"{self.aid}: slept enough. power ledger len is {len(
+                    # self.governor.power_balance._ledger[self.current_time_span])}")
                     await self.solve()
                     self.first_offer_received = False
         else:
