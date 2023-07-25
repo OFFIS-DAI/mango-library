@@ -393,15 +393,17 @@ class WinzentBaseAgent(Agent, ABC):
         if self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]:
             return True
         else:
-            print(
-                f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent since the current flex is not consistent with "
-                f"the values already distributed."
+            logger.info(
+                f"Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[0]][1]}."
                 f"Current flex is {self.flex[reply.time_span[0]][1]}")
+            logger.info(f"Attempting to fix flex...")
             self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
             if self.flex[reply.time_span[0]][1] <= 0:
+                logger.info(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent, flex not sufficient.")
                 return False
+            logger.info("Flex has been fixed and Acknowledgement can be sent.")
         return True
 
     async def flexibility_valid(self, reply):
