@@ -910,6 +910,7 @@ class MultiObjectiveCOHDARole(Role):
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
+                    send_mgs = 0
 
                     for neighbor in coalition_assignment.neighbors:
                         self.context.schedule_instant_acl_message(
@@ -925,7 +926,7 @@ class MultiObjectiveCOHDARole(Role):
                                 "sender_id": self.context.aid,
                             },
                         )
-
+                        send_mgs += 1
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False

@@ -34,14 +34,16 @@ def target_func_1(cs):
     """
     cs.sum(axis=0)[0]
     """
-    return cs.sum(axis=0)[0]
+    a = cs.sum(axis=0)[0]
+    return a
 
 
 def target_func_2(cs):
     """
     (1 + 9/29 * cs.sum(axis=0)[1]) * (1 - math.sqrt(cs.sum(axis=0)[0]/g(cs)))
     """
-    return g(cs) * h(cs)
+    b = g(cs) * h(cs)
+    return b
 
 
 TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)

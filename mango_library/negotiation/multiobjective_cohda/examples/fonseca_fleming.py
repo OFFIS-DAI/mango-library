@@ -20,7 +20,7 @@ PICK_FKT = MoCohdaNegotiation.pick_all_points
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
 # MUTATE_FKT = COHDA.mutate_with_one_random
 
-NUM_SIMULATIONS = 2
+NUM_SIMULATIONS = 1
 DENOMINATOR = math.sqrt(NUM_AGENTS)
 
 

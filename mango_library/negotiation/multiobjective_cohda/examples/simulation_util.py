@@ -303,15 +303,10 @@ async def simulate_mo_cohda_NSGA2(
             {}
         )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
-        container_list = []
         container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-        container_list.append(container)
-        port += 1
+
         # create agents for negotiation
         for i in range(num_agents):
-            container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-            port += 1
-            container_list.append(container)
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(solution_point=None, agent_id=None):
@@ -389,9 +384,6 @@ async def simulate_mo_cohda_NSGA2(
             schedules_per_agent[a.aid] = provide_schedules()
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-        port += 1
-        container_list.append(container)
         controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
         controller_agent.add_role(
@@ -452,8 +444,7 @@ async def simulate_mo_cohda_NSGA2(
 
         print("All working memories are equal!")
         # shutdown container
-        for container in container_list:
-            await container.shutdown()
+        await container.shutdown()
 
         # append results
         results.append(
@@ -464,7 +455,6 @@ async def simulate_mo_cohda_NSGA2(
                 "overlay": overlay,
             }
         )
-
     return results
 
 
@@ -546,7 +536,7 @@ async def simulate_mo_cohda(
 
         topology_creator = build_small_world_ring_topology
     port = 5555
-
+    container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
     for _ in range(num_simulations):
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
@@ -555,12 +545,9 @@ async def simulate_mo_cohda(
             {}
         )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
-        container_list = []
+
         # create agents for negotiation
         for i in range(num_agents):
-            container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-            port += 1
-            container_list.append(container)
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(index):
@@ -600,9 +587,6 @@ async def simulate_mo_cohda(
 
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-        port += 1
-        container_list.append(container)
         controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
         controller_agent.add_role(
@@ -663,8 +647,7 @@ async def simulate_mo_cohda(
 
         print("All working memories are equal!")
         # shutdown container
-        for container in container_list:
-            await container.shutdown()
+        await container.shutdown()
 
         # append results
         results.append(
