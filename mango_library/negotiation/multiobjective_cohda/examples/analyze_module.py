@@ -249,7 +249,7 @@ if __name__ == '__main__':
         approximated_front_without_pymoo.append([f1, f2])
 
     # get approximated front from old database
-    # results_pymoo = h5py.File(path + '/' + PROBLEM + '_pymoo.hdf5', 'r')
+    # results_pymoo = h5py.File(path + '/' + PROBLEM + '_NSGA2.hdf5', 'r')
     # performances_pymoo = np.array(results_pymoo.get('Results').get('Results_0').get('performances'))
     # approximated_front_pymoo = []
     # for performance_tuple_ in performances_pymoo:

@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 import numpy as np
 
@@ -16,9 +17,9 @@ NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
 PICK_FKT = MoCohdaNegotiation.pick_all_points
-# PICK_FKT = COHDA.pick_random_point
+# PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
-# MUTATE_FKT = COHDA.mutate_with_one_random
+# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
 
 NUM_SIMULATIONS = 1
 
@@ -44,23 +45,20 @@ TARGETS = [TARGET_1, TARGET_2]
 SCHEDULE_THRESHOLD = A / NUM_AGENTS
 SCHEDULE_STEP_SIZE = (SCHEDULE_THRESHOLD * 2) / (NUM_SCHEDULES - 1)
 POSSIBLE_SCHEDULES = []
+# each agent receives schedules with values from -1 until 1, since A / num_agents equals this possible
+# interval per agent
 for schedule_no in range(NUM_SCHEDULES):
     POSSIBLE_SCHEDULES.append(np.array([-SCHEDULE_THRESHOLD + schedule_no * SCHEDULE_STEP_SIZE]))
 
 
 async def simulate_schaffer(name, db_file):
-    results = await simulate_mo_cohda(
+    await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
         possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=True,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
-        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT
-    )
-
-    store_in_db(
-        db_file=db_file, sim_name=name, n_agents=NUM_AGENTS, targets=TARGETS,
-        n_solution_points=NUM_SOLUTION_POINTS, n_iterations=NUM_ITERATIONS, check_inbox_interval=CHECK_INBOX_INTERVAL,
-        mutate_func=MUTATE_FKT, pick_func=PICK_FKT, results=results
+        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT, db_file=db_file,
+        sim_name=name
     )
 
 
