@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1,
-                 request_processing_waiting_time=0.2,
-                 reply_processing_waiting_time=0.2,
+                 request_processing_waiting_time=0.4,
+                 reply_processing_waiting_time=0.4,
                  use_producer_ethics_score=True,
                  use_consumer_ethics_score=True):
         super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
@@ -81,6 +81,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     await self.send_message(reply)
                     if value <= 0:
                         break
+                await asyncio.sleep(self.request_processing_waiting_time)
                 self.first_demand_received = False
             else:
                 return

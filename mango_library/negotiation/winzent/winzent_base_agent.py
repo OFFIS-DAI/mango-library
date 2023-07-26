@@ -379,8 +379,8 @@ class WinzentBaseAgent(Agent, ABC):
         if value != 0:
             await self.answer_external_request(message, message_path, value)
         else:
-            if self.aid == "agent14":
-                print(f"current flex is {self.flex}")
+            # if self.aid == "agent14":
+            #    print(f"current flex is {self.flex}")
             await self.send_message(message, msg_path=message_path, forwarding=True)
 
     def get_ethics_score(self, message):
@@ -394,14 +394,15 @@ class WinzentBaseAgent(Agent, ABC):
             return True
         else:
             logger.info(
-                f"Current flex is not consistent with the values already distributed."
+                f"{self.aid}: Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[0]][1]}."
                 f"Current flex is {self.flex[reply.time_span[0]][1]}")
             logger.info(f"Attempting to fix flex...")
             self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
             if self.flex[reply.time_span[0]][1] <= 0:
-                logger.info(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent, flex not sufficient.")
+                logger.info(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent, "
+                            f"flex is {self.flex[reply.time_span[0]][1]}.")
                 return False
             logger.info("Flex has been fixed and Acknowledgement can be sent.")
         return True
@@ -529,7 +530,7 @@ class WinzentBaseAgent(Agent, ABC):
                         self._list_of_acknowledgements_sent.remove(ack)
                         break
                 logger.info(
-                    f"{self.aid}/{reply.receiver} gets withdrawal message from {reply.sender} with value "
+                    f"{self.aid} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
                 )
             else:
