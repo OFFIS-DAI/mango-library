@@ -54,8 +54,8 @@ def target_func_2(cs):
 
 
 # minimize, x between -4 and 4
-TARGET_1 = Target(target_function=target_func_1, ref_point=4.1, maximize=False)
-TARGET_2 = Target(target_function=target_func_2, ref_point=4.1, maximize=False)
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 SCHEDULE_STEP_SIZE = 8 / (NUM_SCHEDULES - 1)

@@ -68,8 +68,8 @@ class FonsecaFleming(Problem):
         out["F"] = np.column_stack([f1, f2])
 
 
-TARGET_1 = Target(target_function=target_func_1, ref_point=4.1, maximize=False)
-TARGET_2 = Target(target_function=target_func_2, ref_point=4.1, maximize=False)
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 possible_interval = 8 / NUM_AGENTS
