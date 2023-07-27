@@ -7,19 +7,20 @@ from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda_NSGA2
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
-SIM_NAME = 'Zitzler_3_nsga2_'
-PROBLEM = 'zdt3'
-NUM_AGENTS = 5
-NUM_SOLUTION_POINTS = 10
-POPULATION_SIZE = 20
+SIM_NAME = 'Zitzler_1_nsga2_'
+PROBLEM = 'zdt1'
+
+NUM_AGENTS = 30
+NUM_SOLUTION_POINTS = 1
+POPULATION_SIZE = 1
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = MoCohdaNegotiation.pick_random_point
+PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 2
 p = get_problem(PROBLEM)
 ALGORITHM = NSGA2(pop_size=POPULATION_SIZE)
 
@@ -27,7 +28,7 @@ ALGORITHM = NSGA2(pop_size=POPULATION_SIZE)
 def target_func_1(cs):
     """
     """
-    output = p.evaluate(cs.astype(float), ALGORITHM)
+    output = p.evaluate(cs, ALGORITHM)
     result_target_1 = output[0][0]
     return result_target_1
 
@@ -35,7 +36,7 @@ def target_func_1(cs):
 def target_func_2(cs):
     """
     """
-    output = p.evaluate(cs.astype(float), ALGORITHM)
+    output = p.evaluate(cs, ALGORITHM)
     result_target_2 = output[0][1]
     return result_target_2
 
@@ -47,7 +48,7 @@ TARGETS = [TARGET_1, TARGET_2]
 possible_interval = 1 / NUM_AGENTS
 
 
-async def simulate_zitzler_3_NSGA2(name):
+async def simulate_zitzler_1_NSGA2(name):
     await simulate_mo_cohda_NSGA2(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
@@ -58,4 +59,4 @@ async def simulate_zitzler_3_NSGA2(name):
 
 
 if __name__ == '__main__':
-    asyncio.run(simulate_zitzler_3_NSGA2(SIM_NAME))
+    asyncio.run(simulate_zitzler_1_NSGA2(SIM_NAME))
