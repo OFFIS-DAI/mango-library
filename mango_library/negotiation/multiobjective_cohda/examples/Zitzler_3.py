@@ -65,6 +65,9 @@ for i in range(NUM_AGENTS):
         POSSIBLE_SCHEDULES.append([np.array([0, p]) for p in SINGLE_POINT_SCHEDULES])
 
 
+# each agent can control all variables: determine possible interval per agent, create schedules with this interval
+# TODO
+
 async def simulate_zitzler_3(name):
     await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,

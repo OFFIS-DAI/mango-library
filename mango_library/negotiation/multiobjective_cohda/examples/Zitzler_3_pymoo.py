@@ -45,8 +45,12 @@ TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
 TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
+# every agent can control each variable
 possible_interval = 1 / NUM_AGENTS
 
+
+# if every agent controls one variable, set number of agents to 30, each agent controls only one position in schedule
+# TODO
 
 async def simulate_zitzler_3_NSGA2(name):
     await simulate_mo_cohda_NSGA2(
