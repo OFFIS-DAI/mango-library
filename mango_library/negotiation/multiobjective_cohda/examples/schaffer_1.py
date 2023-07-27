@@ -1,13 +1,11 @@
 import asyncio
-import time
 
 import numpy as np
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
+from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
-FILE = 'Schaffer_1.hdf5'
 SIM_NAME = 'Schaffer_1'
 A = 10
 NUM_AGENTS = 10
@@ -21,7 +19,7 @@ PICK_FKT = MoCohdaNegotiation.pick_all_points
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
 # MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 2
 
 
 def target_func_1(cs):
@@ -51,16 +49,15 @@ for schedule_no in range(NUM_SCHEDULES):
     POSSIBLE_SCHEDULES.append(np.array([-SCHEDULE_THRESHOLD + schedule_no * SCHEDULE_STEP_SIZE]))
 
 
-async def simulate_schaffer(name, db_file):
+async def simulate_schaffer(name):
     await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
         possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=True,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
-        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT, db_file=db_file,
-        sim_name=name
+        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT, sim_name=name
     )
 
 
 if __name__ == '__main__':
-    asyncio.run(simulate_schaffer(SIM_NAME, FILE))
+    asyncio.run(simulate_schaffer(SIM_NAME))

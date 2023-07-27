@@ -44,17 +44,17 @@ for serializer in multi_objective_serializers:
 
 
 def store_in_db(
-    *,
-    db_file: str,
-    sim_name: str,
-    n_agents: int,
-    targets: List[Target],
-    n_solution_points: int,
-    check_inbox_interval: float,
-    mutate_func: Callable,
-    pick_func: Callable,
-    n_iterations: int,
-    results: List[Dict],
+        *,
+        db_file: str,
+        sim_name: str,
+        n_agents: int,
+        targets: List[Target],
+        n_solution_points: int,
+        check_inbox_interval: float,
+        mutate_func: Callable,
+        pick_func: Callable,
+        n_iterations: int,
+        results: List[Dict],
 ):
     """
     Function that creates a hdf5 file which stores the simulation configurations together with the simulation results.
@@ -226,8 +226,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                                   pick_func: Callable, mutate_func: Callable,
                                   num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
                                   num_simulations: int, problem='zdt3', lower_limit=0, upper_limit=1,
-                                  store_updates_to_db: bool = False, population_size: int = 1,
-                                  db_file: str = '', sim_name: str = '') -> List[Dict[str, Any]]:
+                                  store_updates_to_db: bool = False, sim_name: str = '', population_size: int = 1):
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -235,7 +234,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             assigned to all agents
         if schedules_all_equal == False, the parameter should be a list of lists of schedules. List i will then be
         assigned to agent i. So len(possible_schedules) should be equal to num_agents.
-    :param schedules_all_equal: See above
+    :param possible_interval: The possible interval of values for each agent.
     :param targets: The List of targets as defined in multiobjective_cohda.data_classes.Target
     :param num_solution_points: Number of solution points to describe the pareto frong
     :param pick_func: The pick function that all agents will use
@@ -246,6 +245,12 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             provided, the default method within the CoalitionInitiatorRole is taken
             see: .coalition.core.CoalitionInitiatorRole
     :param num_simulations: The number of simulations to execute
+    :param problem: The problem to simulate, e.g. ztd-3.
+    :param lower_limit: The lower limit of the problem to simulate.
+    :param upper_limit: The upper limit of the problem to simulate.
+    :param store_updates_to_db: If true, all updates of the agents are stored during the simulation.
+    :param sim_name: Name of the simulation, also used as database name.
+    :param population_size: Size of the population to simulate.
     :return: A List of dictionaries, each of which is structured as follows:
         'final_memory': WorkingMemory,
         'duration': float,
@@ -254,8 +259,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
     """
     # problem, algorithm
     results = []
-    possible_range = 1 / num_agents
-    port = 5555
+    algorithm = NSGA2(pop_size=population_size)
 
     if topology_creator is None:
         # if no topology creator is defined, use a small world ring topology
@@ -292,7 +296,9 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
         topology_creator = build_small_world_ring_topology
     for simulation_idx in range(num_simulations):
-        db_file = db_file + '_simulation_idx_' + str(simulation_idx)
+        port = 5555
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
+        db_file = sim_name + '_simulation_idx_' + str(simulation_idx)
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
@@ -300,7 +306,6 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             {}
         )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
-        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
 
         # create agents for negotiation
         for i in range(num_agents):
@@ -488,8 +493,6 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 "overlay": overlay,
             }
         )
-        print('perf', final_memory.solution_candidate.perf)
-        print('hv', final_memory.solution_candidate.hypervolume)
         # store to db
         store_in_db(
             db_file=db_file, sim_name=sim_name, n_agents=num_agents, targets=targets,
@@ -503,8 +506,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedules_all_equal: bool = False,
                             targets: List[Target], num_solution_points: int, pick_func: Callable, mutate_func: Callable,
                             num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
-                            num_simulations: int, store_updates_to_db: bool = False, db_file: str = '',
-                            sim_name: str = '') -> List[Dict[str, Any]]:
+                            num_simulations: int, store_updates_to_db: bool = False, sim_name: str = ''):
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -525,7 +527,6 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
             see: .coalition.core.CoalitionInitiatorRole
     :param num_simulations: The number of simulations to execute
     :param store_updates_to_db: whether the agents should store each update into a database or not
-    :param db_file: Where to store results
     :param sim_name: Name of simulation
     :return: A List of dictionaries, each of which is structured as follows:
         'final_memory': WorkingMemory,
@@ -569,11 +570,11 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
             return neighborhood
 
         topology_creator = build_small_world_ring_topology
-    port = 5555
-    container = await create_container(addr=('127.0.0.2', port), codec=CODEC, copy_internal_messages=False)
 
     for simulation_idx in range(num_simulations):
-        db_file = db_file + '_simulation_idx_' + str(simulation_idx)
+        port = 5555
+        container = await create_container(addr=('127.0.0.2', port), codec=CODEC, copy_internal_messages=False)
+        db_file = sim_name + '_simulation_idx_' + str(simulation_idx) + '.hdf5'
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
@@ -687,8 +688,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                 "overlay": overlay,
             }
         )
-        print('perf', final_memory.solution_candidate.perf)
-        print('hv', final_memory.solution_candidate.hypervolume)
+
         # store to db
         store_in_db(
             db_file=db_file, sim_name=sim_name, n_agents=num_agents, targets=targets,

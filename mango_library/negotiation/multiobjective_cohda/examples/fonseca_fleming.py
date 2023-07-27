@@ -8,7 +8,6 @@ from mango_library.negotiation.multiobjective_cohda.data_classes import Target
 from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
-FILE = 'Fonseca_Fleming.hdf5'
 SIM_NAME = 'Fonseca_Fleming'
 
 NUM_AGENTS = 10
@@ -65,16 +64,16 @@ SINGLE_POINT_SCHEDULES = [np.array([-4 + SCHEDULE_STEP_SIZE * i]) for i in range
 POSSIBLE_SCHEDULES = SINGLE_POINT_SCHEDULES
 
 
-async def simulate_fonseca(name, db_file):
+async def simulate_fonseca(name):
     await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
         possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=True,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
         check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT,
-        db_file=db_file, sim_name=name, store_updates_to_db=True
+        sim_name=name, store_updates_to_db=True
     )
 
 
 if __name__ == '__main__':
-    asyncio.run(simulate_fonseca(SIM_NAME, FILE))
+    asyncio.run(simulate_fonseca(SIM_NAME))
