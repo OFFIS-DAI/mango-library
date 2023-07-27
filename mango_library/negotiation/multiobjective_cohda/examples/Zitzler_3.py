@@ -49,8 +49,9 @@ def target_func_2(cs):
     return g(cs) * h(cs)
 
 
-TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)
-TARGET_2 = Target(target_function=target_func_2, ref_point=1.1)
+# minimize, x between 0 and 1
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 # each agent represents one variable

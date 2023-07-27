@@ -41,8 +41,9 @@ def target_func_2(cs):
     return result_target_2
 
 
-TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)
-TARGET_2 = Target(target_function=target_func_2, ref_point=1.1)
+# x between 0 and 1, minimize function
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 possible_interval = 1 / NUM_AGENTS
