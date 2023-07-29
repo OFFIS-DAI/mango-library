@@ -400,7 +400,7 @@ class WinzentBaseAgent(Agent, ABC):
                 f"Current flex is {self.flex[reply.time_span[0]][1]}")
             logger.info(f"Attempting to fix flex...")
             self.flex[reply.time_span[0]][1] = self.original_flex[reply.time_span[0]][1] - distributed_value
-            if self.flex[reply.time_span[0]][1] <= 0:
+            if self.flex[reply.time_span[0]][1] < reply.value[0]:
                 logger.info(f"{self.aid}: Acknowledgement to {reply.sender} cannot be sent, "
                             f"flex is {self.flex[reply.time_span[0]][1]}.")
                 return False
@@ -525,10 +525,15 @@ class WinzentBaseAgent(Agent, ABC):
                 async with self._lock:
                     self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] + reply.value[0]
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
-                for ack in self._list_of_acknowledgements_sent:
-                    if ack.receiver == reply.receiver:
-                        self._list_of_acknowledgements_sent.remove(ack)
-                        break
+
+                # Create a new list containing the acknowledgements to keep
+                new_ack_list = [ack for ack in self._list_of_acknowledgements_sent if ack.receiver != reply.receiver]
+                if len(self._list_of_acknowledgements_sent) == len(new_ack_list):
+                    logger.error(f"{self.aid}: WARNING! Could not remove acknowledgement from list even though it "
+                                 f"is in ack_sent_list.")
+                # Replace the original list with the new list
+                self._list_of_acknowledgements_sent = new_ack_list
+
                 logger.info(
                     f"{self.aid} gets withdrawal message from {reply.sender} with value "
                     f"{reply.value} "
