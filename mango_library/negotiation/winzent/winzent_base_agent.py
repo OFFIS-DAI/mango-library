@@ -383,9 +383,13 @@ class WinzentBaseAgent(Agent, ABC):
         distributed_value = 0
         for ack in self._list_of_acknowledgements_sent:
             distributed_value += ack.value[0]
+            logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
         if self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]:
             return True
         else:
+            for ack in self._list_of_acknowledgements_sent:
+                distributed_value += ack.value[0]
+                logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
             logger.info(
                 f"{self.aid}: Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
