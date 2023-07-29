@@ -58,7 +58,6 @@ class WinzentBaseAgent(Agent, ABC):
         self._own_request = None  # the agent stores its own request when it starts a negotiation
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
         self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
-        self._unsuccessful_negotiations = []  # negotiations for which no result at all was found
         self._lock = asyncio.Lock()
         # tasks which should be triggered regularly
         self.tasks = []
@@ -76,13 +75,6 @@ class WinzentBaseAgent(Agent, ABC):
         True if a complete solution for a negotiation was found.
         """
         return self._solution_found
-
-    @property
-    def unsuccessful_negotiations(self):
-        """
-        Return negotiations without results. Can be used to restart those.
-        """
-        return self._unsuccessful_negotiations
 
     @property
     def time_to_sleep(self):
@@ -204,8 +196,9 @@ class WinzentBaseAgent(Agent, ABC):
                     else:
                         await self.send_message(withdrawal, receiver=acc_msg.receiver)
                 logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
-                            f"is over.")
-                self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
+                            f" is over.")
+                for acc in self._curr_sent_acceptances:
+                    logger.info(f"{self.aid}: {acc.value[0]} from {acc.receiver} not received.")
                 self._curr_sent_acceptances = []
                 await self.reset()
 
@@ -816,7 +809,6 @@ class WinzentBaseAgent(Agent, ABC):
         # PGASC changed logger.info to logging
         logger.debug(
             f'*** {self._aid} has no solution after timeout. ***')
-        self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
         self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
         self._negotiation_running = False
         self.governor.solver_triggered = False
