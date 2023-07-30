@@ -457,7 +457,6 @@ class WinzentBaseAgent(Agent, ABC):
                 logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
                             f" {self.flex[reply.time_span[0]][1]}."
                             f"Wanted flex by {reply.sender}: {reply.value[0]}")
-
         else:
             logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
         logger.debug(f"{self.aid}: Sending withdrawal to {reply.sender}")
@@ -524,15 +523,18 @@ class WinzentBaseAgent(Agent, ABC):
                 self._adapted_flex_according_to_msgs.remove(reply.answer_to)
 
                 # Create a new list containing the acknowledgements to keep
-                new_ack_list = [ack for ack in self._list_of_acknowledgements_sent if ack.receiver != reply.receiver]
-                if len(self._list_of_acknowledgements_sent) == len(new_ack_list):
+                new_ack_list = [ack for ack in self._list_of_acknowledgements_sent if ack.receiver != reply.sender]
+                if len(self._list_of_acknowledgements_sent) != len(new_ack_list) + 1:
                     logger.error(f"{self.aid}: WARNING! Could not remove acknowledgement from list even though it "
-                                 f"is in ack_sent_list.")
+                                 f"is in ack_sent_list."
+                                 f"List of acks: {self._list_of_acknowledgements_sent}\n"
+                                 f"new List: {new_ack_list}"
+                                 f"Sender: {reply.sender}")
                 # Replace the original list with the new list
                 self._list_of_acknowledgements_sent = new_ack_list
 
                 logger.info(
-                    f"{self.aid} gets withdrawal message from {reply.sender} with value "
+                    f"{self.aid} gets withdrawal message from consumer {reply.sender} with value "
                     f"{reply.value} "
                 )
             else:
@@ -542,11 +544,18 @@ class WinzentBaseAgent(Agent, ABC):
                 )
         elif reply.answer_to in self._curr_sent_acceptances:
             # An agent who was part of the solution withdrew its offer and will be removed from the solution.
+            logger.info(
+                f"{self.aid} gets withdrawal message from generator {reply.sender} with value "
+                f"{reply.value}."
+            )
             if reply.answer_to in self.governor.solution_journal:
                 self.governor.solution_journal.remove_message(reply.answer_to)
                 del self.result[reply.sender]
                 self.result_sum -= reply.value[0]
                 self._curr_sent_acceptances.remove(reply.answer_to)
+                logger.info(
+                    f"{self.aid}: Sucessfully removed offer from {reply.sender}."
+                )
         else:
             logger.debug(
                 f"{self.aid} received Withdrawal from {reply.sender} with answer_to {reply.answer_to} and id "
