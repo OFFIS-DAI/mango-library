@@ -456,7 +456,7 @@ class WinzentBaseAgent(Agent, ABC):
             else:
                 logger.info(f"{self.aid}: Flex is not valid. Current flex for requested time span:"
                             f" {self.flex[reply.time_span[0]][1]}."
-                            f"Wanted flex by other agent: {reply.value[0]}")
+                            f"Wanted flex by {reply.sender}: {reply.value[0]}")
 
         else:
             logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
