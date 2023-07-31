@@ -714,6 +714,7 @@ class WinzentBaseAgent(Agent, ABC):
                     if self.governor.triggered_due_to_timeout:
                         self._negotiation_running = False
                         self.governor.triggered_due_to_timeout = False
+                        print("option 1")
                         await self.no_solution_after_timeout()
                     return
                 continue
@@ -729,6 +730,7 @@ class WinzentBaseAgent(Agent, ABC):
                     self.governor.solver_triggered = False
                     if self.governor.triggered_due_to_timeout:
                         self.governor.triggered_due_to_timeout = False
+                        print("option 2")
                         await self.no_solution_after_timeout()
 
                 else:
@@ -791,6 +793,7 @@ class WinzentBaseAgent(Agent, ABC):
                 # solver was triggered after the timeout and yet there was
                 # still no solution
                 self.governor.triggered_due_to_timeout = False
+                print("option 3")
                 await self.no_solution_after_timeout()
             return
         solution = result[0]
@@ -810,6 +813,7 @@ class WinzentBaseAgent(Agent, ABC):
 
         if self.governor.triggered_due_to_timeout:
             self.governor.triggered_due_to_timeout = False
+            print("option 4")
             await self.no_solution_after_timeout()
 
     async def no_solution_after_timeout(self):
