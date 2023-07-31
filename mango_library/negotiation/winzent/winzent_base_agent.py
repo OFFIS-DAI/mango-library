@@ -170,6 +170,7 @@ class WinzentBaseAgent(Agent, ABC):
                 # solved. The solver is triggered after the timeout to
                 # determine the solution according to the power that
                 # is available.
+                print("timer timed out")
                 self.governor.triggered_due_to_timeout = True
                 await self.solve()
                 self._negotiation_running = False
