@@ -56,10 +56,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 offers = deepcopy(self.offer_list)
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
-                # if self.aid == "agent14":
-                #    print(f"own flex: {self.flex[self.current_time_span][1]} and value: {value}")
-                # for offer in offers:
-                #    print(f"{offer.sender} needs {offer.value[0]}")
                 for offer in offers:
                     if offer.value[0] >= value:
                         value_to_offer = value
@@ -75,13 +71,10 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                                            value=[value_to_offer], ttl=self._current_ttl,
                                            id=str(uuid.uuid4()),
                                            ethics_score=self.ethics_score)
-                    if self.aid == "agent14":
-                        print(f"{self.aid} sends offer to {reply.receiver}")
                     self._current_inquiries_from_agents[reply.id] = reply
                     await self.send_message(reply)
                     if value <= 0:
                         break
-                await asyncio.sleep(self.request_processing_waiting_time)
                 self.first_demand_received = False
             else:
                 return
