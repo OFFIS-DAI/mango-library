@@ -29,6 +29,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         print(f"{self.use_producer_ethics_score} and con: {self.use_consumer_ethics_score}")
         self.request_processing_waiting_time = request_processing_waiting_time
         self.reply_processing_waiting_time = reply_processing_waiting_time
+        print(f"{self.request_processing_waiting_time} and rep: {self.reply_processing_waiting_time}")
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
