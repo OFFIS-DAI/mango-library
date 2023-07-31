@@ -17,7 +17,6 @@ class WinzentBaseAgent(Agent, ABC):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0):
         super().__init__(container)
 
-        # PGASC: if true stores the message path in the message
         self.send_message_paths = send_message_paths
         self.negotiation_connections = {}  # message paths of all agents that have established a connection in
         # the negotiation
