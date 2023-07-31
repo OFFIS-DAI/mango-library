@@ -18,7 +18,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                  use_producer_ethics_score=True,
                  use_consumer_ethics_score=True):
         super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
-
+        print(f"{self.aid} initialized")
         self.current_time_span = 0
         # store flexibility as interval with maximum and minimum value per time
         self.offer_list = []
