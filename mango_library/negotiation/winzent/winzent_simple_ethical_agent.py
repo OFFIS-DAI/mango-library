@@ -18,7 +18,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                  use_producer_ethics_score=True,
                  use_consumer_ethics_score=True):
         super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
-        print(time_to_sleep)
         self.current_time_span = 0
         # store flexibility as interval with maximum and minimum value per time
         self.offer_list = []
@@ -26,10 +25,8 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.first_demand_received = False
         self.use_producer_ethics_score = use_producer_ethics_score
         self.use_consumer_ethics_score = use_consumer_ethics_score
-        print(f"{self.use_producer_ethics_score} and con: {self.use_consumer_ethics_score}")
         self.request_processing_waiting_time = request_processing_waiting_time
         self.reply_processing_waiting_time = reply_processing_waiting_time
-        print(f"{type(self.request_processing_waiting_time)} and rep: {self.reply_processing_waiting_time}")
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
             xboole.XbooleEthicalPowerBalanceSolverStrategy()
@@ -54,7 +51,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             self.offer_list.append(message)
             if not self.first_demand_received:
                 self.first_demand_received = True
-                print("first demand received")
                 await asyncio.sleep(self.request_processing_waiting_time)
                 offers = deepcopy(self.offer_list)
                 self.offer_list.clear()
