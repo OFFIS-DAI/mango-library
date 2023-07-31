@@ -820,7 +820,7 @@ class WinzentBaseAgent(Agent, ABC):
         if self._solution_found:
             return
         # PGASC changed logger.info to logging
-        logger.debug(
+        logger.info(
             f'*** {self._aid} has no solution after timeout. ***')
         self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
         self._negotiation_running = False
