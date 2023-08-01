@@ -173,7 +173,6 @@ class WinzentBaseAgent(Agent, ABC):
                 # solved. The solver is triggered after the timeout to
                 # determine the solution according to the power that
                 # is available.
-                print("timer timed out")
                 self.governor.triggered_due_to_timeout = True
                 await self.solve()
                 self._negotiation_running = False
@@ -336,7 +335,6 @@ class WinzentBaseAgent(Agent, ABC):
             logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path_copy}")
             await self.send_message(reply, msg_path=message_path_copy)
         else:
-            print("sending answer to agent")
             await self.send_message(reply)
         return
 
@@ -376,8 +374,6 @@ class WinzentBaseAgent(Agent, ABC):
                 msg_type = xboole.MessageType.OfferNotification
             await self.answer_external_request(message, message_path, value, msg_type)
         else:
-            # if self.aid == "agent14":
-            #    print(f"current flex is {self.flex}")
             await self.send_message(message, msg_path=message_path, forwarding=True)
 
     def get_ethics_score(self, message):
@@ -387,13 +383,13 @@ class WinzentBaseAgent(Agent, ABC):
         distributed_value = 0
         for ack in self._list_of_acknowledgements_sent:
             distributed_value += ack.value[0]
-            logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
+            logger.debug(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
         if self.original_flex[reply.time_span[0]][1] - distributed_value == self.flex[reply.time_span[0]][1]:
             return True
         else:
             for ack in self._list_of_acknowledgements_sent:
                 distributed_value += ack.value[0]
-                logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
+                logger.debug(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
             logger.info(
                 f"{self.aid}: Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
@@ -634,7 +630,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
-        logger.info("the result for " + self.aid + " is " + str(self.result))
+        logger.debug("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -679,7 +675,7 @@ class WinzentBaseAgent(Agent, ABC):
 
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
+            # print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
@@ -718,7 +714,6 @@ class WinzentBaseAgent(Agent, ABC):
                     if self.governor.triggered_due_to_timeout:
                         self._negotiation_running = False
                         self.governor.triggered_due_to_timeout = False
-                        print("option 1")
                         await self.no_solution_after_timeout()
                     return
                 continue
@@ -734,7 +729,6 @@ class WinzentBaseAgent(Agent, ABC):
                     self.governor.solver_triggered = False
                     if self.governor.triggered_due_to_timeout:
                         self.governor.triggered_due_to_timeout = False
-                        print("option 2")
                         await self.no_solution_after_timeout()
 
                 else:
@@ -797,7 +791,6 @@ class WinzentBaseAgent(Agent, ABC):
                 # solver was triggered after the timeout and yet there was
                 # still no solution
                 self.governor.triggered_due_to_timeout = False
-                print("option 3")
                 await self.no_solution_after_timeout()
             return
         solution = result[0]
@@ -817,7 +810,6 @@ class WinzentBaseAgent(Agent, ABC):
 
         if self.governor.triggered_due_to_timeout:
             self.governor.triggered_due_to_timeout = False
-            print("option 4")
             await self.no_solution_after_timeout()
 
     async def no_solution_after_timeout(self):

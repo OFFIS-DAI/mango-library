@@ -74,7 +74,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             else:
                 return
         else:
-            print("using the answer external request from base agent")
             try:
                 await super().answer_external_request(message, message_path, value, msg_type)
             except Exception as e:
@@ -101,7 +100,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     await self.solve()
                     self.first_offer_received = False
         else:
-            print("using the handkle demand from base agent")
             try:
                 await super().handle_demand_or_offer_reply(requirement, message_path)
             except Exception as e:
