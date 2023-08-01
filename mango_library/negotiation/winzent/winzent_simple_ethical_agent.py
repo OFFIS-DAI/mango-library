@@ -26,7 +26,6 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.use_producer_ethics_score = use_producer_ethics_score
         self.use_consumer_ethics_score = use_consumer_ethics_score
         self.request_processing_waiting_time = request_processing_waiting_time
-        print(f"{self.use_consumer_ethics_score} is con eth")
         self.reply_processing_waiting_time = reply_processing_waiting_time
         # override base agent power balance strategy
         self.governor.power_balance_strategy = \
@@ -79,6 +78,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
             else:
                 return
         else:
+            print("using the answer external request from base agent")
             await super().answer_external_request(self, message, message_path)
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
@@ -102,6 +102,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     await self.solve()
                     self.first_offer_received = False
         else:
+            print("using the handkle demand from base agent")
             await super().handle_demand_or_offer_reply(requirement, message_path)
 
     async def reset(self):
