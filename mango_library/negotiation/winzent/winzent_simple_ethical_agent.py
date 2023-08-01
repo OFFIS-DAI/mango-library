@@ -76,7 +76,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         else:
             print("using the answer external request from base agent")
             try:
-                await super().answer_external_request(message, message_path, msg_type)
+                await super().answer_external_request(message, message_path, value, msg_type)
             except Exception as e:
                 print(e)
 
