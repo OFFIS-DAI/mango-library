@@ -310,7 +310,7 @@ class WinzentBaseAgent(Agent, ABC):
             msg_type = xboole.MessageType.DemandNotification
         elif message.msg_type == xboole.MessageType.DemandNotification:
             msg_type = xboole.MessageType.OfferNotification
-
+        print("inside answer external")
         reply = WinzentMessage(
             msg_type=msg_type,
             sender=self._aid,
@@ -324,7 +324,7 @@ class WinzentBaseAgent(Agent, ABC):
         )
         self.governor.message_journal.add(reply)
         self._current_inquiries_from_agents[reply.id] = reply
-
+        print(self.send_message_paths)
         if self.send_message_paths:
             message_path_copy = message_path.copy()
             message_path_copy.append(self.aid)
