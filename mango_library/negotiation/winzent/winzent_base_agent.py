@@ -312,7 +312,7 @@ class WinzentBaseAgent(Agent, ABC):
             msg_type=msg_type,
             sender=self._aid,
             is_answer=True,
-            receiver="",
+            receiver=message.sender,
             time_span=message.time_span,
             value=[value],
             ttl=self._current_ttl,
