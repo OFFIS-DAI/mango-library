@@ -306,12 +306,13 @@ class WinzentBaseAgent(Agent, ABC):
     async def answer_external_request(self, message, message_path, value, msg_type=xboole.MessageType.Null):
         print("inside answer external")
         # send message reply
+        current_msg_type = msg_type
         if message.msg_type == xboole.MessageType.OfferNotification:
-            msg_type = xboole.MessageType.DemandNotification
+            current_msg_type = xboole.MessageType.DemandNotification
         elif message.msg_type == xboole.MessageType.DemandNotification:
-            msg_type = xboole.MessageType.OfferNotification
+            current_msg_type = xboole.MessageType.OfferNotification
         reply = WinzentMessage(
-            msg_type=msg_type,
+            msg_type=current_msg_type,
             sender=self._aid,
             is_answer=True,
             receiver=message.sender,
