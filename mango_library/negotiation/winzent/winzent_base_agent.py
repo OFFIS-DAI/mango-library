@@ -14,7 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 class WinzentBaseAgent(Agent, ABC):
-    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0):
+    def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0,
+                 elem_type=None, index=-1):
         super().__init__(container)
 
         self.send_message_paths = send_message_paths
@@ -38,6 +39,9 @@ class WinzentBaseAgent(Agent, ABC):
 
         # in final, the result for a disequilibrium is stored
         self.final = {}
+
+        self.elem_type = elem_type
+        self.index = index
 
         # PGASC in result, the final negotiated (accepted and acknowledged) result is saved
         self.result = {}

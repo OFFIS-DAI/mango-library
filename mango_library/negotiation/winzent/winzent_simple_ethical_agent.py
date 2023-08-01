@@ -16,8 +16,11 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                  request_processing_waiting_time=0.4,
                  reply_processing_waiting_time=0.4,
                  use_producer_ethics_score=True,
-                 use_consumer_ethics_score=True):
-        super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score)
+                 use_consumer_ethics_score=True,
+                 elem_type=None,
+                 index=-1
+                 ):
+        super().__init__(container, ttl, time_to_sleep, send_message_paths, ethics_score, elem_type, index)
         self.current_time_span = 0
         # store flexibility as interval with maximum and minimum value per time
         self.offer_list = []
