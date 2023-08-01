@@ -110,7 +110,10 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     self.first_offer_received = False
         else:
             print("using the handkle demand from base agent")
-            await super().handle_demand_or_offer_reply(requirement, message_path)
+            try:
+                await super().handle_demand_or_offer_reply(requirement, message_path)
+            except Exception as e:
+                print(e)
 
     async def reset(self):
         """
