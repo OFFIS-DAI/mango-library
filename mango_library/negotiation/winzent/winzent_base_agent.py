@@ -303,7 +303,7 @@ class WinzentBaseAgent(Agent, ABC):
             except asyncio.CancelledError:
                 pass
 
-    async def answer_external_request(self, message, message_path, value):
+    async def answer_external_request(self, message, message_path, value, msg_type=xboole.MessageType.Null):
         print("inside answer external")
         # send message reply
         if message.msg_type == xboole.MessageType.OfferNotification:

@@ -80,8 +80,8 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         else:
             print("using the answer external request from base agent")
             try:
-                setattr(self, 'msg_type', xboole.MessageType.Null)
-                await super().answer_external_request(self, message, message_path)
+                msg_type = xboole.MessageType.Null
+                await super().answer_external_request(self, message, message_path, msg_type)
             except Exception as e:
                 print(e)
 
