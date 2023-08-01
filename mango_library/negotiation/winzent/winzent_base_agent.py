@@ -307,16 +307,9 @@ class WinzentBaseAgent(Agent, ABC):
             except asyncio.CancelledError:
                 pass
 
-    async def answer_external_request(self, message, message_path, value, msg_type=xboole.MessageType.Null):
-        print("inside answer external")
-        # send message reply
-        current_msg_type = msg_type
-        if message.msg_type == xboole.MessageType.OfferNotification:
-            current_msg_type = xboole.MessageType.DemandNotification
-        elif message.msg_type == xboole.MessageType.DemandNotification:
-            current_msg_type = xboole.MessageType.OfferNotification
+    async def answer_external_request(self, message, message_path, value, msg_type):
         reply = WinzentMessage(
-            msg_type=current_msg_type,
+            msg_type=msg_type,
             sender=self._aid,
             is_answer=True,
             receiver=message.sender,
@@ -328,7 +321,6 @@ class WinzentBaseAgent(Agent, ABC):
         )
         self.governor.message_journal.add(reply)
         self._current_inquiries_from_agents[reply.id] = reply
-        print(self.send_message_paths)
         if self.send_message_paths:
             message_path_copy = message_path.copy()
             message_path_copy.append(self.aid)
@@ -375,7 +367,14 @@ class WinzentBaseAgent(Agent, ABC):
             print(f" ERROR! {message}")
             value = 0
         if value != 0:
-            await self.answer_external_request(message, message_path, value)
+            msg_type = xboole.MessageType.Null
+            # send message reply
+            if message.msg_type == xboole.MessageType.OfferNotification:
+                msg_type = xboole.MessageType.DemandNotification
+            elif message.msg_type == xboole.MessageType. \
+                    DemandNotification:
+                msg_type = xboole.MessageType.OfferNotification
+            await self.answer_external_request(message, message_path, value, msg_type)
         else:
             # if self.aid == "agent14":
             #    print(f"current flex is {self.flex}")

@@ -40,16 +40,9 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
         self.current_time_span = t_start
         self.first_demand_received = False
 
-    async def answer_external_request(self, message, message_path, value):
+    async def answer_external_request(self, message, message_path, value, msg_type):
         if self.use_consumer_ethics_score:
             await self.send_message(message, msg_path=message_path, forwarding=True)
-            msg_type = xboole.MessageType.Null
-            # send message reply
-            if message.msg_type == xboole.MessageType.OfferNotification:
-                msg_type = xboole.MessageType.DemandNotification
-            elif message.msg_type == xboole.MessageType. \
-                    DemandNotification:
-                msg_type = xboole.MessageType.OfferNotification
             self.governor.message_journal.add(message)
             self.offer_list.append(message)
             if not self.first_demand_received:
