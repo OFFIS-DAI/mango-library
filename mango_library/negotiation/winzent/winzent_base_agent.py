@@ -340,6 +340,7 @@ class WinzentBaseAgent(Agent, ABC):
             logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path_copy}")
             await self.send_message(reply, msg_path=message_path_copy)
         else:
+            print("sending answer to agent")
             await self.send_message(reply)
         return
 
