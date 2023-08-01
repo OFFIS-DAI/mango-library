@@ -79,7 +79,10 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 return
         else:
             print("using the answer external request from base agent")
-            await super().answer_external_request(self, message, message_path)
+            try:
+                await super().answer_external_request(self, message, message_path)
+            except Exception as e:
+                print(e)
 
     async def handle_demand_or_offer_reply(self, requirement, message_path):
         if self.use_producer_ethics_score:
@@ -96,7 +99,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                     self.governor.triggered_due_to_timeout = False
                 if not self.first_offer_received:
                     self.first_offer_received = True
-                    await asyncio.sleep(self.reply_processing_waiting_time )
+                    await asyncio.sleep(self.reply_processing_waiting_time)
                     # print( f"{self.aid}: slept enough. power ledger len is {len(
                     # self.governor.power_balance._ledger[self.current_time_span])}")
                     await self.solve()
