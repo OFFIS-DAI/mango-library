@@ -709,18 +709,16 @@ class MultiObjectiveCOHDARole(Role):
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
-                    try:
-                        for neighbor in coalition_assignment.neighbors:
-                            self.context.schedule_instant_task(self.context.send_acl_message(
-                                content=MoCohdaNegotiationMessage(
-                                    negotiation_id=negotiation_id,
-                                    coalition_id=coalition_assignment.coalition_id,
-                                    working_memory=wm_to_send,
-                                ),
-                                receiver_addr=neighbor[1], receiver_id=neighbor[2],
-                                acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}))
-                    except Exception as e:
-                        print()
+
+                    for neighbor in coalition_assignment.neighbors:
+                        self.context.schedule_instant_task(self.context.send_acl_message(
+                            content=MoCohdaNegotiationMessage(
+                                negotiation_id=negotiation_id,
+                                coalition_id=coalition_assignment.coalition_id,
+                                working_memory=wm_to_send,
+                            ),
+                            receiver_addr=neighbor[1], receiver_id=neighbor[2],
+                            acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}))
 
             else:
                 # set the negotiation as inactive as no message has arrived
@@ -772,7 +770,6 @@ class MultiObjectiveCOHDARole(Role):
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """ Is called once a StopNegotiationMessage arrived
         """
-        print(self.context.aid, 'handle neg msg')
         if content.negotiation_id in self._cohda_tasks.keys():
             # get negotiation
             cohda_negotiation_model: MoCohdaNegotiationModel = self.context.get_or_create_model(MoCohdaNegotiationModel)

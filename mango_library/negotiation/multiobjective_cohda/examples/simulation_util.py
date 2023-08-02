@@ -226,7 +226,8 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                                   pick_func: Callable, mutate_func: Callable,
                                   num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
                                   num_simulations: int, problem='zdt3', lower_limit=0, upper_limit=1,
-                                  store_updates_to_db: bool = False, sim_name: str = '', population_size: int = 1):
+                                  store_updates_to_db: bool = False, sim_name: str = '', population_size: int = 1,
+                                  control_all_variables=True):
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -251,6 +252,8 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
     :param store_updates_to_db: If true, all updates of the agents are stored during the simulation.
     :param sim_name: Name of the simulation, also used as database name.
     :param population_size: Size of the population to simulate.
+    :param control_all_variables: If true, each agent is able to control all variables of a given level. If false,
+    agent can only control one variable.
     :return: A List of dictionaries, each of which is structured as follows:
         'final_memory': WorkingMemory,
         'duration': float,
@@ -311,7 +314,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
         for i in range(num_agents):
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
-            def provide_schedules(solution_point=None, agent_id=None):
+            def provide_schedules(solution_point=None, agent_id=None, candidate=None):
                 diff_to_lower_limit = 0
                 diff_to_upper_limit = 0
 
@@ -321,8 +324,12 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     p = problem
                 else:
                     raise ValueError("Invalid type for problem given.")
+
                 if solution_point is None:
-                    example_sum = [0. for _ in range(len(p.xl))]
+                    if control_all_variables:
+                        example_sum = [0. for _ in range(len(p.xl))]
+                    else:
+                        example_sum = [0]
                 else:
                     # determine the sum of the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
@@ -334,7 +341,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
                 assert [lower_limit <= idx <= upper_limit for idx in example_sum]
 
-                for idx in range(len(p.xl)):
+                for idx in range(len(example_sum)):
                     # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
                     # without the partition of the current agent. Therefore, the solution without the agent is
                     # considered. The new partition of the agent will be added after the optimisation.
@@ -373,29 +380,39 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 result: Result = minimize(p, algorithm)
                 solution = result.X.tolist()
 
-                # extract the actual partition of the current agent by determining what is contained in the solution
-                # additionally to the previously calculated sum of the current cluster schedule
-                for first_idx, sol_point in enumerate(solution):
-                    for idx, single_val in enumerate(sol_point):
-                        # single_val = solution with participation of agent
-                        # example_sum = solution without participation of agent
-                        # difference = participation of agent
-                        if abs(example_sum[idx]) > abs(single_val):
-                            diff = example_sum[idx] - single_val
-                        else:
-                            diff = single_val - example_sum[idx]
+                if control_all_variables:
+                    # extract the actual partition of the current agent by determining what is contained in the solution
+                    # additionally to the previously calculated sum of the current cluster schedule
+                    for first_idx, sol_point in enumerate(solution):
+                        for idx, single_val in enumerate(sol_point):
+                            # single_val = solution with participation of agent
+                            # example_sum = solution without participation of agent
+                            # difference = participation of agent
+                            if abs(example_sum[idx]) > abs(single_val):
+                                diff = example_sum[idx] - single_val
+                            else:
+                                diff = single_val - example_sum[idx]
 
-                        assert lower_limit <= single_val <= upper_limit
-                        correct_value = float(diff)
+                            assert lower_limit <= single_val <= upper_limit
+                            correct_value = float(diff)
 
-                        if diff_to_lower_limit != 0:
-                            correct_value += diff_to_lower_limit
-                        if diff_to_upper_limit != 0:
-                            correct_value += diff_to_upper_limit
+                            if diff_to_lower_limit != 0:
+                                correct_value += diff_to_lower_limit
+                            if diff_to_upper_limit != 0:
+                                correct_value += diff_to_upper_limit
 
-                        solution[first_idx][idx] = correct_value
+                            solution[first_idx][idx] = correct_value
 
-                solution = [np.asarray(sol) for sol in solution]
+                    solution = [np.asarray(sol) for sol in solution]
+                else:
+                    # if agent only controls one variable, only choose this position
+                    if agent_id is None:
+                        agent_id = int(candidate.agent_id) - 1
+                    else:
+                        agent_id = int(agent_id) - 1
+                    for idx in range(len(solution)):
+                        agents_sol = solution[idx][agent_id]
+                        solution[idx] = [0 if i != agent_id else agents_sol for i in range(len(solution[idx]))]
                 return solution
 
             a.add_role(MultiObjectiveCOHDARole(
@@ -418,8 +435,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
-
-            schedules_per_agent[a.aid] = provide_schedules()
+            schedules_per_agent[a.aid] = provide_schedules(agent_id=i+1)
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)
