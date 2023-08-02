@@ -1,13 +1,14 @@
 import asyncio
 import math
-import time
-
-import numpy as np
+import random
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
+from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
+# In this implementation of the problem Zitzler 3, every agent can control each variable for
+# a certain level. For the version in which each agent controls one variable (thus 30 agents are taken into account),
+# have a look at: Zitzler_3_version_2.py.
 SIM_NAME = "Zitzler_3"
 
 NUM_AGENTS = 5
@@ -54,19 +55,30 @@ TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
 TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
-# each agent represents one variable
-SCHEDULE_STEP_SIZE = 1 / (NUM_SCHEDULES - 1)
-SINGLE_POINT_SCHEDULES = [SCHEDULE_STEP_SIZE * i for i in range(NUM_SCHEDULES)]
+# each agent can control all variables
+# determine possible interval per agent,
+possible_interval = 1 / NUM_AGENTS
+SCHEDULE_LENGTH = 30
+# create schedules with this interval, each schedule has 30 entries, different variants per variable
 POSSIBLE_SCHEDULES = []
-for i in range(NUM_AGENTS):
-    if i == 0:
-        POSSIBLE_SCHEDULES.append([np.array([p, 0]) for p in SINGLE_POINT_SCHEDULES])
-    else:
-        POSSIBLE_SCHEDULES.append([np.array([0, p]) for p in SINGLE_POINT_SCHEDULES])
+schedules_per_agent = []
 
+for _ in range(NUM_AGENTS):
+    # totally random
+    for _ in range(int(NUM_SCHEDULES / 2)):
+        schedules_per_agent.append([random.uniform(0, possible_interval) for _ in range(SCHEDULE_LENGTH)])
 
-# each agent can control all variables: determine possible interval per agent, create schedules with this interval
-# TODO
+    # every interval for each entry
+    possible_range = possible_interval / int(NUM_SCHEDULES / 2)
+    current_range = 0
+    for _ in range(int(NUM_SCHEDULES / 2)):
+        schedules_per_agent.append([current_range for _ in range(SCHEDULE_LENGTH)])
+        current_range += possible_range
+        if current_range > possible_interval:
+            break
+    POSSIBLE_SCHEDULES.append(schedules_per_agent)
+    schedules_per_agent = []
+
 
 async def simulate_zitzler_3(name):
     await simulate_mo_cohda(
