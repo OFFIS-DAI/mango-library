@@ -86,6 +86,7 @@ async def create_six_base_agents(agent_tts=5):
     agent_c.add_neighbor(aid=agent_e.aid, addr=addr)
 
     agent_f.add_neighbor(aid=agent_a.aid, addr=addr)
+    agent_f.add_neighbor(aid=agent_b.aid, addr=addr)
     agent_a.add_neighbor(aid=agent_f.aid, addr=addr)
 
     #agent_f.add_neighbor(aid=agent_b.aid, addr=addr)

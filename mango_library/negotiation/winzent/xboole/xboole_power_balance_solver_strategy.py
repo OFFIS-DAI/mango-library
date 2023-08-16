@@ -77,6 +77,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
     def calculate_partitions(self, power_balance):
         values = []
         for i in power_balance:
+            # make the forecast of the initial requirement an integer
             if not isinstance(i[1].forecast.second, int):
                 i[1].forecast.second = i[1].forecast.second[0]
             i[1].forecast.second = abs(i[1].forecast.second)
@@ -86,6 +87,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             else:
                 if abs(values[-1]) > abs(i[1].forecast.second):
                     if abs(values[0]) > abs(i[1].forecast.second):
+                        # wieso steht hier zero?
                         values.insert(0, i[1].forecast.second)
                     else:
                         for j in range(len(values)):
@@ -113,11 +115,11 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         result.solved(False)
         if len(power_balance) == 0:
             return None
-        # 2. find out, which requirement initiated this calculation
+        # 1. find out, which requirement initiated this calculation
         initial_requirement = self.find_initial_requirement(power_balance,
                                                             initiator)
-
-        # 1. Calculate gcds for t and p values
+        print(f"initial requirement: {initial_requirement}")
+        # 2. Calculate gcds for t and p values
         values = self.calculate_partitions(power_balance)
 
         # 3. create TVLs for all offers

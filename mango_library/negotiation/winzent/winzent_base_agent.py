@@ -214,7 +214,7 @@ class WinzentBaseAgent(Agent, ABC):
         requirement.
         """
         message = requirement.message
-        value = self.get_flexibility_for_interval(t_start=message.time_span[0], msg_type=message.msg_type)
+        value = 0
 
         if abs(message.value[0]) - abs(value) <= 0:
             logger.debug(
@@ -238,10 +238,12 @@ class WinzentBaseAgent(Agent, ABC):
         logger.debug(
             f"handle_internal_request: {self.aid} own forecast not sufficient, needs help"
         )
-        if message.msg_type == xboole.MessageType.DemandNotification:
-            self.flex[message.time_span[0]][0] = 0
-        else:
-            self.flex[message.time_span[0]][1] = 0
+        #TODO: No own flex possible
+
+        # if message.msg_type == xboole.MessageType.DemandNotification:
+        #     self.flex[message.time_span[0]][0] = 0
+        # else:
+        #     self.flex[message.time_span[0]][1] = 0
 
         # In this case, there is still a value to negotiate about. Therefore,
         # add the message regarding the request to the own message journal
@@ -276,23 +278,55 @@ class WinzentBaseAgent(Agent, ABC):
         logger.debug(f"{self.aid} sends negotiation start notification")
         await self.send_message(neg_msg)
 
-    def get_flexibility_for_interval(self, t_start, msg_type=6):
+    def get_flexibility_for_interval(self, t_start, t_end, msg_type=6):
         """
         Returns the flexibility for the given time interval according
         to the msg type.
         """
-        if t_start in self.flex.keys():
-            flexibility = self.flex[t_start]
-            if msg_type == xboole.MessageType.OfferNotification:
-                # in this case, the upper part of the flexibility interval
-                # is considered
-                return flexibility[1]
-            elif msg_type == xboole.MessageType.DemandNotification:
-                # in this case, the lower part of the flexibility interval
-                # is considered
-                return flexibility[0]
-        else:
-            return 0
+        lower_key = None
+        upper_key = None
+
+        for key in self.flex.keys():
+            if key <= t_start:
+                lower_key = key
+            if key >= t_end:
+                upper_key = t_end
+                break
+        if lower_key is None:
+            for key in self.flex.keys():
+                if t_start <= key <= t_end:
+                    lower_key = key
+                    break
+        if upper_key is None:
+            upper_key = t_end
+        needed_flex = {}
+        if lower_key is not None and upper_key is not None:
+            previous_key = 0
+            i = 0
+            for key in self.flex.keys():
+                if lower_key <= key <= upper_key:
+                    if i == 0:
+                        previous_key = key
+                        i += 1
+                        # needed_flex[t_start] = self.flex[key][1]
+                    else:
+                        needed_flex[(previous_key, key)] = self.flex[previous_key][1]
+                        previous_key = key
+            needed_flex[(previous_key, t_end)] = self.flex[previous_key][1]
+        return needed_flex
+
+        # if t_start in self.flex.keys():
+        #     flexibility = self.flex[t_start]
+        #     if msg_type == xboole.MessageType.OfferNotification:
+        #         # in this case, the upper part of the flexibility interval
+        #         # is considered
+        #         return flexibility[1]
+        #     elif msg_type == xboole.MessageType.DemandNotification:
+        #         # in this case, the lower part of the flexibility interval
+        #         # is considered
+        #         return flexibility[0]
+        # else:
+        #     return 0
 
     async def stop_agent(self):
         """
@@ -306,13 +340,13 @@ class WinzentBaseAgent(Agent, ABC):
             except asyncio.CancelledError:
                 pass
 
-    async def answer_external_request(self, message, message_path, value, msg_type):
+    async def answer_external_request(self, receiver, message_path, value, msg_type, time_span):
         reply = WinzentMessage(
             msg_type=msg_type,
             sender=self._aid,
             is_answer=True,
-            receiver=message.sender,
-            time_span=message.time_span,
+            receiver=receiver,
+            time_span=time_span,
             value=[value],
             ttl=self._current_ttl,
             id=str(uuid.uuid4()),
@@ -359,12 +393,14 @@ class WinzentBaseAgent(Agent, ABC):
         try:
             value = self.get_flexibility_for_interval(
                 t_start=message.time_span[0],
+                t_end=message.time_span[1],
                 msg_type=message.msg_type
             )
-        except:
-            print(f" ERROR! {message}")
-            value = 0
-        if value != 0:
+            print(value)
+        except Exception as e:
+            print(f" ERROR! {e}")
+            value = {}
+        if len(value) != 0:
             msg_type = xboole.MessageType.Null
             # send message reply
             if message.msg_type == xboole.MessageType.OfferNotification:
@@ -372,7 +408,12 @@ class WinzentBaseAgent(Agent, ABC):
             elif message.msg_type == xboole.MessageType. \
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
-            await self.answer_external_request(message, message_path, value, msg_type)
+            for time_span in value:
+                await self.answer_external_request(message.sender,
+                                                   message_path,
+                                                   value[time_span],
+                                                   msg_type,
+                                                   list(time_span))
         else:
             await self.send_message(message, msg_path=message_path, forwarding=True)
 
@@ -409,6 +450,7 @@ class WinzentBaseAgent(Agent, ABC):
         Checks whether the requested flexibility value in reply is valid (less than or equal to the stored
         flexibility value for the given interval).
         """
+        print(f"reply time span {reply.time_span}")
         valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0]) and await self.check_flex(reply)
         if valid:
             self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
@@ -437,9 +479,10 @@ class WinzentBaseAgent(Agent, ABC):
         # First, check whether the AcceptanceNotification is still valid
         if self.acceptance_valid(reply):
             async with self._lock:
-                flex_valid = await self.flexibility_valid(reply)
+                # flex_valid = await self.flexibility_valid(reply)
+                flex_valid = True
             # after checking for the validity of the reply, delete it to make duplicates invalid
-            del self._current_inquiries_from_agents[reply.answer_to]
+            # del self._current_inquiries_from_agents[reply.answer_to]
             if flex_valid:
                 # Send an AcceptanceAcknowledgementNotification for the acceptance
                 answer = WinzentMessage(
@@ -459,6 +502,7 @@ class WinzentBaseAgent(Agent, ABC):
                             f"Wanted flex by {reply.sender}: {reply.value[0]}")
         else:
             logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
+            print(f"{self.aid}: Acceptance from {reply.sender} invalid.")
         logger.debug(f"{self.aid}: Sending withdrawal to {reply.sender}")
         withdrawal = WinzentMessage(time_span=self._own_request.time_span,
                                     is_answer=True, answer_to=reply.id,
@@ -631,6 +675,7 @@ class WinzentBaseAgent(Agent, ABC):
         After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
         logger.debug("the result for " + self.aid + " is " + str(self.result))
+        print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -647,13 +692,14 @@ class WinzentBaseAgent(Agent, ABC):
         Returns whether the message is still valid by checking whether it is
         in the current inquiries the agent received from others
         """
-        return msg.answer_to in self._current_inquiries_from_agents.keys()
+        return True
+        # return msg.answer_to in self._current_inquiries_from_agents.keys()
 
     async def answer_requirements(self, solution, gcd, initial_req):
         """
         Method to send out AcceptanceNotifications for the agents being
         part of the solution.
-        The solution variable includes all the agents contributing to the solution plus their position in
+        The solution parameter includes all the agents contributing to the solution plus their position in
         the gcd array (name and position are separated by a ":").
         The gcd includes the values that the agents in the solution variable are able to contribute.
         """
@@ -661,24 +707,28 @@ class WinzentBaseAgent(Agent, ABC):
         answer_objects = [solution[j].split(':', 1)[0] for j in range(len(solution))]
         positive = False if initial_req.message.msg_type == xboole.MessageType.DemandNotification else True
         sol = DictList()
+
+        # The solution is getting simplified.
         for j in range(len(answer_objects)):
             sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
-
         self.final = {}
         afforded_value = 0
+
+        #
+        i = 0
+        # the "real" solution is created here. Messages are summed up until the initial value is
+        # reached.
         for k, v in sol.values.copy().items():
             diff = min(abs(initial_value) - abs(afforded_value), abs(v))
-            self.final[self.governor.message_journal.get_message_for_id(k).sender] = diff
+            # self.final[self.governor.message_journal.get_message_for_id(k).sender] = diff
+            self.final[i] = diff
             afforded_value += diff
+            i += 1
 
         act_value = afforded_value if positive else -afforded_value
 
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            # print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
-            # problem couldn't be solved, but the timer is still running:
-            # we didn't receive the flexibility from every
-            # agent
             logger.debug(
                 f'*** {self._aid} has not enough flexibility. Timeout? '
                 f'{self.governor.triggered_due_to_timeout} ***')
@@ -697,7 +747,7 @@ class WinzentBaseAgent(Agent, ABC):
                     return
         i = 0
         zero_indeces = []
-
+        print(self.final)
         for k, v in self.final.items():
             value = v
             if not positive:
@@ -783,6 +833,7 @@ class WinzentBaseAgent(Agent, ABC):
         if self.governor.solver_triggered or self._solution_found:
             return
         self.governor.solver_triggered = True
+        await asyncio.sleep(0.5)
         logger.debug(f'\n*** {self._aid} starts solver now. ***')
         result = self.governor.try_balance()
         if result is None:
@@ -803,7 +854,6 @@ class WinzentBaseAgent(Agent, ABC):
                     answers.append(k)
             gcd_p = result[1]
             if len(answers) > 0:
-                # PGASC changed logger.info to logging
                 logger.debug(f'\n*** {self._aid} found solution. ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
