@@ -43,7 +43,7 @@ class WinzentBaseAgent(Agent, ABC):
         self.elem_type = elem_type
         self.index = index
 
-        # PGASC in result, the final negotiated (accepted and acknowledged) result is saved
+        # in result, the final negotiated (accepted and acknowledged) result is saved
         self.result = {}
         self.result_sum = 0
         # store other agents as neighbors in a list
@@ -307,17 +307,21 @@ class WinzentBaseAgent(Agent, ABC):
                 pass
 
     async def answer_external_request(self, message, message_path, value, msg_type):
-        reply = WinzentMessage(
-            msg_type=msg_type,
-            sender=self._aid,
-            is_answer=True,
-            receiver=message.sender,
-            time_span=message.time_span,
-            value=[value],
-            ttl=self._current_ttl,
-            id=str(uuid.uuid4()),
-            ethics_score=self.ethics_score
-        )
+        print("hi")
+        try:
+            reply = WinzentMessage(
+                msg_type=msg_type,
+                sender=self._aid,
+                is_answer=True,
+                receiver=message.sender,
+                time_span=message.time_span,
+                value=[value],
+                ttl=self._current_ttl,
+                id=str(uuid.uuid4()),
+                ethics_score=self.ethics_score
+            )
+        except Exception as e:
+            print(e)
         self.governor.message_journal.add(reply)
         self._current_inquiries_from_agents[reply.id] = reply
         if self.send_message_paths:
@@ -482,26 +486,22 @@ class WinzentBaseAgent(Agent, ABC):
         # Remove the Acknowledgement from the solution journal
         self.governor.solution_journal.remove_message(reply.answer_to)
         if self.acknowledgement_valid(reply):
-            if not self.solution_overshoots_requirement(reply):
-                self.save_accepted_values(reply)
-            else:
-                logger.info(f"{self._aid} has thrown out reply {reply.value}")
-                withdrawal = WinzentMessage(time_span=self._own_request.time_span,
-                                            is_answer=True, answer_to=self._own_request.id,
-                                            msg_type=xboole.MessageType.WithdrawalNotification,
-                                            ttl=self._current_ttl, receiver=reply.sender,  # PGASC: added sender
-                                            # because this message will be sent endlessly otherwise
-                                            value=self._own_request.value,
-                                            id=str(uuid.uuid4()),
-                                            sender=self._aid
-                                            )
-                await self.send_message(withdrawal)
+            self.save_accepted_values(reply)
         else:
             logger.debug(
                 f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
                 f"was not valid "
             )
-
+            withdrawal = WinzentMessage(time_span=self._own_request.time_span,
+                                        is_answer=True, answer_to=self._own_request.id,
+                                        msg_type=xboole.MessageType.WithdrawalNotification,
+                                        ttl=self._current_ttl, receiver=reply.sender,  # PGASC: added sender
+                                        # because this message will be sent endlessly otherwise
+                                        value=self._own_request.value,
+                                        id=str(uuid.uuid4()),
+                                        sender=self._aid
+                                        )
+            await self.send_message(withdrawal)
         # if the solution journal is empty afterwards, the agent does not
         # wait for any further acknowledgments and can stop the negotiation
         if self.governor.solution_journal.is_empty():
@@ -591,11 +591,6 @@ class WinzentBaseAgent(Agent, ABC):
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
             await self.handle_withdrawal_reply(reply)
 
-    def solution_overshoots_requirement(self, reply) -> bool:
-        if (self.result_sum + reply.value[0]) > self.governor.curr_requirement_value:
-            return True
-        return False
-
     def acknowledgement_valid(self, reply) -> bool:
         """
         Checks if the Acknowledgment is a reply to a current AcceptanceNotification
@@ -631,6 +626,7 @@ class WinzentBaseAgent(Agent, ABC):
         After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
         logger.debug("the result for " + self.aid + " is " + str(self.result))
+        print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False

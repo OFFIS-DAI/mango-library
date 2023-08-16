@@ -3,7 +3,7 @@ import math
 from datetime import datetime
 from typing import Optional, Dict, List, Tuple
 
-from util_functions import shutdown, create_six_simple_ethical_agents, create_six_base_agents
+from util_functions import shutdown, create_six_ethical_agents, create_six_base_agents
 
 """
 Test negotiation with Winzent with six agents. In this case, the agents have enough flexibility
@@ -46,7 +46,7 @@ async def run_six_simple():
     end_time = start_time + 900
     # print("Current Time =", current_time)
 
-    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_simple_ethical_agents()
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents()
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=10)
     agent_b.update_flexibility(t_start=2700, min_p=0, max_p=30)
     agent_c.update_flexibility(t_start=2700, min_p=0, max_p=10)
@@ -106,28 +106,28 @@ async def run_muscle():
     time_span = [start_time, end_time]
     # print("Current Time =", current_time)
 
-    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_simple_ethical_agents()
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents()
     agent_a.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_b.update_flexibility(t_start=2700, min_p=0, max_p=0)
     agent_c.update_flexibility(t_start=2700, min_p=0, max_p=0)
-    agent_d.update_flexibility(t_start=2700, min_p=0, max_p=100)
-    agent_e.update_flexibility(t_start=2700, min_p=0, max_p=100)
-    agent_f.update_flexibility(t_start=2700, min_p=0, max_p=100)
+    agent_d.update_flexibility(t_start=2700, min_p=-50, max_p=100)
+    agent_e.update_flexibility(t_start=2700, min_p=-50, max_p=100)
+    agent_f.update_flexibility(t_start=2700, min_p=-50, max_p=100)
 
-    agent_b_values = 100
+    agent_b_values = -100
     await agent_b.start_negotiation(ts=[2700, 3600], value=agent_b_values)
     rounded_load_values[agent_b.aid] = agent_b_values
     agents_with_started_negotiation.append(agent_b)
 
-    agent_a_values = 100
-    await agent_a.start_negotiation(ts=[2700, 3600], value=agent_a_values)
-    agents_with_started_negotiation.append(agent_a)
-    rounded_load_values[agent_a.aid] = agent_a_values
-
-    agent_c_values = 100
-    await agent_c.start_negotiation(ts=[2700, 3600], value=agent_c_values)
-    agents_with_started_negotiation.append(agent_c)
-    rounded_load_values[agent_c.aid] = agent_c_values
+    # agent_a_values = 100
+    # await agent_a.start_negotiation(ts=[2700, 3600], value=agent_a_values)
+    # agents_with_started_negotiation.append(agent_a)
+    # rounded_load_values[agent_a.aid] = agent_a_values
+    #
+    # agent_c_values = 100
+    # await agent_c.start_negotiation(ts=[2700, 3600], value=agent_c_values)
+    # agents_with_started_negotiation.append(agent_c)
+    # rounded_load_values[agent_c.aid] = agent_c_values
 
     number_of_restarted_negotiations = 6
     ethics_score_list = {1.0: [0.0, 0, 0], 2.0: [0.0, 0, 0], 3.0: [0.0, 0, 0]}

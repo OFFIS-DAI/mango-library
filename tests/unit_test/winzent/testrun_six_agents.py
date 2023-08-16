@@ -2,7 +2,7 @@ import asyncio
 import math
 from datetime import datetime
 
-from util_functions import create_six_agents, shutdown, create_six_simple_ethical_agents
+from util_functions import create_six_agents, shutdown, create_six_ethical_agents
 
 """
 Test negotiation with Winzent with six agents. In this case, the agents have enough flexibility

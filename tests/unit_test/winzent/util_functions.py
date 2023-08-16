@@ -1,7 +1,7 @@
 from mango.core.container import Container
 
 from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
-from negotiation.winzent.winzent_simple_ethical_agent import WinzentSimpleEthicalAgent
+from negotiation.winzent.winzent_ethical_agent import WinzentEthicalAgent
 
 
 async def shutdown(agents, containers):
@@ -94,7 +94,7 @@ async def create_six_base_agents(agent_tts=5):
     return agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container
 
 
-async def create_six_simple_ethical_agents():
+async def create_six_ethical_agents():
     """
     Creates 6 simple agents, all living in one container and a neighborhood.
     """
@@ -105,12 +105,12 @@ async def create_six_simple_ethical_agents():
     container = await Container.factory(addr=addr)
     tts = 3
     # create agents
-    agent_a = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
-    agent_b = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2)
-    agent_c = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=3)
-    agent_d = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=4)
-    agent_e = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5)
-    agent_f = WinzentSimpleEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6)
+    agent_a = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
+    agent_b = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2)
+    agent_c = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=3)
+    agent_d = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=4)
+    agent_e = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5)
+    agent_f = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6)
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,
