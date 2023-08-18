@@ -1,4 +1,4 @@
-from mango.core.container import Container
+from mango import create_container
 
 from mango_library.negotiation.winzent.winzent_agent import WinzentAgent
 
@@ -23,7 +23,7 @@ async def create_three_agents():
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await Container.factory(addr=addr)
+    container = await create_container(addr=addr)
 
     # create agents
     agent_a = WinzentAgent(container=container, ttl=2)
@@ -50,7 +50,8 @@ async def create_six_agents():
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await Container.factory(addr=addr)
+    container = await create_container(addr=addr)
+    print('container created')
 
     # create agents
     agent_a = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
@@ -98,7 +99,7 @@ async def create_agents(number_of_agents, ttl, time_to_sleep):
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await Container.factory(addr=addr)
+    container = await create_container(addr=addr)
 
     agents = []
 

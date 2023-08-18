@@ -3,7 +3,7 @@ import math
 import uuid
 from copy import deepcopy
 
-from mango.core.agent import Agent
+from mango import Agent
 
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
@@ -116,10 +116,10 @@ class WinzentAgent(Agent):
         requirement = xboole.Requirement(
             xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
         requirement.from_target = True
-        requirement.message.sender = self._aid
+        requirement.message.sender = self.aid
 
         message = requirement.message
-        message.sender = self._aid
+        message.sender = self.aid
         self.governor.message_journal.add(message)
         self.negotiation_done = asyncio.Future()
 
@@ -138,7 +138,7 @@ class WinzentAgent(Agent):
         The time_to_sleep needs to be set according to the network size of the
         agents.
         """
-        while not self.stopped.done():
+        while not self._stopped.done():
             await asyncio.sleep(0.1)
             if self._negotiation_running:
                 await asyncio.sleep(self._time_to_sleep)
@@ -154,7 +154,7 @@ class WinzentAgent(Agent):
                 await asyncio.sleep(self._time_to_sleep)
                 # Time for waiting for acknowledgements is done, therefore
                 # do not wait for acknowledgements anymore
-                print(f'*** {self._aid} did not receive all acknowledgements. Negotiation was not successful.')
+                print(f'*** {self.aid} did not receive all acknowledgements. Negotiation was not successful.')
                 self._waiting_for_acknowledgements = False
                 for acc_msg in self._curr_sent_acceptances:
                     withdrawal = WinzentMessage(time_span=acc_msg.time_span,
@@ -163,7 +163,7 @@ class WinzentAgent(Agent):
                                                 ttl=self._current_ttl, receiver=acc_msg.receiver,
                                                 value=[acc_msg.value[0]],
                                                 id=str(uuid.uuid4()),
-                                                sender=self._aid
+                                                sender=self.aid
                                                 )
                     await self.send_message(withdrawal, receiver=acc_msg.receiver)
 
@@ -190,7 +190,7 @@ class WinzentAgent(Agent):
         if abs(message.value[0]) - abs(value) <= 0:
             # If the own forecast is sufficient to completely solve the
             # problem, a solution is found and no other agents are informed.
-            self.final[self._aid] = abs(message.value[0])
+            self.final[self.aid] = abs(message.value[0])
             self._solution_found = True
             if abs(message.value[0]) - abs(value) == 0:
                 new_flex = 0
@@ -229,7 +229,7 @@ class WinzentAgent(Agent):
                                  value=message.value,
                                  id=message.id,
                                  time_span=requirement.time_span,
-                                 sender=self._aid,
+                                 sender=self.aid,
                                  )
         self._own_request = requirement.message
         self._negotiation_running = True
@@ -295,7 +295,7 @@ class WinzentAgent(Agent):
                                             ttl=self._current_ttl, receiver='',
                                             value=self._own_request.value,
                                             id=str(uuid.uuid4()),
-                                            sender=self._aid
+                                            sender=self.aid
                                             )
                 await self.send_message(withdrawal)
                 await self.reset()
@@ -319,7 +319,7 @@ class WinzentAgent(Agent):
                         DemandNotification:
                     msg_type = xboole.MessageType.OfferNotification
                 reply = WinzentMessage(msg_type=msg_type,
-                                       sender=self._aid,
+                                       sender=self.aid,
                                        is_answer=True,
                                        receiver=message.sender,
                                        time_span=message.time_span,
@@ -373,7 +373,7 @@ class WinzentAgent(Agent):
         AcceptanceAcknowledgementNotification
         """
         reply = requirement.message
-        if reply.receiver != self._aid:
+        if reply.receiver != self.aid:
             # The agent is not the receiver of the reply, therefore it needs
             # to forward it if the time to live is above 0.
             reply.ttl = reply.ttl - 1
@@ -405,7 +405,7 @@ class WinzentAgent(Agent):
                     answer = WinzentMessage(
                         msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                         is_answer=True, answer_to=reply.id,
-                        sender=self._aid, receiver=reply.sender,
+                        sender=self.aid, receiver=reply.sender,
                         ttl=self._current_ttl, id=str(uuid.uuid4()))
                     await self.send_message(answer)
                     self._adapted_flex_according_to_msgs.append(reply.id)
@@ -426,7 +426,7 @@ class WinzentAgent(Agent):
             # if the solution journal is empty afterwards, the agent does not
             # wait for any further acknowledgments and can stop the negotiation
             if self.governor.solution_journal.is_empty():
-                print(f'\n*** {self._aid} received all Acknowledgements. ***')
+                print(f'\n*** {self.aid} received all Acknowledgements. ***')
                 await self.reset()
 
         elif reply.msg_type == xboole.MessageType.WithdrawalNotification:
@@ -478,6 +478,7 @@ class WinzentAgent(Agent):
         for j in range(len(solution)):
             answer_objects.append(solution[j].split(':', 1)[0])
         sol = DictList()
+        # from the solution, store the actual values for each agent in a dict (sol)
         for j in range(len(answer_objects)):
             sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
         self.final = {}
@@ -501,7 +502,7 @@ class WinzentAgent(Agent):
             # we didn't receive the flexibility from every
             # agent
             print(
-                f'*** {self._aid} has not enough flexibility. Timeout? '
+                f'*** {self.aid} has not enough flexibility. Timeout? '
                 f'{self.governor.triggered_due_to_timeout} ***')
             if not self.governor.triggered_due_to_timeout:
                 # Solver is not triggered currently and can be triggered again
@@ -528,7 +529,7 @@ class WinzentAgent(Agent):
                 continue
             self.final[k] = value
             i += 1
-            if k == self._aid:
+            if k == self.aid:
                 if len(self.final) == 1:
                     # Only the agent itself is part of the solution
                     self.governor.solver_triggered = False
@@ -557,7 +558,7 @@ class WinzentAgent(Agent):
             # create AcceptanceNotification
             msg = WinzentMessage(
                 msg_type=xboole.MessageType.AcceptanceNotification,
-                sender=self._aid,
+                sender=self.aid,
                 is_answer=True,
                 receiver=k,
                 time_span=initial_req.forecast.first,
@@ -599,7 +600,7 @@ class WinzentAgent(Agent):
         if self.governor.solver_triggered or self._solution_found:
             return
         self.governor.solver_triggered = True
-        print(f'\n*** {self._aid} starts solver now. ***')
+        print(f'\n*** {self.aid} starts solver now. ***')
         result = self.governor.try_balance()
         if result is None:
             self.governor.solver_triggered = False
@@ -619,7 +620,7 @@ class WinzentAgent(Agent):
                     answers.append(k)
             gcd_p = result[1]
             if len(answers) > 0:
-                print(f'\n*** {self._aid} found solution. ***')
+                print(f'\n*** {self.aid} found solution. ***')
                 await self.answer_requirements(answers, gcd_p, result[2])
                 return
 
@@ -635,7 +636,7 @@ class WinzentAgent(Agent):
         if self._solution_found:
             return
         print(
-            f'*** {self._aid} has no solution after timeout. ***')
+            f'*** {self.aid} has no solution after timeout. ***')
         self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
         self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
         self._negotiation_running = False
@@ -647,7 +648,7 @@ class WinzentAgent(Agent):
         self._waiting_for_acknowledgements = False
         await self.reset()
 
-    def handle_msg(self, content, meta):
+    def handle_message(self, content, meta):
         """
         Handle message object (content) from other agents.
         """
@@ -673,15 +674,15 @@ class WinzentAgent(Agent):
         Sends the given message to all neighbors unless the receiver is given.
         """
         print(
-            f'*** {self._aid} sends message with type {message.msg_type}. ***')
+            f'*** {self.aid} sends message with type {message.msg_type}. ***')
 
         if receiver is not None:
             if receiver in self.neighbors.keys():
-                await self._container.send_message(
+                await self._context.send_message(
                     content=message, receiver_addr=self.neighbors[receiver],
                     receiver_id=receiver,
-                    acl_metadata={'sender_addr': self._container.addr,
-                                  'sender_id': self._aid}, create_acl=True)
+                    acl_metadata={'sender_addr': self._context.addr,
+                                  'sender_id': self.aid}, create_acl=True)
         else:
             for neighbor in self.neighbors.keys():
                 if message.sender == neighbor:
@@ -690,11 +691,11 @@ class WinzentAgent(Agent):
                     message.receiver = ''
                 if message.sender == neighbor:
                     continue
-                await self._container.send_message(
+                await self._context.send_message(
                     content=message, receiver_addr=self.neighbors[neighbor],
                     receiver_id=neighbor,
-                    acl_metadata={'sender_addr': self._container.addr,
-                                  'sender_id': self._aid},
+                    acl_metadata={'sender_addr': self._context.addr,
+                                  'sender_id': self.aid},
                     create_acl=True
                 )
 
