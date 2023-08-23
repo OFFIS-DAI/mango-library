@@ -307,7 +307,6 @@ class WinzentBaseAgent(Agent, ABC):
                 pass
 
     async def answer_external_request(self, message, message_path, value, msg_type):
-        print("hi")
         try:
             reply = WinzentMessage(
                 msg_type=msg_type,
@@ -365,8 +364,8 @@ class WinzentBaseAgent(Agent, ABC):
                 t_start=message.time_span[0],
                 msg_type=message.msg_type
             )
-        except:
-            print(f" ERROR! {message}")
+        except Exception as e:
+            print(f" ERROR! {e}")
             value = 0
         if value != 0:
             msg_type = xboole.MessageType.Null
@@ -671,7 +670,6 @@ class WinzentBaseAgent(Agent, ABC):
 
         # the problem was not solved completely
         if abs(afforded_value) < abs(initial_value):
-            # print("afforded value " + str(abs(afforded_value)) + " and inital value " + str(abs(initial_value)))
             # problem couldn't be solved, but the timer is still running:
             # we didn't receive the flexibility from every
             # agent
