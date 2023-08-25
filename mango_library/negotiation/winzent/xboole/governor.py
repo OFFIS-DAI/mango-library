@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 from mango_library.negotiation.winzent import xboole
 
 
@@ -43,7 +45,7 @@ class Governor:
         self._forecaster = None
         self._hardware_backend_module = None
         self._requirement = None
-        self.diff_to_real_value = 0
+        self.diff_to_real_value = []
         self.curr_time = None
         self.message_journal = MessageJournal()
         self.solution_journal = MessageJournal()
@@ -74,9 +76,44 @@ class Governor:
     def power_balance_strategy(self, strategy):
         self._power_balance_strategy = strategy
 
-    def try_balance(self):
+    async def try_balance(self):
         assert self._power_balance is not None
         assert self._power_balance_strategy is not None
+        time_span = self._power_balance.ledger[0][0].time_span
 
+        if len(time_span) > 1:
+            initial = self._power_balance_strategy.find_initial_requirement(self._power_balance,
+                                                                            xboole.InitiatingParty.Local)
+            power_balance_original = [deepcopy(self._power_balance) for _ in range(len(time_span))]
+            solutions = []
+
+            for idx, interval in enumerate(time_span):
+                power_balance = power_balance_original[idx]
+                for i in power_balance:
+                    val = deepcopy(i[1].power)
+                    del i[1].power[:]
+                    i[1].power.append(val[idx])
+
+                    val = deepcopy(i[1].time_span)
+                    del i[1].time_span[:]
+                    i[1].time_span.append(val[idx])
+
+                    val = deepcopy(i[1].message.time_span)
+                    del i[1].message.time_span[:]
+                    i[1].message.time_span.append(val[idx])
+
+                    val = deepcopy(i[1].message.value)
+                    del i[1].message.value[:]
+                    i[1].message.value.append(val[idx])
+
+                res = self._power_balance_strategy.solve(
+                    power_balance, xboole.InitiatingParty.Local)
+
+                if res is not None and len(res[0].tv[0]) != 0:
+                    solutions.append((res[0], res[1], initial))
+                else:
+                    return None
+            return solutions
+        # only one interval
         return self._power_balance_strategy.solve(
             self._power_balance, xboole.InitiatingParty.Local)

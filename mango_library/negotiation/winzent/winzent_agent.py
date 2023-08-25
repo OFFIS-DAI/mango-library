@@ -40,7 +40,7 @@ class WinzentAgent(Agent):
         self.negotiation_done = None  # True if the negotiation is done
         self._own_request = None  # the agent stores its own request when it starts a negotiation
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
-        self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
+        self._time_to_sleep = 10# time_to_sleep  # time to sleep between regular tasks
         self._unsuccessful_negotiations = []  # negotiations for which no result at all was found
 
         # tasks which should be triggered regularly
@@ -103,28 +103,26 @@ class WinzentAgent(Agent):
         """
         self.flex[t_start] = [min_p, max_p]
 
-    async def start_negotiation(self, ts, value):
+    async def start_negotiation(self, ts, values):
         """
-        Start a negotiation with other agents for the given timestamp and 
+        Start a negotiation with other agents for the given timestamp and
         value. The negotiation is started by calling handle_internal_request.
         :param ts: timespan for the negotiation
         :param value: power value to negotiate about
         """
-        if not isinstance(value, int):
-            value = value[1]
-
+        values = [math.ceil(value) for value in values]
         requirement = xboole.Requirement(
-            xboole.Forecast((ts, math.ceil(value))), ttl=self._current_ttl)
+            xboole.Forecast((ts, values)), ttl=self._current_ttl)
         requirement.from_target = True
         requirement.message.sender = self.aid
-
         message = requirement.message
         message.sender = self.aid
         self.governor.message_journal.add(message)
         self.negotiation_done = asyncio.Future()
+        for val in message.value:
+            self.governor.diff_to_real_value.append(1 - (val % 1))
 
         await self.handle_internal_request(requirement)
-        self.governor.diff_to_real_value = 1 - (message.value[0] % 1)
 
     async def trigger_solver(self):
         """
@@ -165,10 +163,11 @@ class WinzentAgent(Agent):
                                                 id=str(uuid.uuid4()),
                                                 sender=self.aid
                                                 )
-                    await self.send_message(withdrawal, receiver=acc_msg.receiver)
+                    await self.send_msg(withdrawal, receiver=acc_msg.receiver)
 
                 self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
-                self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
+                for idx in range(len(self._own_request.time_span)):
+                    self.flex[self._own_request.time_span[idx]] = self.original_flex[self._own_request.time_span[idx]]
 
                 await asyncio.sleep(self._time_to_sleep)
                 await self.reset()
@@ -177,7 +176,7 @@ class WinzentAgent(Agent):
 
     async def handle_internal_request(self, requirement):
         """
-        The negotiation request is for this agents. Therefore, it handles an
+        The negotiation request is for this agent. Therefore, it handles an
         internal request and not a request from other agents. This is the
         beginning of a negotiation, because messages to the neighboring agents
         are sent regarding the negotiation information in the given
@@ -185,35 +184,42 @@ class WinzentAgent(Agent):
         """
         message = requirement.message
         self.original_flex = deepcopy(self.flex)
-        value = self.get_flexibility_for_interval(t_start=message.time_span[0], msg_type=message.msg_type)
+        values = self.get_flexibility_for_interval(time_span=message.time_span, msg_type=message.msg_type)
 
-        if abs(message.value[0]) - abs(value) <= 0:
-            # If the own forecast is sufficient to completely solve the
-            # problem, a solution is found and no other agents are informed.
-            self.final[self.aid] = abs(message.value[0])
-            self._solution_found = True
-            if abs(message.value[0]) - abs(value) == 0:
-                new_flex = 0
+        for idx in range(len(values)):
+            if abs(message.value[idx]) - abs(values[idx]) <= 0:
+                # If the own forecast is sufficient to completely solve the
+                # problem, a solution is found and no other agents are informed.
+                self.final[self.aid][idx] = [abs(val) for val in message.value]
+                self._solution_found = True
+                new_flex = []
+                if abs(message.value[idx][0]) - abs(values[idx][0]) == 0:
+                    new_flex.append(0)
+                else:
+                    new_flex.append(values[idx][0] - message.value[idx][0])
+
+                if abs(message.value[idx][1]) - abs(values[idx][1]) == 0:
+                    new_flex.append(0)
+                else:
+                    new_flex.append(values[idx][1] - message.value[idx][1])
             else:
-                new_flex = value - message.value[0]
+                self._solution_found = False
 
             if message.msg_type == xboole.MessageType.DemandNotification:
-                self.flex[message.time_span[0]][0] = new_flex
+                self.flex[message.time_span[idx]][0] = 0
             else:
-                self.flex[message.time_span[0]][1] = new_flex
+                self.flex[message.time_span[idx]][1] = 0
+
+        if self._solution_found:
             return
 
-        if message.msg_type == xboole.MessageType.DemandNotification:
-            self.flex[message.time_span[0]][0] = 0
-        else:
-            self.flex[message.time_span[0]][1] = 0
-
-        # In this case, there is still a value to negotiate about. Therefore,
+            # In this case, there is still a value to negotiate about. Therefore,
         # add the message regarding the request to the own message journal
         # and store the problem in the power balance.
-        message.value[:] = [message.value[0] - value]
+        for idx in range(len(message.time_span) - 1):
+            message.value[idx] = message.value[idx] - values[0]
         requirement.message = message
-        requirement.forecast.second = message.value[0]
+        requirement.forecast.second = message.value
         self.governor.message_journal.add(message)
         requirement.from_target = True
         self.governor.power_balance.add(requirement)
@@ -233,28 +239,33 @@ class WinzentAgent(Agent):
                                  )
         self._own_request = requirement.message
         self._negotiation_running = True
-        await self.send_message(neg_msg)
+        await self.send_msg(neg_msg)
 
-    def get_flexibility_for_interval(self, t_start, msg_type):
+    def get_flexibility_for_interval(self, time_span, msg_type):
         """
         Returns the flexibility for the given time interval according
         to the msg type.
         """
-        flexibility = self.flex[t_start]
-        if msg_type == xboole.MessageType.OfferNotification:
-            # in this case, the upper part of the flexibility interval
-            # is considered
-            return flexibility[1]
-        elif msg_type == xboole.MessageType.DemandNotification:
-            # in this case, the lower part of the flexibility interval
-            # is considered
-            return flexibility[0]
+        flex = []
+        for idx in range(len(time_span)):
+            t_start = time_span[idx]
+            flexibility = self.flex[t_start]
+            if msg_type == xboole.MessageType.OfferNotification:
+                # in this case, the upper part of the flexibility interval
+                # is considered
+                flex.append(flexibility[1])
+            elif msg_type == xboole.MessageType.DemandNotification:
+                # in this case, the lower part of the flexibility interval
+                # is considered
+                flex.append(flexibility[0])
+        return flex
 
-    def exists_flexibility(self, t_start):
+    def exists_flexibility(self, ts):
         """
         Returns whether there exists flexibility for the given time interval.
         """
-        return t_start in self.flex.keys()
+        ts = deepcopy(ts)
+        return all(t_start in self.flex.keys() for t_start in ts)
 
     async def stop_agent(self):
         """
@@ -297,20 +308,20 @@ class WinzentAgent(Agent):
                                             id=str(uuid.uuid4()),
                                             sender=self.aid
                                             )
-                await self.send_message(withdrawal)
+                await self.send_msg(withdrawal)
                 await self.reset()
             else:
                 # no withdrawal, still keep the negotiation running
                 return
-        value = 0
+        values = []
         if self.exists_flexibility(
-                message.time_span[0]):
+                message.time_span):
             # If the agent has flexibility for the requested time, it replies
             # to the requesting agent
-            value = self.get_flexibility_for_interval(
-                t_start=message.time_span[0],
+            values = self.get_flexibility_for_interval(
+                time_span=message.time_span,
                 msg_type=message.msg_type)
-            if value != 0:
+            if not all(element == 0 for element in values):
                 msg_type = xboole.MessageType.Null
                 # send message reply
                 if message.msg_type == xboole.MessageType.OfferNotification:
@@ -323,29 +334,33 @@ class WinzentAgent(Agent):
                                        is_answer=True,
                                        receiver=message.sender,
                                        time_span=message.time_span,
-                                       value=[value], ttl=self._current_ttl,
+                                       value=values, ttl=self._current_ttl,
                                        id=str(uuid.uuid4()))
                 self.governor.message_journal.add(reply)
                 self._current_inquiries_from_agents[reply.id] = reply
-                await self.send_message(reply)
+                await self.send_msg(reply)
         message.ttl -= 1
         if message.ttl <= 0:
             # do not forward the message to other agents
             return
-
-        if abs(message.value[0]) - abs(value) == 0:
+        a = self.forward_msg(message.value, values)
+        if not self.forward_msg(message.value, values):
             # The value in the negotiation request is completely fulfilled.
             # Therefore, the message is not forwarded to other agents.
             return
         # In this case, the power value of the request cannot be completely
         # fulfilled yet. Therefore, the remaining power of the request is
         # forwarded to other agents.
-        val = message.value[0]
+        val = deepcopy(message.value)
         del message.value[:]
-        message.value.append(val - value)
+        for idx in range(len(values)):
+            message.value.append(val[idx] - values[idx])
         message.is_answer = False
         message.receiver = ''
-        await self.send_message(message)
+        await self.send_msg(message)
+
+    def forward_msg(self, msg_values, values):
+        return any(abs(x) - abs(y) != 0 for x, y in zip(msg_values, values))
 
     async def flexibility_valid(self, reply):
         """
@@ -354,16 +369,17 @@ class WinzentAgent(Agent):
         """
         message_type = self._current_inquiries_from_agents[reply.answer_to].msg_type
 
-        if message_type == xboole.MessageType.DemandNotification:
-            valid = abs(self.flex[reply.time_span[0]][1]) >= abs(reply.value[0])
-            if valid:
-                self.original_flex = deepcopy(self.flex)
-                self.flex[reply.time_span[0]][1] = self.flex[reply.time_span[0]][1] - reply.value[0]
-        else:
-            valid = abs(self.flex[reply.time_span[0]][0]) >= abs(reply.value[0])
-            if valid:
-                self.original_flex = deepcopy(self.flex)
-                self.flex[reply.time_span[0]][0] = self.flex[reply.time_span[0]][0] - reply.value[0]
+        for idx, value in enumerate(reply.value):
+            if message_type == xboole.MessageType.DemandNotification:
+                valid = abs(self.flex[reply.time_span[idx]][1]) >= abs(value)
+                if valid:
+                    self.original_flex = deepcopy(self.flex)
+                    self.flex[reply.time_span[idx]][1] = self.flex[reply.time_span[idx]][1] - value
+            else:
+                valid = abs(self.flex[reply.time_span[idx]][0]) >= abs(value)
+                if valid:
+                    self.original_flex = deepcopy(self.flex)
+                    self.flex[reply.time_span[idx]][0] = self.flex[reply.time_span[idx]][0] - value
         return valid
 
     async def handle_external_reply(self, requirement):
@@ -378,7 +394,7 @@ class WinzentAgent(Agent):
             # to forward it if the time to live is above 0.
             reply.ttl = reply.ttl - 1
             if reply.ttl > 0:
-                await self.send_message(reply)
+                await self.send_msg(reply)
             return
 
         if reply.msg_type == xboole.MessageType.DemandNotification \
@@ -395,22 +411,23 @@ class WinzentAgent(Agent):
                 if not self.governor.solver_triggered:
                     self.governor.triggered_due_to_timeout = False
                 await self.solve()
-
         elif reply.msg_type == xboole.MessageType.AcceptanceNotification:
             # First, check whether the AcceptanceNotification is still valid
+            print('check valid')
             if self.acknowledgement_valid(reply):
+                print('ack valid')
                 # Send an AcceptanceAcknowledgementNotification for the
                 # acceptance
                 if await self.flexibility_valid(reply):
+                    print('flex also valid')
                     answer = WinzentMessage(
                         msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                         is_answer=True, answer_to=reply.id,
                         sender=self.aid, receiver=reply.sender,
                         ttl=self._current_ttl, id=str(uuid.uuid4()))
-                    await self.send_message(answer)
+                    await self.send_msg(answer)
                     self._adapted_flex_according_to_msgs.append(reply.id)
                     self._acknowledgements_sent.append(reply.id)
-
                     del self._current_inquiries_from_agents[reply.answer_to]
             return
         elif reply.msg_type == \
@@ -423,7 +440,7 @@ class WinzentAgent(Agent):
                 return
             # Remove the Acknowledgement from the solution journal
             self.governor.solution_journal.remove_message(reply.answer_to)
-            # if the solution journal is empty afterwards, the agent does not
+            # if the solution journal is empty now, the agent does not
             # wait for any further acknowledgments and can stop the negotiation
             if self.governor.solution_journal.is_empty():
                 print(f'\n*** {self.aid} received all Acknowledgements. ***')
@@ -438,7 +455,8 @@ class WinzentAgent(Agent):
                 # this time span
                 if reply.answer_to in self._adapted_flex_according_to_msgs:
                     del self._acknowledgements_sent[reply.id]
-                    self.flex[reply.time_span[0]] = self.original_flex[reply.time_span[0]]
+                    for t_start in reply.time_span:
+                        self.flex[t_start] = self.original_flex[t_start]
                     self._adapted_flex_according_to_msgs.remove(reply.answer_to)
 
     async def reset(self):
@@ -467,114 +485,137 @@ class WinzentAgent(Agent):
         Method to send out AcceptanceNotifications for the agents being
         part of the solution.
         """
-        answer_objects = []
-        initial_value = initial_req.forecast.second
+        initial_values = initial_req.forecast.second
         initial_msg_type = initial_req.message.msg_type
         # determine flexibility sign according to msg type
         positive = False if initial_msg_type == xboole.MessageType.DemandNotification else True
-        afforded_value = 0
-
-        # create dict with agents and used power value per agent
-        for j in range(len(solution)):
-            answer_objects.append(solution[j].split(':', 1)[0])
-        sol = DictList()
-        # from the solution, store the actual values for each agent in a dict (sol)
-        for j in range(len(answer_objects)):
-            sol.add((answer_objects[j], gcd[int(solution[j][-1])]))
         self.final = {}
-        for k, v in sol.values.copy().items():
-            if abs(afforded_value) + abs(v) >= abs(initial_value):
-                diff = abs(initial_value) - abs(afforded_value)
-                self.final[self.governor.message_journal.get_message_for_id(
-                    k).sender] = diff
-                afforded_value += diff
-                break
-            self.final[self.governor.message_journal.get_message_for_id(
-                k).sender] = v
-            afforded_value += v
-        if positive:
-            act_value = afforded_value
-        else:
-            act_value = -afforded_value
-        # the problem was not solved completely
-        if abs(afforded_value) < abs(initial_value):
-            # problem couldn't be solved, but the timer is still running:
-            # we didn't receive the flexibility from every
-            # agent
-            print(
-                f'*** {self.aid} has not enough flexibility. Timeout? '
-                f'{self.governor.triggered_due_to_timeout} ***')
-            if not self.governor.triggered_due_to_timeout:
-                # Solver is not triggered currently and can be triggered again
-                self.governor.solver_triggered = False
-                return
+
+        for key, value in gcd.items():
+            initial_value = initial_values[key]
+            afforded_value = 0
+            answer_objects = []
+            # create dict with agents and used power value per agent
+            for j in range(len(solution[key])):
+                answer_objects.append(solution[key][j].split(':', 1)[0])
+            sol = DictList()
+            # from the solution, store the actual values for each agent in a dict (sol)
+            for j in range(len(answer_objects)):
+                sol.add((answer_objects[j], gcd[key][int(solution[key][j][-1])]))
+
+            for k, v in sol.values.copy().items():
+                if abs(afforded_value) + abs(v) >= abs(initial_value):
+                    diff = abs(initial_value) - abs(afforded_value)
+                    sender = self.governor.message_journal.get_message_for_id(
+                        k).sender
+                    if sender not in self.final.keys():
+                        self.final[sender] = {}
+                    if key not in self.final[sender].keys():
+                        self.final[sender][key] = []
+                    self.final[sender][key].append(diff)
+                    afforded_value += diff
+                    break
+                sender = self.governor.message_journal.get_message_for_id(
+                    k).sender
+                if sender not in self.final.keys():
+                    self.final[sender] = {}
+                if key not in self.final[sender].keys():
+                    self.final[sender][key] = []
+                self.final[sender][key].append(v)
+                afforded_value += v
+
+            if positive:
+                act_value = afforded_value
             else:
-                # In this case, the problem could not be solved completely,
-                # but the timer stopped and the agent would not receive
-                # more flexibility. Therefore, take afforded flexibility
-                # and send acknowledgements.
-                if act_value == 0:
-                    await self.no_solution_after_timeout()
-                    self.governor.triggered_due_to_timeout = False
+                act_value = -afforded_value
+            # the problem was not solved completely
+            if abs(afforded_value) < abs(initial_value):
+                # problem couldn't be solved, but the timer is still running:
+                # we didn't receive the flexibility from every
+                # agent
+                print(
+                    f'*** {self.aid} has not enough flexibility. Timeout? '
+                    f'{self.governor.triggered_due_to_timeout} ***')
+                if not self.governor.triggered_due_to_timeout:
+                    # Solver is not triggered currently and can be triggered again
+                    self.governor.solver_triggered = False
                     return
+                else:
+                    # In this case, the problem could not be solved completely,
+                    # but the timer stopped and the agent would not receive
+                    # more flexibility. Therefore, take afforded flexibility
+                    # and send acknowledgements.
+                    if act_value == 0:
+                        await self.no_solution_after_timeout()
+                        self.governor.triggered_due_to_timeout = False
+                        return
+
         i = 0
         zero_indeces = []
 
-        for k, v in self.final.items():
-            value = v
-            if not positive:
-                value = -v
-            if v == 0:
-                zero_indeces.append(k)
-                continue
-            self.final[k] = value
-            i += 1
-            if k == self.aid:
-                if len(self.final) == 1:
-                    # Only the agent itself is part of the solution
-                    self.governor.solver_triggered = False
-                    if self.governor.triggered_due_to_timeout:
-                        self._negotiation_running = False
-                        self.governor.triggered_due_to_timeout = False
-                        await self.no_solution_after_timeout()
-                    return
-                continue
-
-            self._solution_found = True
-
-            # id of original negotiation request
-            answer_to = self.find_id_for_sender(
-                time_span=initial_req.forecast.first,
-                receiver=k)
-            if answer_to == '':
-                if len(self.final) == 1:
-                    self.governor.solver_triggered = False
-                    if self.governor.triggered_due_to_timeout:
-                        self.governor.triggered_due_to_timeout = False
-                        await self.no_solution_after_timeout()
-
-                else:
+        for k, idx_v in self.final.items():
+            for idx, v in idx_v.items():
+                value = v
+                if not positive:
+                    value = [-e for e in v]
+                if v == 0:
+                    zero_indeces.append(k)
                     continue
-            # create AcceptanceNotification
-            msg = WinzentMessage(
-                msg_type=xboole.MessageType.AcceptanceNotification,
-                sender=self.aid,
-                is_answer=True,
-                receiver=k,
-                time_span=initial_req.forecast.first,
-                value=[self.final[k]], ttl=self._current_ttl,
-                id=str(uuid.uuid4()),
-                answer_to=answer_to)
-            self._curr_sent_acceptances.append(msg)
+                self.final[k][idx] = value
+                i += 1
+                if k == self.aid:
+                    if len(self.final) == 1:
+                        # Only the agent itself is part of the solution
+                        self.governor.solver_triggered = False
+                        if self.governor.triggered_due_to_timeout:
+                            self._negotiation_running = False
+                            self.governor.triggered_due_to_timeout = False
+                            await self.no_solution_after_timeout()
+                        return
+                    continue
 
-            # store acceptance message
-            self.governor.solution_journal.add(msg)
-            await self.send_message(msg)
-        for key in zero_indeces:
-            del self.final[key]
-        self._waiting_for_acknowledgements = True
-        self.governor.solver_triggered = False
-        self.governor.triggered_due_to_timeout = False
+                self._solution_found = True
+
+                # id of original negotiation request
+                answer_to = self.find_id_for_sender(
+                    time_span=initial_req.forecast.first,
+                    receiver=k)
+                if answer_to == '':
+                    if len(self.final) == 1:
+                        self.governor.solver_triggered = False
+                        if self.governor.triggered_due_to_timeout:
+                            self.governor.triggered_due_to_timeout = False
+                            await self.no_solution_after_timeout()
+
+                    else:
+                        continue
+                # create AcceptanceNotification
+                entries = self.final[k]
+                time_span = []
+                power_val = []
+                for time, power in entries.items():
+                    time_span.append(initial_req.time_span[time])
+                    power_val.extend(power)
+
+                msg = WinzentMessage(
+                    msg_type=xboole.MessageType.AcceptanceNotification,
+                    sender=self.aid,
+                    is_answer=True,
+                    receiver=k,
+                    time_span=time_span,
+                    value=power_val, ttl=self._current_ttl,
+                    id=str(uuid.uuid4()),
+                    answer_to=answer_to)
+                self._curr_sent_acceptances.append(msg)
+
+                # store acceptance message
+                self.governor.solution_journal.add(msg)
+                await self.send_msg(msg)
+            for key in zero_indeces:
+                del self.final[key]
+            self._waiting_for_acknowledgements = True
+            self.governor.solver_triggered = False
+            self.governor.triggered_due_to_timeout = False
 
     def find_id_for_sender(self, time_span, receiver):
         """
@@ -601,7 +642,9 @@ class WinzentAgent(Agent):
             return
         self.governor.solver_triggered = True
         print(f'\n*** {self.aid} starts solver now. ***')
-        result = self.governor.try_balance()
+
+        result = await self.governor.try_balance()
+
         if result is None:
             self.governor.solver_triggered = False
             if self.governor.triggered_due_to_timeout:
@@ -610,18 +653,23 @@ class WinzentAgent(Agent):
                 self.governor.triggered_due_to_timeout = False
                 await self.no_solution_after_timeout()
             return
-        solution = result[0]
-        if len(solution) > 0:
-            # There was actually a solution. Split solution values according
-            # to agents taking part in it
-            answers = []
-            for k, v in solution.vv.items():
-                if v[0] == xboole.Tval(1):
-                    answers.append(k)
-            gcd_p = result[1]
-            if len(answers) > 0:
+        if isinstance(result, list):
+            answers = {}
+            gcd_p = {}
+            for idx, entry in enumerate(result):
+                solution = entry[0]
+                if len(solution) > 0:
+                    # There was actually a solution. Split solution values according
+                    # to agents taking part in it
+                    for k, v in solution.vv.items():
+                        if v[0] == xboole.Tval(1):
+                            if idx not in answers.keys():
+                                answers[idx] = []
+                            answers[idx].append(k)
+                    gcd_p[idx] = entry[1]
+            if len(answers) >= len(result):
                 print(f'\n*** {self.aid} found solution. ***')
-                await self.answer_requirements(answers, gcd_p, result[2])
+                await self.answer_requirements(answers, gcd_p, result[0][2])
                 return
 
         if self.governor.triggered_due_to_timeout:
@@ -638,7 +686,8 @@ class WinzentAgent(Agent):
         print(
             f'*** {self.aid} has no solution after timeout. ***')
         self._unsuccessful_negotiations.append([self._own_request.time_span, self._own_request.value])
-        self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
+        for idx in range(len(self._own_request.time_span)):
+            self.flex[self._own_request.time_span[idx]] = self.original_flex[self._own_request.time_span[idx]]
         self._negotiation_running = False
         self.governor.solver_triggered = False
         self.governor.triggered_due_to_timeout = False
@@ -669,12 +718,12 @@ class WinzentAgent(Agent):
                                      content.sender, ttl=self._current_ttl)
             asyncio.create_task(self.handle_external_request(req))
 
-    async def send_message(self, message, receiver=None):
+    async def send_msg(self, message, receiver=None):
         """
         Sends the given message to all neighbors unless the receiver is given.
         """
         print(
-            f'*** {self.aid} sends message with type {message.msg_type}. ***')
+            f'*** {self.aid} sends message with type {message.msg_type}. Is answer: {message.is_answer} ***')
 
         if receiver is not None:
             if receiver in self.neighbors.keys():

@@ -1,4 +1,5 @@
 from collections import namedtuple
+from copy import deepcopy
 
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.xboole import PowerBalanceSolverStrategy
@@ -133,15 +134,16 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         return tvls
 
     def solve(self, power_balance, initiator):
-        result = xboole.Result()
-        result.solved(False)
         if len(power_balance) == 0:
             return None
-        # 2. find out, which requirement initiated this calculation
+
+        result = xboole.Result()
+        result.solved(False)
+
+        # 1. find out, which requirement initiated this calculation
         initial_requirement = self.find_initial_requirement(power_balance,
                                                             initiator)
-
-        # 1. Calculate gcds for t and p values
+        # 2. Calculate gcds for t and p values
         values = self.calculate_partitions(power_balance)
 
         # 3. create TVLs for all offers
@@ -187,7 +189,7 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
 
     @staticmethod
     def find_afforded_value(power_balance, initial_requirement):
-        value = value=0
+        value = 0
         for i in power_balance:
             if i[1] == initial_requirement:
                 continue
@@ -195,9 +197,8 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         return value
 
     @staticmethod
-    def adopt_requirements_value(power_balance, initial_requirement,
+    def adapt_requirements_value(power_balance, initial_requirement,
                                  value):
         for i in power_balance:
             if i[1] == initial_requirement:
                 i[1].forecast.second(value)
-            # i[1].message.value(value)
