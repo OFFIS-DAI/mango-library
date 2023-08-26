@@ -79,7 +79,7 @@ class Governor:
     async def try_balance(self):
         assert self._power_balance is not None
         assert self._power_balance_strategy is not None
-        time_span = self._power_balance.ledger[0][0].time_span
+        time_span = list(self._power_balance.ledger.values())[0][0].time_span
 
         if len(time_span) > 1:
             initial = self._power_balance_strategy.find_initial_requirement(self._power_balance,
@@ -115,5 +115,5 @@ class Governor:
                     return None
             return solutions
         # only one interval
-        return self._power_balance_strategy.solve(
-            self._power_balance, xboole.InitiatingParty.Local)
+        return [self._power_balance_strategy.solve(
+            self._power_balance, xboole.InitiatingParty.Local)]

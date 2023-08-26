@@ -42,7 +42,7 @@ async def create_three_agents():
     return agent_a, agent_b, agent_c, container
 
 
-async def create_six_agents():
+async def create_six_agents(time_to_sleep=3):
     """
     Creates 6 simple agents, all living in one container and a neighborhood.
     """
@@ -54,12 +54,12 @@ async def create_six_agents():
     print('container created')
 
     # create agents
-    agent_a = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_b = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_c = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_d = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_e = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
-    agent_f = WinzentAgent(container=container, ttl=2, time_to_sleep=3)
+    agent_a = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
+    agent_b = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
+    agent_c = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
+    agent_d = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
+    agent_e = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
+    agent_f = WinzentAgent(container=container, ttl=2, time_to_sleep=time_to_sleep)
 
     # create random neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,

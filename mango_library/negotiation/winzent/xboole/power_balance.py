@@ -61,6 +61,7 @@ class PowerBalance:
     def clear(self):
         self._ledger.clear()
         self._max = 0
+        self._imbalance_timestamps = {}
 
     def begin(self):
         """

@@ -4,7 +4,7 @@ from mango_library.negotiation.winzent.util_functions import shutdown, create_si
 
 
 @pytest.mark.asyncio
-async def test_negotiations_six_agents():
+async def test_negotiations_six_agents_multiple_intervals_at_once():
     """
     Test negotiation with Winzent with six agents. In this case, the agents have enough flexibility
     to solve the problem successfully.
@@ -24,9 +24,51 @@ async def test_negotiations_six_agents():
     agent_e.update_flexibility(t_start=900, min_p=0, max_p=20)
     agent_f.update_flexibility(t_start=900, min_p=0, max_p=20)
 
-    await agent_b.start_negotiation(ts=[0, 900], values=[110, 110])
+    await agent_b.start_negotiation(start_dates=[0, 900], values=[110, 110])
     await agent_b.negotiation_done
 
+    # after the negotiation, the agents should have updated their flexibility
+    assert agent_a.flex[0] == [0, 0]
+    assert agent_b.flex[0] == [0, 0]
+    assert agent_c.flex[0] == [0, 0]
+    assert agent_d.flex[0] == [0, 0]
+    assert agent_e.flex[0] == [0, 0]
+    assert agent_f.flex[0] == [0, 0]
+
+    assert agent_a.flex[900] == [0, 0]
+    assert agent_b.flex[900] == [0, 0]
+    assert agent_c.flex[900] == [0, 0]
+    assert agent_d.flex[900] == [0, 0]
+    assert agent_e.flex[900] == [0, 0]
+    assert agent_f.flex[900] == [0, 0]
+    assert 'agent0' and 'agent2' and 'agent3' and 'agent4' and 'agent5' in agent_b.final
+
+    await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
+
+
+@pytest.mark.asyncio
+async def test_negotiations_six_agents():
+    """
+    Test negotiation with Winzent with six agents. In this case, the agents have enough flexibility
+    to solve the problem successfully.
+    """
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_agents()
+    agent_a.update_flexibility(t_start=0, min_p=0, max_p=10)
+    agent_b.update_flexibility(t_start=0, min_p=0, max_p=30)
+    agent_c.update_flexibility(t_start=0, min_p=0, max_p=10)
+    agent_d.update_flexibility(t_start=0, min_p=0, max_p=20)
+    agent_e.update_flexibility(t_start=0, min_p=0, max_p=20)
+    agent_f.update_flexibility(t_start=0, min_p=0, max_p=20)
+
+    await agent_b.start_negotiation(start_dates=[0], values=[110])
+    await agent_b.negotiation_done
+    # after the negotiation, the agents should have updated their flexibility
+    assert agent_a.flex[0] == [0, 0]
+    assert agent_b.flex[0] == [0, 0]
+    assert agent_c.flex[0] == [0, 0]
+    assert agent_d.flex[0] == [0, 0]
+    assert agent_e.flex[0] == [0, 0]
+    assert agent_f.flex[0] == [0, 0]
     assert 'agent0' and 'agent2' and 'agent3' and 'agent4' and 'agent5' in agent_b.final
 
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
@@ -53,12 +95,12 @@ async def test_successful_negotiation_multiple_agents_multiple_intervals():
     agent_e.update_flexibility(t_start=900, min_p=0, max_p=20)
     agent_f.update_flexibility(t_start=900, min_p=0, max_p=20)
 
-    await agent_b.start_negotiation(ts=[0, 900], value=110)
+    await agent_b.start_negotiation(start_dates=[0], values=[110])
     await agent_b.negotiation_done
 
     assert 'agent0' and 'agent2' and 'agent3' and 'agent4' and 'agent5' in agent_b.final
 
-    await agent_b.start_negotiation(ts=[900, 1800], value=110)
+    await agent_b.start_negotiation(start_dates=[900], values=[110])
     await agent_b.negotiation_done
 
     # after the negotiation, the agents should have updated their flexibility
@@ -95,8 +137,8 @@ async def test_multiple_agents_start_negotiation():
     agent_e.update_flexibility(t_start=0, min_p=0, max_p=20)
     agent_f.update_flexibility(t_start=0, min_p=0, max_p=20)
 
-    await agent_b.start_negotiation(ts=[0, 900], value=90)
-    await agent_c.start_negotiation(ts=[0, 900], value=90)
+    await agent_b.start_negotiation(start_dates=[0], values=[90])
+    await agent_c.start_negotiation(start_dates=[0], values=[90])
 
     await agent_b.negotiation_done
     await agent_c.negotiation_done
@@ -135,8 +177,8 @@ async def test_multiple_agents_start_negotiation_diff_direction():
     agent_e.update_flexibility(t_start=0, min_p=0, max_p=20)
     agent_f.update_flexibility(t_start=0, min_p=0, max_p=20)
 
-    await agent_b.start_negotiation(ts=[0, 900], value=90)
-    await agent_c.start_negotiation(ts=[0, 900], value=-90)
+    await agent_b.start_negotiation(start_dates=[0], values=[90])
+    await agent_c.start_negotiation(start_dates=[0], values=[-90])
 
     await agent_b.negotiation_done
     await agent_c.negotiation_done
