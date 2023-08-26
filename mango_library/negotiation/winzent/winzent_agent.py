@@ -107,8 +107,9 @@ class WinzentAgent(Agent):
         """
         Start a negotiation with other agents for the given timestamp and
         value. The negotiation is started by calling handle_internal_request.
-        :param start_dates: start_dates for the negotiation
-        :param value: power value to negotiate about
+        :param start_dates: start_dates for the negotiation, list with one or multiple entries
+        :param values: power value to negotiate about, list with one or multiple entries, start_dates[0] maps to
+        values[0]
         """
         values = [math.ceil(value) for value in values]
         requirement = xboole.Requirement(
@@ -186,6 +187,7 @@ class WinzentAgent(Agent):
         self.original_flex = deepcopy(self.flex)
         values = self.get_flexibility_for_interval(time_span=message.time_span, msg_type=message.msg_type)
 
+        # for each value to negotiate about, check whether the request could be fulfilled interally completely.
         for idx in range(len(values)):
             if abs(message.value[idx]) - abs(values[idx]) <= 0:
                 # If the own forecast is sufficient to completely solve the
@@ -213,7 +215,7 @@ class WinzentAgent(Agent):
         if self._solution_found:
             return
 
-            # In this case, there is still a value to negotiate about. Therefore,
+        # In this case, there is still a value to negotiate about. Therefore,
         # add the message regarding the request to the own message journal
         # and store the problem in the power balance.
         for idx in range(len(message.time_span)):
