@@ -18,7 +18,7 @@ URL = "https://gitlab.com/mango-agents/mango-library"
 EMAIL = "mango@offis.de"
 AUTHOR = "Mango Team"
 REQUIRES_PYTHON = ">=3.7.0"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 # What packages are required for this module to be executed?
 REQUIRED = ["numpy", "mango-agents==1.0.0"]
