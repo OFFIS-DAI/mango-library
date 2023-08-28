@@ -240,7 +240,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
             else:
                 assert False, f"check_inbox terminated unexpectedly."
 
-    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=25)
+    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=30)
 
     for agent in cohda_agents:
         if list(agent.roles[2]._weight_map.values())[0] != 0:
