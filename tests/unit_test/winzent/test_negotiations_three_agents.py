@@ -17,7 +17,7 @@ async def test_successful_negotiation_three_agents_demand():
     agent_c.update_flexibility(t_start=900, min_p=-10, max_p=0)
 
     # value is to negotiate is -50, so each of the agents need to take part in the negotiation to solve it
-    await agent_b.start_negotiation(ts=[900, 1800], value=-50)
+    await agent_b.start_negotiation(start_dates=[900], values=[-50])
     await agent_b.negotiation_done
     # after the negotiation, the agents should have updated their flexibility
     assert agent_a.flex[900] == [0, 0]
@@ -38,7 +38,7 @@ async def test_successful_negotiation_three_agents_offer():
     agent_b.update_flexibility(t_start=900, min_p=0, max_p=30)
     agent_c.update_flexibility(t_start=900, min_p=0, max_p=10)
 
-    await agent_b.start_negotiation(ts=[900, 1800], value=50)
+    await agent_b.start_negotiation(start_dates=[900], values=[50])
     await agent_b.negotiation_done
 
     # after the negotiation, the agents should have updated their flexibility
@@ -61,7 +61,7 @@ async def test_negotiation_with_not_enough_flexibility():
     agent_b.update_flexibility(t_start=0, min_p=0, max_p=30)
     agent_c.update_flexibility(t_start=0, min_p=0, max_p=10)
 
-    await agent_b.start_negotiation(ts=[0, 900], value=150)
+    await agent_b.start_negotiation(start_dates=[0], values=[150])
     await agent_b.negotiation_done
 
     # after the negotiation, the agents should have updated their flexibility
