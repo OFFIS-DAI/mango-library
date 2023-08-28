@@ -414,7 +414,7 @@ class CoalitionInitiatorRole(Role):
             self._all_assignment_confirms_received,
         )
 
-    def _send_coalition_build_confirms(self, agent_context, accepted_participants):
+    async def _send_coalition_build_confirms(self, agent_context, accepted_participants):
         for part in accepted_participants:
             agent_context.schedule_instant_acl_message(
                 content=CoalitionBuildConfirm(coalition_id=self._coal_id),
@@ -427,7 +427,7 @@ class CoalitionInitiatorRole(Role):
             )
 
     def _all_assignment_confirms_received(self):
-        return all([fut.result() for fut in self._assignments_confirmed.values()])
+        return all([fut.done() for fut in self._assignments_confirmed.values()])
 
     def handle_assignment_confirms(
         self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]

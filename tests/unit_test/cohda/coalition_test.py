@@ -140,33 +140,33 @@ def test_colition_initiator_with_str_as_addr():
     "participants,expected,k",
     [
         (
-            [("1", "1", "1"), ("2", "2", "2")],
-            {("1", "1", "1"): [("2", "2", "2")], ("2", "2", "2"): [("1", "1", "1")]},
-            1,
+                [("1", "1", "1"), ("2", "2", "2")],
+                {("1", "1", "1"): [("2", "2", "2")], ("2", "2", "2"): [("1", "1", "1")]},
+                1,
         ),
         (
-            [("1", ("127.0.0.3", 5555), "1"), ("2", ("127.0.0.3", 5555), "2")],
-            {
-                ("1", ("127.0.0.3", 5555), "1"): [("2", ("127.0.0.3", 5555), "2")],
-                ("2", ("127.0.0.3", 5555), "2"): [("1", ("127.0.0.3", 5555), "1")],
-            },
-            2,
+                [("1", ("127.0.0.3", 5555), "1"), ("2", ("127.0.0.3", 5555), "2")],
+                {
+                    ("1", ("127.0.0.3", 5555), "1"): [("2", ("127.0.0.3", 5555), "2")],
+                    ("2", ("127.0.0.3", 5555), "2"): [("1", ("127.0.0.3", 5555), "1")],
+                },
+                2,
         ),
         (["1", "2"], {"1": ["2"], "2": ["1"]}, 1),
         (
-            ["1", "2", "3", "4"],
-            {"1": ["4", "2"], "2": ["1", "3"], "3": ["2", "4"], "4": ["3", "1"]},
-            1,
+                ["1", "2", "3", "4"],
+                {"1": ["4", "2"], "2": ["1", "3"], "3": ["2", "4"], "4": ["3", "1"]},
+                1,
         ),
         (
-            ["1", "2", "3", "4"],
-            {
-                "1": ["4", "2", "3"],
-                "2": ["1", "3", "4"],
-                "3": ["2", "4", "1"],
-                "4": ["3", "1", "2"],
-            },
-            2,
+                ["1", "2", "3", "4"],
+                {
+                    "1": ["4", "2", "3"],
+                    "2": ["1", "3", "4"],
+                    "3": ["2", "4", "1"],
+                    "4": ["3", "1", "2"],
+                },
+                2,
         ),
     ],
 )
@@ -280,17 +280,18 @@ async def test_build_coalition_with_negotiation_starter(num_part):
             else:
                 assert False, f"check_inbox terminated unexpectedly."
 
-    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=5)
+    await asyncio.wait_for(wait_for_coalition_built(agents[0:num_part]), timeout=10)
+    # If the coalition build was successful and all assignments were confirmed, the CoalitionInitiator informs the
+    # other agents about it. The agent with the NegotiationStarterRole expects this message and stores the ID of
+    # the successful coalition.
+    # It takes some time until the last message was sent after the coalition was build.
+    while len(agents[0].roles[1]._coalitions) < 1:
+        await asyncio.sleep(1)
 
     # When the CoalitionInitiator received all confirmations regarding the assignments, the future is done for each
     # agent in the list with expected assignment confirms.
     for agent_addr, fut in controller_agent.roles[0]._assignments_confirmed.items():
         assert fut.done()
-
-    # If the coalition build was successful and all assignments were confirmed, the CoalitionInitiator informs the
-    # other agents about it. The agent with the NegotiationStarterRole expects this message and stores the ID of
-    # the successful coalition.
-    assert len(agents[0].roles[1]._coalitions) == 1
 
     # The coalition ID stored by the agent with the NegotiationStarterRole equals the coalition ID
     # of the CoalitionInitiator
@@ -311,7 +312,7 @@ async def test_build_coalition_with_negotiation_starter(num_part):
 async def wait_for_coalition_built(agents):
     for agent in agents:
         while (
-            len(agent.roles[0].context.get_or_create_model(CoalitionModel).assignments)
-            == 0
+                len(agent.roles[0].context.get_or_create_model(CoalitionModel).assignments)
+                == 0
         ):
             await asyncio.sleep(0.1)

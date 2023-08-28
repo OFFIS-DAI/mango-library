@@ -97,4 +97,6 @@ multi_objective_serializers = [
     TerminationMessage.__serializer__,
     get_fraction_serializer,
     StopNegotiationMessage.__serializer__,
+    CoalitionAssignmentConfirm.__serializer__,
+    CoalitionBuildConfirm.__serializer__,
 ]

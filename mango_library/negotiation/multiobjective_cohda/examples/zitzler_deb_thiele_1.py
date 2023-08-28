@@ -1,23 +1,24 @@
 import asyncio
 import math
-import numpy as np
-from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
-from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
 
-FILE = 'Zitzler_1.hdf5'
+import numpy as np
+
+from mango_library.negotiation.multiobjective_cohda.data_classes import Target
+from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda
+from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
+
 SIM_NAME = 'Zitzler_1'
 
 NUM_AGENTS = 30
-NUM_SCHEDULES = 50
-NUM_SOLUTION_POINTS = 20
+NUM_SCHEDULES = 10
+NUM_SOLUTION_POINTS = 5
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
 PICK_FKT = MoCohdaNegotiation.pick_all_points
-# PICK_FKT = COHDA.pick_random_point
+# PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
-# MUTATE_FKT = COHDA.mutate_with_one_random
+# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
 
 NUM_SIMULATIONS = 1
 
@@ -44,8 +45,9 @@ def target_func_2(cs):
     return g(cs) * h(cs)
 
 
-TARGET_1 = Target(target_function=target_func_1, ref_point=1.1)
-TARGET_2 = Target(target_function=target_func_2, ref_point=1.1)
+# minimize function, range between 0 and 1
+TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 SCHEDULE_STEP_SIZE = 1 / (NUM_SCHEDULES - 1)
@@ -58,21 +60,16 @@ for i in range(NUM_AGENTS):
         POSSIBLE_SCHEDULES.append([np.array([0, p]) for p in SINGLE_POINT_SCHEDULES])
 
 
-async def simulate_zitzler(name, db_file):
-    results = await simulate_mo_cohda(
+async def simulate_zitzler_1(name):
+    await simulate_mo_cohda(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
         possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=False,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
         check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT,
-    )
-
-    store_in_db(
-        db_file=db_file, sim_name=name, n_agents=NUM_AGENTS, targets=TARGETS,
-        n_solution_points=NUM_SOLUTION_POINTS, n_iterations=NUM_ITERATIONS, check_inbox_interval=CHECK_INBOX_INTERVAL,
-        mutate_func=MUTATE_FKT, pick_func=PICK_FKT, results=results
+        sim_name=name
     )
 
 
 if __name__ == '__main__':
-    asyncio.run(simulate_zitzler(SIM_NAME, FILE))
+    asyncio.run(simulate_zitzler_1(SIM_NAME))

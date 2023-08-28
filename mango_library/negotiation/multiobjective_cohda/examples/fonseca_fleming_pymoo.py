@@ -3,23 +3,23 @@ import math
 import time
 
 import numpy as np
+from pymoo.core.problem import Problem
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
-from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import simulate_mo_cohda, store_in_db
+from mango_library.negotiation.multiobjective_cohda.examples.simulation_util import store_in_db, \
+    simulate_mo_cohda_NSGA2
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
 SIM_NAME = 'Fonseca_Fleming'
 
 NUM_AGENTS = 10
-NUM_SCHEDULES = 25
-NUM_SOLUTION_POINTS = 10
+NUM_SOLUTION_POINTS = 1
 NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
 PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = MoCohdaNegotiation.pick_random_point
-MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
-# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
+MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
 
 NUM_SIMULATIONS = 2
 DENOMINATOR = math.sqrt(NUM_AGENTS)
@@ -53,26 +53,37 @@ def target_func_2(cs):
     return 1 - math.exp(-exponent)
 
 
+class FonsecaFleming(Problem):
+
+    def __init__(self):
+        super().__init__(n_var=1,
+                         n_obj=2,
+                         xl=-4,
+                         xu=4)
+
+    def _evaluate(self, x, out, *args, **kwargs):
+        x = x.sum(axis=0)
+        f1 = [target_func_1(x)]
+        f2 = [target_func_2(x)]
+        out["F"] = np.column_stack([f1, f2])
+
+
 # minimize
 TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
 TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
-SCHEDULE_STEP_SIZE = 8 / (NUM_SCHEDULES - 1)
-# each agent has a range from -4 until 4
-SINGLE_POINT_SCHEDULES = [np.array([-4 + SCHEDULE_STEP_SIZE * i]) for i in range(NUM_SCHEDULES)]
-
-POSSIBLE_SCHEDULES = SINGLE_POINT_SCHEDULES
+possible_interval = 8 / NUM_AGENTS
 
 
 async def simulate_fonseca(name):
-    await simulate_mo_cohda(
+    p = FonsecaFleming()
+    await simulate_mo_cohda_NSGA2(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
-        possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=True,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
-        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT,
-        sim_name=name, store_updates_to_db=True
+        check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT, problem=p,
+        lower_limit=-4, upper_limit=4, possible_interval=possible_interval, sim_name=name
     )
 
 
