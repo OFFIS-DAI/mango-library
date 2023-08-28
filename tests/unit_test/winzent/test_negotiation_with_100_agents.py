@@ -21,7 +21,7 @@ async def test_successful_negotiation_hundred_agents():
     for agent in agents:
         agent.update_flexibility(t_start=0, min_p=0, max_p=10)
 
-    await agents[0].start_negotiation(ts=[0, 900], value=400)
+    await agents[0].start_negotiation(start_dates=[0], values=[400])
 
     await agents[0].negotiation_done
     assert not agents[0]._unsuccessful_negotiations
