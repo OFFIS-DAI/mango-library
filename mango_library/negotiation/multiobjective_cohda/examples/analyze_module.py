@@ -1,5 +1,6 @@
 import math
 import os
+import time
 
 import h5py
 import matplotlib.pyplot as plt
@@ -231,69 +232,85 @@ def create_reference_front(problem, number_of_points):
 
 
 if __name__ == '__main__':
-    PROBLEM = "Zitzler_3"
-    REFERENCE_POINT = (1.1, 1.1)
-    P = 2
-    INSIDE_EXPONENT = False
-    MINIMIZE = True
+    problem = "Zitzler_3"
+    scenario_id = "Scenario07"
+    number_of_runs = 100
+    reference_point = (1.1, 1.1)
+    p = 2
+    inside_exponent = False
+    minimize = True
 
     path = os.path.dirname(__file__)
 
     # get approximated front from database
-    results_without_pymoo = h5py.File(path + '/' + PROBLEM + '.hdf5', 'r')
-    performances_without_pymoo = np.array(results_without_pymoo.get('Results').get('Results_0').get('performances'))
-    approximated_front_without_pymoo = []
-    for performance_tuple in performances_without_pymoo:
-        f1 = float(performance_tuple[0])
-        f2 = float(performance_tuple[1])
-        approximated_front_without_pymoo.append([f1, f2])
+    idx = 0
+    merged_approximated_front = []
+    average_hv = 0
+    average_duration = 0
+    while idx < number_of_runs:
+        with h5py.File(path + '/' + f"{problem}_NSGA2_{scenario_id}_simulation_idx_{idx}.hdf5", 'r') as results:
+            performances = np.array(results['Results']['Results_0']['performances'])
+            for performance_tuple in performances:
+                f1 = float(performance_tuple[0])
+                f2 = float(performance_tuple[1])
+                merged_approximated_front.append([f1, f2])
+            hv = results['Results']['Results_0']['general results']['Hypervolume']
+            duration = results['Results']['Results_0']['general results']['Duration']
+            average_hv += hv
+            average_duration += duration
+        idx += 1
+    average_hv = average_hv / number_of_runs
+    average_duration = average_duration / number_of_runs
 
-    # get approximated front from old database
-    # results_pymoo = h5py.File(path + '/' + PROBLEM + '_NSGA2.hdf5', 'r')
-    # performances_pymoo = np.array(results_pymoo.get('Results').get('Results_0').get('performances'))
-    # approximated_front_pymoo = []
-    # for performance_tuple_ in performances_pymoo:
-    #     f1 = float(performance_tuple_[0])
-    #     f2 = float(performance_tuple_[1])
-    #     approximated_front_pymoo.append([f1, f2])
+    # get results for central approach
+    central_idx = 0
+    central_merged_front = []
+    central_average_duration = 0
+    while central_idx < number_of_runs:
+        start = time.time()
+        central_front = get_solution(problem)
+        end = time.time()
+        central_duration = end - start
+        central_average_duration += central_duration
+        for performance_tuple in central_front:
+            f1 = float(performance_tuple[0])
+            f2 = float(performance_tuple[1])
+            central_merged_front.append([f1, f2])
+        central_idx += 1
+    central_average_duration = average_duration / number_of_runs
 
     # create reference front
-    reference_front = create_reference_front(PROBLEM, 500)
-
-    # create front with central approach
-    central_front = get_solution(PROBLEM)
+    reference_front = create_reference_front(problem, 500)
 
     # calculate and print metrics
-    # metrics_approximated_front = get_performance_metrics(np.array(approximated_front_without_pymoo),
-    #                                                      np.array(reference_front),
-    #                                                      REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
-    metrics_approximated_front__without_pymoo = get_performance_metrics(np.array(approximated_front_without_pymoo),
-                                                                        np.array(reference_front),
-                                                                        REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
-    metrics_central_front = get_performance_metrics(np.array(central_front), np.array(reference_front),
-                                                    REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
+    metrics_merged_approximated_front = get_performance_metrics(np.array(merged_approximated_front),
+                                                                np.array(reference_front), reference_point, p,
+                                                                inside_exponent, minimize)
+    metrics_central_merged_front = get_performance_metrics(np.array(central_merged_front), np.array(reference_front),
+                                                           reference_point, p, inside_exponent, minimize)
     metrics_reference_front = get_performance_metrics(np.array(reference_front), np.array(reference_front),
-                                                      REFERENCE_POINT, P, INSIDE_EXPONENT, MINIMIZE)
-    #
-    print("MO-COHDA without pymoo", metrics_approximated_front__without_pymoo)
-    # print("MO-COHDA with pymoo", metrics_approximated_front_pymoo)
-    print("Central", metrics_central_front)
-    print("Reference Front", metrics_reference_front)
+                                                      reference_point, p, inside_exponent, minimize)
+
+    print("Average HV:", average_hv)
+    print("Average Duration:", average_duration)
+    print("Results for merged front with MO-COHDA for", problem, ":", metrics_merged_approximated_front)
+    print("Results for central front for", problem, ":", metrics_central_merged_front)
+    print("Results for Reference Front:", metrics_reference_front)
 
     # Create Plots
     # decentralized solution vs. central solution finding
     figure, axis = plt.subplots(2, 2)
-    axis[0, 0].scatter(np.array(approximated_front_without_pymoo)[:, 0],
-                       np.array(approximated_front_without_pymoo)[:, 1], s=3,
+    axis[0, 0].scatter(np.array(merged_approximated_front)[:, 0],
+                       np.array(merged_approximated_front)[:, 1], s=3,
                        c='#1f77b4')
     axis[0, 0].set_title("MO-COHDA")
-    axis[0, 1].scatter(central_front[:, 0], central_front[:, 1], s=3, c='#ff7f0e')
+    axis[0, 1].scatter(np.array(central_merged_front)[:, 0], np.array(central_merged_front)[:, 1], s=3, c='#ff7f0e')
     axis[0, 1].set_title("Central Solution")
     axis[1, 0].scatter(reference_front[:, 0], reference_front[:, 1], s=3, c='#2ca02c')
     axis[1, 0].set_title("Reference Front")
-    axis[1, 1].scatter(np.array(approximated_front_without_pymoo)[:, 0],
-                       np.array(approximated_front_without_pymoo)[:, 1], s=3)
-    axis[1, 1].scatter(central_front[:, 0], central_front[:, 1], s=3)
+    axis[1, 1].scatter(np.array(merged_approximated_front)[:, 0],
+                       np.array(merged_approximated_front)[:, 1], s=3)
+    axis[1, 1].scatter(np.array(central_merged_front)[:, 0], np.array(central_merged_front)[:, 1], s=3)
     axis[1, 1].scatter(reference_front[:, 0], reference_front[:, 1], s=3)
     axis[1, 1].set_title("All")
     plt.show()
