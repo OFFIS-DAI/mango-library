@@ -1,4 +1,4 @@
-from mango import create_container
+from mango.core.container import Container
 
 from negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 from negotiation.winzent.winzent_ethical_agent import WinzentEthicalAgent
@@ -24,7 +24,8 @@ async def create_three_agents():
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await create_container(addr=addr)
+    container = await Container.factory(addr=addr)
+
 
     # create agents
     agent_a = WinzentBaseAgent(container=container, ttl=2)
@@ -51,7 +52,8 @@ async def create_six_base_agents(agent_tts=5):
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await create_container(addr=addr)
+    container = await Container.factory(addr=addr)
+
     tts = agent_tts
     # create agents
     agent_a = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
@@ -103,7 +105,8 @@ async def create_six_simple_ethical_agents():
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await create_container(addr=addr)
+    container = await Container.factory(addr=addr)
+
     tts = 3
     # create agents
     agent_a = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
@@ -154,7 +157,8 @@ async def create_agents(number_of_agents, ttl, time_to_sleep):
     addr = ('127.0.0.1', 5555)
 
     # multiple container are possible, here just one is taken
-    container = await create_container(addr=addr)
+    container = await Container.factory(addr=addr)
+
 
     agents = []
 
