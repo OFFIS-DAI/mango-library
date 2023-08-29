@@ -10,8 +10,7 @@ from mango_library.negotiation.winzent.winzent_base_agent import WinzentBaseAgen
 
 logger = logging.getLogger(__name__)
 
-
-class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
+class WinzentEthicalAgent(WinzentBaseAgent, ABC):
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1,
                  request_processing_waiting_time=0.4,
                  reply_processing_waiting_time=0.4,
@@ -52,7 +51,7 @@ class WinzentSimpleEthicalAgent(WinzentBaseAgent, ABC):
                 self.offer_list.clear()
                 offers.sort(key=self.get_ethics_score, reverse=True)
                 for offer in offers:
-                    if offer.value[0] >= value:
+                    if abs(offer.value[0]) >= abs(value):
                         value_to_offer = value
                         value = 0
                     else:

@@ -5,7 +5,7 @@ import uuid
 from abc import ABC
 from datetime import datetime
 
-from mango.core.agent import Agent
+from mango.agent.core import Agent
 
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
