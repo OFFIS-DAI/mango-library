@@ -192,7 +192,7 @@ class MoCohdaNegotiation:
             for solution_point in solution_points:
                 schedule_before = solution_point.cluster_schedule[solution_point.idx[agent_id]]
                 new_schedule = random.choice(schedules)
-                while new_schedule == schedule_before:
+                while all(i == j for i, j in zip(new_schedule, schedule_before)):
                     new_schedule = random.choice(schedules)
                 new_cs = np.copy(solution_point.cluster_schedule)
                 new_cs[solution_point.idx[agent_id]] = new_schedule

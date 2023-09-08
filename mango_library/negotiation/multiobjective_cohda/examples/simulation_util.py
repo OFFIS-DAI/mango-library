@@ -301,7 +301,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
     for simulation_idx in range(num_simulations):
         port = 5555
         container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
-        db_file = sim_name + '_simulation_idx_' + str(simulation_idx)
+        db_file = sim_name + '_simulation_idx_' + str(simulation_idx) + '.hdf5'
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
 
