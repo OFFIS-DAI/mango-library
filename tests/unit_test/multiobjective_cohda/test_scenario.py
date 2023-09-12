@@ -297,7 +297,7 @@ async def test_complex_scenario():
     pick_fkt = MoCohdaNegotiation.pick_all_points
     # pick_fkt = COHDA.pick_random_point
     mutate_fkt = MoCohdaNegotiation.mutate_with_all_possible
-    # mutate_fkt = COHDA.mutate_with_one_random
+    # mutate_fkt = COHDA.mutate_with_one_random_schedule
 
     agents, addrs, controller_agent = await create_agents(
         container=c_1,
@@ -331,7 +331,7 @@ async def test_complex_scenario():
             if np.sum(schedule) != 1:
                 assert (
                     pick_fkt == MoCohdaNegotiation.pick_random_point
-                    or mutate_fkt == MoCohdaNegotiation.mutate_with_one_random
+                    or mutate_fkt == MoCohdaNegotiation.mutate_with_one_random_schedule
                 )
 
         # gracefully shutdown

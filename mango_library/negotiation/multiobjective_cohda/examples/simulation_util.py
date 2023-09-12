@@ -227,7 +227,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                                   num_iterations: int, check_inbox_interval: float, topology_creator: Callable = None,
                                   num_simulations: int, problem='zdt3', lower_limit=0, upper_limit=1,
                                   store_updates_to_db: bool = False, sim_name: str = '', population_size: int = 1,
-                                  control_all_variables=True):
+                                  control_all_variables=True, mutate_with_one_random_value=False):
     """
     Function that will execute a multi-objective simulation and return a dict consisting of the results.
     :param num_agents: The number of agents
@@ -415,15 +415,46 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                         solution[idx] = [0 if i != agent_id else agents_sol for i in range(len(solution[idx]))]
                 return solution
 
-            a.add_role(MultiObjectiveCOHDARole(
-                schedule_provider=provide_schedules,
-                targets=targets,
-                local_acceptable_func=lambda s: True,
-                num_solution_points=num_solution_points, num_iterations=num_iterations,
-                check_inbox_interval=check_inbox_interval,
-                pick_func=pick_func, mutate_func=mutate_func,
-                store_updates_to_db=store_updates_to_db)
-            )
+            def provide_new_value(solution_point=None, agent_id=None, candidate=None):
+                if solution_point is None:
+                    cluster_schedule = [0. for _ in range(num_agents)]
+                    if agent_id is None:
+                        agent_id = int(candidate.agent_id) - 1
+                    else:
+                        agent_id = int(agent_id) - 1
+
+                    agents_sol = random.uniform(lower_limit, upper_limit)
+                    cluster_schedule[agent_id] = agents_sol
+                else:
+                    # determine the the cluster schedule
+                    cluster_schedule = np.copy(solution_point.cluster_schedule)
+                    # determine the schedule of the agent from the cluster schedule
+                    agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
+                    # set new values accordingly
+                    cluster_schedule[solution_point.idx[agent_id]] = random.uniform(lower_limit, upper_limit)
+
+                return [cluster_schedule]
+
+            if mutate_with_one_random_value:
+                a.add_role(MultiObjectiveCOHDARole(
+                    schedule_provider=provide_new_value,
+                    targets=targets,
+                    local_acceptable_func=lambda s: True,
+                    num_solution_points=num_solution_points, num_iterations=num_iterations,
+                    check_inbox_interval=check_inbox_interval,
+                    pick_func=pick_func, mutate_func=mutate_func,
+                    store_updates_to_db=store_updates_to_db)
+                )
+            else:
+                a.add_role(MultiObjectiveCOHDARole(
+                    schedule_provider=provide_schedules,
+                    targets=targets,
+                    local_acceptable_func=lambda s: True,
+                    num_solution_points=num_solution_points, num_iterations=num_iterations,
+                    check_inbox_interval=check_inbox_interval,
+                    pick_func=pick_func, mutate_func=mutate_func,
+                    store_updates_to_db=store_updates_to_db)
+                )
 
             a.add_role(CoalitionParticipantRole())
             a.add_role(
@@ -435,7 +466,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
-            schedules_per_agent[a.aid] = provide_schedules(agent_id=i+1)
+            schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)

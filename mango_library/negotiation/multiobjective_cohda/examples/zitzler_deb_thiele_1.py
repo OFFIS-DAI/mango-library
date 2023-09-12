@@ -18,7 +18,7 @@ CHECK_INBOX_INTERVAL = 0.05
 PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
-# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
+# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_schedule
 
 NUM_SIMULATIONS = 1
 

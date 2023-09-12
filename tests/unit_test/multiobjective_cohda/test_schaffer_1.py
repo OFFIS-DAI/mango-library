@@ -21,7 +21,7 @@ PICK_FKT = MoCohdaNegotiation.pick_all_points
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
 
 
-# MUTATE_FKT = COHDA.mutate_with_one_random
+# MUTATE_FKT = COHDA.mutate_with_one_random_schedule
 
 
 @pytest.mark.asyncio

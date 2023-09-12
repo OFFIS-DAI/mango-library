@@ -23,7 +23,7 @@ CHECK_INBOX_INTERVAL = 0.05
 
 PICK_FKT = MoCohdaNegotiation.pick_random_point
 # PICK_FKT = MoCohdaNegotiation.pick_random_point
-MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
+MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value  # mutate_NSGA2
 
 NUM_SIMULATIONS = 1
 p = get_problem(PROBLEM)
@@ -62,7 +62,9 @@ async def simulate_zitzler_3_NSGA2(name):
         num_agents=NUM_AGENTS,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
         check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT, problem=PROBLEM,
-        possible_interval=possible_interval, population_size=POPULATION_SIZE, sim_name=name, control_all_variables=False
+        possible_interval=possible_interval, population_size=POPULATION_SIZE, sim_name=name,
+        control_all_variables=False,
+        mutate_with_one_random_value=True, upper_limit=1, lower_limit=0
     )
 
 

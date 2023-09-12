@@ -175,13 +175,14 @@ class MoCohdaNegotiation:
         return [random.choice(solution_points)]
 
     @staticmethod
-    def mutate_with_one_random(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
+    def mutate_with_one_random_schedule(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
-        Function that mutates each solution point with one random schedule that is different from the original
-        :param solution_points:
-        :param schedule_creator:
-        :param agent_id:
+        Mutates each solution point with one random schedule that is different from the original
+        :param solution_points: original solution points to be mutated
+        :param schedule_creator: method to provide schedules for mutation
+        :param agent_id: id of current agent
+        :target_params: parameters regarding optimization target
         :return:
         """
         schedules = schedule_creator(system_config=None,
@@ -201,6 +202,28 @@ class MoCohdaNegotiation:
 
         else:
             return solution_points
+
+    @staticmethod
+    def mutate_with_one_random_value(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
+            -> List[SolutionPoint]:
+        """
+        Mutates each solution point with one random value that is between maximum and minimum value
+        :param solution_points: original solution points to be mutated
+        :param schedule_creator: method to provide schedules for mutation
+        :param agent_id: id of current agent
+        :target_params: parameters regarding optimization target
+        :return:
+        """
+        new_solution_points = []
+        new_values = schedule_creator(system_config=None,
+                                      candidate=None,
+                                      target_params=target_params,
+                                      agent_id=agent_id)
+        for idx, solution_point in enumerate(solution_points):
+            new_cs = np.copy(solution_point.cluster_schedule)
+            new_cs[solution_point.idx[agent_id]] = new_values[idx]
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
+        return new_solution_points
 
     @staticmethod
     def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
