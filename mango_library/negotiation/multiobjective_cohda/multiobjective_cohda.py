@@ -5,6 +5,7 @@ import asyncio
 import inspect
 import logging
 import random
+import time
 from typing import Dict, List, Any, Tuple, Callable, Optional
 from uuid import UUID
 
@@ -161,7 +162,7 @@ class MoCohdaNegotiation:
         """
         Function that picks all solution points
         :param solution_points:
-        :return:
+        :return: chosen solutions points
         """
         return solution_points
 
@@ -170,7 +171,7 @@ class MoCohdaNegotiation:
         """
         Function that picks one random point
         :param solution_points:
-        :return:
+        :return: chosen solution point
         """
         return [random.choice(solution_points)]
 
@@ -183,7 +184,7 @@ class MoCohdaNegotiation:
         :param schedule_creator: method to provide schedules for mutation
         :param agent_id: id of current agent
         :target_params: parameters regarding optimization target
-        :return:
+        :return: mutated solution points
         """
         schedules = schedule_creator(system_config=None,
                                      candidate=None,
@@ -212,7 +213,7 @@ class MoCohdaNegotiation:
         :param schedule_creator: method to provide schedules for mutation
         :param agent_id: id of current agent
         :target_params: parameters regarding optimization target
-        :return:
+        :return: mutated solution points
         """
         new_solution_points = []
         new_values = schedule_creator(system_config=None,
@@ -234,7 +235,7 @@ class MoCohdaNegotiation:
         :param schedule_creator: method to provide data for mutation
         :param agent_id: id of current agent
         :target_params: parameters regarding optimization target
-        :return:
+        :return: mutated solution points
         """
         new_solution_points = []
         for solution_point in solution_points:
@@ -258,7 +259,7 @@ class MoCohdaNegotiation:
         :param solution_points:
         :param schedule_creator:
         :param agent_id:
-        :return:
+        :return: mutated solution points
         """
         possible_schedules = schedule_creator(system_config=None,
                                               candidate=None,
@@ -509,6 +510,12 @@ class MoCohdaNegotiation:
         return sysconf
 
     def get_hypervolume(self, performances, population=None):
+        """
+        Calculates hypervolume given the performances.
+        @param performances: Performances according to target functions
+        @param population: Complete population to determine hv of
+        @return: hypervolume of population
+        """
         if self._selection.sorting_component.reference_point is None:
             reference_point = self._selection.construct_ref_point(population, self._selection.offsets)
             self._selection.sorting_component.reference_point = reference_point
@@ -649,9 +656,9 @@ class MultiObjectiveCOHDARole(Role):
 
     def _perf_func(self, cluster_schedules: List[np.array], target_params: Dict) -> List[Tuple]:
         """
-
-        :param cluster_schedules:
-        :return:
+        Calculates performance of cluster schedules
+        :param cluster_schedules: schedules to determine performance of
+        :return: Performances
         """
         performances = []
         for cs in cluster_schedules:
@@ -751,6 +758,11 @@ class MultiObjectiveCOHDARole(Role):
         return process_msg
 
     def store_update_in_db(self, wm_to_send):
+        """
+        Called in each iteration of COHDA of the agent, when the agent updates
+        its neighbors, the information will also be stored in the database.
+        @param wm_to_send: Working memory the agent sends to its neighbors
+        """
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
             general_group = self._hf.create_group(f'Update_{self._updates_iter}')

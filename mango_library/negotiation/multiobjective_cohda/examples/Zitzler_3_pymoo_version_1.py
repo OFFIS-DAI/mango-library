@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.problems import get_problem
@@ -13,15 +14,15 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 #  For the version in which every agent can control each variable with NSGA2 (from pymoo),
 #  have a look at: Zitzler_3_pymoo_version_1.py.
 
-SIM_NAME = 'Zitzler_3_nsga2_'
-PROBLEM = 'zdt3'
+SIM_NAME = 'Zitzler_2_nsga2_'
+PROBLEM = 'zdt2'
 NUM_AGENTS = 30
-NUM_SOLUTION_POINTS = 1
+NUM_SOLUTION_POINTS = 25
 POPULATION_SIZE = 1
-NUM_ITERATIONS = 1
+NUM_ITERATIONS = 10
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = MoCohdaNegotiation.pick_random_point
+PICK_FKT = MoCohdaNegotiation.pick_all_points
 # PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value  # mutate_NSGA2
 
