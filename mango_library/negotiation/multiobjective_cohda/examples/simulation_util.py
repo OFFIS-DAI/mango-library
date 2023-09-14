@@ -417,23 +417,24 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             def provide_new_value(solution_point=None, agent_id=None, candidate=None):
                 if solution_point is None:
-                    cluster_schedule = [0. for _ in range(num_agents)]
+                    cluster_schedule = [[0. for _ in range(num_agents)] for x in range(num_solution_points)]
                     if agent_id is None:
                         agent_id = int(candidate.agent_id) - 1
                     else:
                         agent_id = int(agent_id) - 1
 
-                    agents_sol = random.uniform(lower_limit, upper_limit)
-                    cluster_schedule[agent_id] = agents_sol
+                    for idx, schedule in enumerate(cluster_schedule):
+                        schedule[agent_id] = random.uniform(lower_limit, upper_limit)
+                        cluster_schedule[idx] = schedule
                 else:
-                    # determine the the cluster schedule
+                    # determine the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
                     # determine the schedule of the agent from the cluster schedule
                     agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
                     # set new values accordingly
                     cluster_schedule[solution_point.idx[agent_id]] = random.uniform(lower_limit, upper_limit)
 
-                return [cluster_schedule]
+                return cluster_schedule
 
             if mutate_with_one_random_value:
                 a.add_role(MultiObjectiveCOHDARole(

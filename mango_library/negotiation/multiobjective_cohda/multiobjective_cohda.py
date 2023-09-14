@@ -229,10 +229,11 @@ class MoCohdaNegotiation:
     def mutate_NSGA2(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
-        Function that mutates a solution point with all possible schedules
-        :param solution_points:
-        :param schedule_creator:
-        :param agent_id:
+        Function that mutates a solution point using NSGA2
+        :param solution_points: original solution points to be mutated
+        :param schedule_creator: method to provide data for mutation
+        :param agent_id: id of current agent
+        :target_params: parameters regarding optimization target
         :return:
         """
         new_solution_points = []
