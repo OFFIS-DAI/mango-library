@@ -315,6 +315,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(solution_point=None, agent_id=None, candidate=None):
+                # TODO: two functions, optimize_control_all_variables, optimize_control_one_variable
                 diff_to_lower_limit = 0
                 diff_to_upper_limit = 0
 
@@ -330,12 +331,15 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 else:
                     # determine the sum of the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
-                    # determine the schedule of the agent from the cluster schedule
-                    agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
-                    # set agents partition to 0
-                    agent_schedule = [0 for _ in agent_schedule]
-                    cluster_schedule[solution_point.idx[agent_id]] = agent_schedule
-                    example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
+                    if control_all_variables:
+                        # determine the schedule of the agent from the cluster schedule
+                        agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
+                        # set agents partition to 0
+                        agent_schedule = [0 for _ in agent_schedule]
+                        cluster_schedule[solution_point.idx[agent_id]] = agent_schedule
+                        example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
+                    else:
+                        example_sum = cluster_schedule
                 assert [lower_limit <= idx <= upper_limit for idx in example_sum]
 
                 if not control_all_variables:
