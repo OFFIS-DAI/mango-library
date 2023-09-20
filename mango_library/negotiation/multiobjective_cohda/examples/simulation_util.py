@@ -254,6 +254,8 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
     :param population_size: Size of the population to simulate.
     :param control_all_variables: If true, each agent is able to control all variables of a given level. If false,
     agent can only control one variable.
+    :param mutate_with_one_random_value: If true, the mutate function mutates with one random value. The schedule or
+    value provider is implemented accordingly.
     :return: A List of dictionaries, each of which is structured as follows:
         'final_memory': WorkingMemory,
         'duration': float,
@@ -313,108 +315,118 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
         # create agents for negotiation
         for i in range(num_agents):
             a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
+            if isinstance(problem, str):
+                p = get_problem(problem)
+            elif isinstance(problem, Problem):
+                p = problem
+            else:
+                raise ValueError("Invalid type for problem given.")
 
-            def provide_schedules(solution_point=None, agent_id=None, candidate=None):
-                # TODO: two functions, optimize_control_all_variables, optimize_control_one_variable
+            def provide_optimized_values_control_all_variables(solution_point=None, agent_id=None, candidate=None):
                 diff_to_lower_limit = 0
                 diff_to_upper_limit = 0
 
-                if isinstance(problem, str):
-                    p = get_problem(problem)
-                elif isinstance(problem, Problem):
-                    p = problem
-                else:
-                    raise ValueError("Invalid type for problem given.")
-
                 if solution_point is None:
-                    example_sum = [0. for _ in range(len(p.xl))]
+                    parameter_list = [0. for _ in range(len(p.xl))]
                 else:
                     # determine the sum of the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
-                    if control_all_variables:
-                        # determine the schedule of the agent from the cluster schedule
-                        agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
-                        # set agents partition to 0
-                        agent_schedule = [0 for _ in agent_schedule]
-                        cluster_schedule[solution_point.idx[agent_id]] = agent_schedule
-                        example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
+                    # determine the schedule of the agent from the cluster schedule
+                    agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
+                    # set agents partition to 0
+                    agent_schedule = [0 for _ in agent_schedule]
+                    cluster_schedule[solution_point.idx[agent_id]] = agent_schedule
+                    parameter_list = [sum(entry) for entry in zip(*cluster_schedule)]
+
+                assert [lower_limit <= idx <= upper_limit for idx in parameter_list]
+
+                for idx in range(len(parameter_list)):
+                    # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
+                    # without the partition of the current agent. Therefore, the solution without the agent is
+                    # considered. The new partition of the agent will be added after the optimisation.
+
+                    if parameter_list[idx] - possible_interval >= lower_limit:
+                        p.xl[idx] = parameter_list[idx] - possible_interval
+                    elif parameter_list[idx] < lower_limit:
+                        if lower_limit == 0:
+                            raise ValueError('Somehow the sum is lower than lower limit!')
+                        diff_to_lower_limit = lower_limit - parameter_list[idx]
+                        p.xl[idx] = diff_to_lower_limit
                     else:
-                        example_sum = cluster_schedule
-                assert [lower_limit <= idx <= upper_limit for idx in example_sum]
+                        diff = parameter_list[idx] - lower_limit
+                        p.xl[idx] = parameter_list[idx] - diff
 
-                if not control_all_variables:
-                    # for other agents, take the chosen values as upper and lower levels,
-                    # such that the agent only optimises its variables
-                    p.xl = np.array(example_sum)
-                    p.xu = np.array(example_sum)
-
-                    # determine position according to agent id
-                    if agent_id is None:
-                        agent_id = int(candidate.agent_id) - 1
+                    if parameter_list[idx] + possible_interval <= upper_limit:
+                        p.xu[idx] = parameter_list[idx] + possible_interval
+                    elif parameter_list[idx] > upper_limit:
+                        if parameter_list[idx] < lower_limit:
+                            raise ValueError(
+                                "Value without agents participation is below lower and above higher limit!")
+                        diff_to_upper_limit = parameter_list[idx] - upper_limit
+                        p.xu[idx] = diff_to_upper_limit
                     else:
-                        agent_id = int(agent_id) - 1
+                        diff = upper_limit - parameter_list[idx]
+                        p.xu[idx] = parameter_list[idx] + diff
 
-                    # as upper and lower level, set the limits for the agent,
-                    # the agent can choose anything in between during optimisation
-                    p.xl[agent_id] = float(lower_limit)
-                    p.xu[agent_id] = float(upper_limit)
-                else:
-                    for idx in range(len(example_sum)):
-                        # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
-                        # without the partition of the current agent. Therefore, the solution without the agent is
-                        # considered. The new partition of the agent will be added after the optimisation.
-
-                        if example_sum[idx] - possible_interval >= lower_limit:
-                            p.xl[idx] = example_sum[idx] - possible_interval
-                        elif example_sum[idx] < lower_limit:
-                            if lower_limit == 0:
-                                raise ValueError('Somehow the sum is lower than lower limit!')
-                            diff_to_lower_limit = lower_limit - example_sum[idx]
-                            p.xl[idx] = diff_to_lower_limit
-                        else:
-                            diff = example_sum[idx] - lower_limit
-                            p.xl[idx] = example_sum[idx] - diff
-
-                        if example_sum[idx] + possible_interval <= upper_limit:
-                            p.xu[idx] = example_sum[idx] + possible_interval
-                        elif example_sum[idx] > upper_limit:
-                            if example_sum[idx] < lower_limit:
-                                raise ValueError(
-                                    "Value without agents participation is below lower and above higher limit!")
-                            diff_to_upper_limit = example_sum[idx] - upper_limit
-                            p.xu[idx] = diff_to_upper_limit
-                        else:
-                            diff = upper_limit - example_sum[idx]
-                            p.xu[idx] = example_sum[idx] + diff
-
-                        assert lower_limit <= p.xl[idx] <= upper_limit
-                        assert lower_limit <= p.xu[idx] <= upper_limit
+                    assert lower_limit <= p.xl[idx] <= upper_limit
+                    assert lower_limit <= p.xu[idx] <= upper_limit
                 # minimize problem
                 result: Result = minimize(p, algorithm)
                 solution = result.X.tolist()
 
-                if control_all_variables:
-                    # extract the actual partition of the current agent by determining what is contained in the solution
-                    # additionally to the previously calculated sum of the current cluster schedule
-                    for first_idx, sol_point in enumerate(solution):
-                        for idx, single_val in enumerate(sol_point):
-                            # single_val = solution with participation of agent
-                            # example_sum = solution without participation of agent
-                            # difference = participation of agent
-                            if abs(example_sum[idx]) > abs(single_val):
-                                diff = example_sum[idx] - single_val
-                            else:
-                                diff = single_val - example_sum[idx]
+                # extract the actual partition of the current agent by determining what is contained in the solution
+                # additionally to the previously calculated sum of the current cluster schedule
+                for first_idx, sol_point in enumerate(solution):
+                    for idx, single_val in enumerate(sol_point):
+                        # single_val = solution with participation of agent
+                        # parameter_list = solution without participation of agent
+                        # difference = participation of agent
+                        if abs(parameter_list[idx]) > abs(single_val):
+                            diff = parameter_list[idx] - single_val
+                        else:
+                            diff = single_val - parameter_list[idx]
 
-                            assert lower_limit <= single_val <= upper_limit
-                            correct_value = float(diff)
+                        assert lower_limit <= single_val <= upper_limit
+                        correct_value = float(diff)
 
-                            if diff_to_lower_limit != 0:
-                                correct_value += diff_to_lower_limit
-                            if diff_to_upper_limit != 0:
-                                correct_value += diff_to_upper_limit
+                        if diff_to_lower_limit != 0:
+                            correct_value += diff_to_lower_limit
+                        if diff_to_upper_limit != 0:
+                            correct_value += diff_to_upper_limit
 
-                            solution[first_idx][idx] = correct_value
+                        solution[first_idx][idx] = correct_value
+
+                solution = [np.asarray(sol) for sol in solution]
+                return solution
+
+            def provide_optimized_values_control_one_variable(solution_point=None, agent_id=None, candidate=None):
+                if solution_point is None:
+                    parameter_list = [0. for _ in range(len(p.xl))]
+                else:
+                    # take the cluster schedule
+                    cluster_schedule = np.copy(solution_point.cluster_schedule)
+                    parameter_list = cluster_schedule
+                assert [lower_limit <= idx <= upper_limit for idx in parameter_list]
+
+                # for other agents, take the chosen values as upper and lower levels,
+                # such that the agent only optimises its variables
+                p.xl = np.array(parameter_list)
+                p.xu = np.array(parameter_list)
+
+                # determine position according to agent id
+                if agent_id is None:
+                    agent_id = int(candidate.agent_id) - 1
+                else:
+                    agent_id = int(agent_id) - 1
+
+                # as upper and lower level, set the limits for the agent,
+                # the agent can choose anything in between during optimisation
+                p.xl[agent_id] = float(lower_limit)
+                p.xu[agent_id] = float(upper_limit)
+
+                # minimize problem
+                result: Result = minimize(p, algorithm)
+                solution = result.X.tolist()
 
                 solution = [np.asarray(sol) for sol in solution]
                 return solution
@@ -449,9 +461,10 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     pick_func=pick_func, mutate_func=mutate_func,
                     store_updates_to_db=store_updates_to_db)
                 )
-            else:
+                schedules_per_agent[a.aid] = provide_new_value(agent_id=i + 1)
+            elif control_all_variables:
                 a.add_role(MultiObjectiveCOHDARole(
-                    schedule_provider=provide_schedules,
+                    schedule_provider=provide_optimized_values_control_all_variables,
                     targets=targets,
                     local_acceptable_func=lambda s: True,
                     num_solution_points=num_solution_points, num_iterations=num_iterations,
@@ -459,7 +472,18 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     pick_func=pick_func, mutate_func=mutate_func,
                     store_updates_to_db=store_updates_to_db)
                 )
-
+                schedules_per_agent[a.aid] = provide_optimized_values_control_all_variables(agent_id=i + 1)
+            else:
+                a.add_role(MultiObjectiveCOHDARole(
+                    schedule_provider=provide_optimized_values_control_one_variable,
+                    targets=targets,
+                    local_acceptable_func=lambda s: True,
+                    num_solution_points=num_solution_points, num_iterations=num_iterations,
+                    check_inbox_interval=check_inbox_interval,
+                    pick_func=pick_func, mutate_func=mutate_func,
+                    store_updates_to_db=store_updates_to_db)
+                )
+                schedules_per_agent[a.aid] = provide_optimized_values_control_one_variable(agent_id=i + 1)
             a.add_role(CoalitionParticipantRole())
             a.add_role(
                 NegotiationTerminationParticipantRole(
@@ -470,10 +494,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
-            if not mutate_with_one_random_value:
-                schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
-            else:
-                schedules_per_agent[a.aid] = provide_new_value(agent_id=i + 1)
+
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)
