@@ -326,10 +326,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     raise ValueError("Invalid type for problem given.")
 
                 if solution_point is None:
-                    if control_all_variables:
-                        example_sum = [0. for _ in range(len(p.xl))]
-                    else:
-                        example_sum = [0]
+                    example_sum = [0. for _ in range(len(p.xl))]
                 else:
                     # determine the sum of the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
@@ -341,41 +338,53 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     example_sum = [sum(entry) for entry in zip(*cluster_schedule)]
                 assert [lower_limit <= idx <= upper_limit for idx in example_sum]
 
-                for idx in range(len(example_sum)):
-                    # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
-                    # without the partition of the current agent. Therefore, the solution without the agent is
-                    # considered. The new partition of the agent will be added after the optimisation.
+                if not control_all_variables:
+                    # for other agents, take the chosen values as upper and lower levels,
+                    # such that the agent only optimises its variables
+                    p.xl = np.array(example_sum)
+                    p.xu = np.array(example_sum)
 
-                    if example_sum[idx] - possible_interval >= lower_limit:
-                        p.xl[idx] = example_sum[idx] - possible_interval
-                    elif example_sum[idx] < lower_limit:
-                        if lower_limit == 0:
-                            raise ValueError('Somehow the sum is lower than lower limit!')
-                        diff_to_lower_limit = lower_limit - example_sum[idx]
-                        p.xl[idx] = diff_to_lower_limit
+                    # determine position according to agent id
+                    if agent_id is None:
+                        agent_id = int(candidate.agent_id) - 1
                     else:
-                        diff = example_sum[idx] - lower_limit
-                        p.xl[idx] = example_sum[idx] - diff
+                        agent_id = int(agent_id) - 1
 
-                    if example_sum[idx] + possible_interval <= upper_limit:
-                        p.xu[idx] = example_sum[idx] + possible_interval
-                    elif example_sum[idx] > upper_limit:
-                        if example_sum[idx] < lower_limit:
-                            raise ValueError(
-                                "Value without agents participation is below lower and above higher limit!")
-                        diff_to_upper_limit = example_sum[idx] - upper_limit
-                        p.xu[idx] = diff_to_upper_limit
-                    else:
-                        diff = upper_limit - example_sum[idx]
-                        p.xu[idx] = example_sum[idx] + diff
+                    # as upper and lower level, set the limits for the agent,
+                    # the agent can choose anything in between during optimisation
+                    p.xl[agent_id] = float(lower_limit)
+                    p.xu[agent_id] = float(upper_limit)
+                else:
+                    for idx in range(len(example_sum)):
+                        # adapt the lower (xl) and upper (xu) limits of the algorithm by the sum of the cluster schedule
+                        # without the partition of the current agent. Therefore, the solution without the agent is
+                        # considered. The new partition of the agent will be added after the optimisation.
 
-                    assert lower_limit <= p.xl[idx] <= upper_limit
-                    assert lower_limit <= p.xu[idx] <= upper_limit
+                        if example_sum[idx] - possible_interval >= lower_limit:
+                            p.xl[idx] = example_sum[idx] - possible_interval
+                        elif example_sum[idx] < lower_limit:
+                            if lower_limit == 0:
+                                raise ValueError('Somehow the sum is lower than lower limit!')
+                            diff_to_lower_limit = lower_limit - example_sum[idx]
+                            p.xl[idx] = diff_to_lower_limit
+                        else:
+                            diff = example_sum[idx] - lower_limit
+                            p.xl[idx] = example_sum[idx] - diff
 
-                # assert that the lower and upper limits between lower and upper limit
-                assert all(lower_limit <= x <= upper_limit for x in p.xl)
-                assert all(lower_limit <= x <= upper_limit for x in p.xu)
+                        if example_sum[idx] + possible_interval <= upper_limit:
+                            p.xu[idx] = example_sum[idx] + possible_interval
+                        elif example_sum[idx] > upper_limit:
+                            if example_sum[idx] < lower_limit:
+                                raise ValueError(
+                                    "Value without agents participation is below lower and above higher limit!")
+                            diff_to_upper_limit = example_sum[idx] - upper_limit
+                            p.xu[idx] = diff_to_upper_limit
+                        else:
+                            diff = upper_limit - example_sum[idx]
+                            p.xu[idx] = example_sum[idx] + diff
 
+                        assert lower_limit <= p.xl[idx] <= upper_limit
+                        assert lower_limit <= p.xu[idx] <= upper_limit
                 # minimize problem
                 result: Result = minimize(p, algorithm)
                 solution = result.X.tolist()
@@ -403,16 +412,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
                             solution[first_idx][idx] = correct_value
 
-                    solution = [np.asarray(sol) for sol in solution]
-                else:
-                    # if agent only controls one variable, only choose this position
-                    if agent_id is None:
-                        agent_id = int(candidate.agent_id) - 1
-                    else:
-                        agent_id = int(agent_id) - 1
-                    for idx in range(len(solution)):
-                        agents_sol = solution[idx][agent_id]
-                        solution[idx] = [0 if i != agent_id else agents_sol for i in range(len(solution[idx]))]
+                solution = [np.asarray(sol) for sol in solution]
                 return solution
 
             def provide_new_value(solution_point=None, agent_id=None, candidate=None):
@@ -433,7 +433,6 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
                     # set new values accordingly
                     cluster_schedule[solution_point.idx[agent_id]] = random.uniform(lower_limit, upper_limit)
-
                 return cluster_schedule
 
             if mutate_with_one_random_value:
@@ -467,7 +466,10 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
-            schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
+            if not mutate_with_one_random_value:
+                schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
+            else:
+                schedules_per_agent[a.aid] = provide_new_value(agent_id=i + 1)
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
         controller_agent = RoleAgent(container)
