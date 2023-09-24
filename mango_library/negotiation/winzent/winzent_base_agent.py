@@ -312,7 +312,6 @@ class WinzentBaseAgent(Agent, ABC):
             t_start = time_span[idx]
             if t_start in self.flex:
                 flexibility = self.flex[t_start]
-                print(flexibility)
             else:
                 flexibility = [0, 0]
             if msg_type == xboole.MessageType.OfferNotification:
