@@ -127,11 +127,12 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
     def add_own_flex_to_solution(self):
         flex = self.get_flexibility_for_interval(self.current_time_spans)
         own_request = self.governor.get_from_power_balance(self.aid, self.current_time_spans[0])
-        for flex_value in flex:
-            for time_span in own_request.time_span:
-                if flex_value > 0 and time_span in own_request.time_span:
-                    self.result[self.aid] = flex_value
-                    self.result_sum += flex_value
+        if own_request is not None:
+            for flex_value in flex:
+                for time_span in own_request.time_span:
+                    if flex_value > 0 and time_span in own_request.time_span:
+                        self.result[self.aid] = flex_value
+                        self.result_sum += flex_value
 
     def calc_result_sum(self):
         self.result_sum = 0
