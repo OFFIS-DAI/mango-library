@@ -662,7 +662,7 @@ class WinzentBaseAgent(Agent, ABC):
         After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
         logger.debug("the result for " + self.aid + " is " + str(self.result))
-        # print("the result for " + self.aid + " is " + str(self.result))
+        print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
