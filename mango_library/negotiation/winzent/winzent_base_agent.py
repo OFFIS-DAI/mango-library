@@ -316,7 +316,7 @@ class WinzentBaseAgent(Agent, ABC):
                 flexibility = self.flex[t_start]
                 print(flexibility)
             else:
-                flexibility = [0]
+                flexibility = [0, 0]
             if msg_type == xboole.MessageType.OfferNotification:
                 # in this case, the upper part of the flexibility interval
                 # is considered
@@ -325,6 +325,8 @@ class WinzentBaseAgent(Agent, ABC):
                 # in this case, the lower part of the flexibility interval
                 # is considered
                 flex.append(flexibility[0])
+            else:
+                flex.append(0)
         return flex
 
     async def stop_agent(self):
