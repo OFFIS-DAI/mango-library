@@ -231,6 +231,8 @@ class WinzentBaseAgent(Agent, ABC):
 
         # for each value to negotiate about, check whether the request could be fulfilled internally completely.
         for idx in range(len(values)):
+            print(values)
+            print(message.value[idx])
             if abs(message.value[idx]) - abs(values[idx]) <= 0:
                 # If the own forecast is sufficient to completely solve the
                 # problem, a solution is found and no other agents are informed.
