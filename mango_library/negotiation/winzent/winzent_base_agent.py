@@ -310,6 +310,7 @@ class WinzentBaseAgent(Agent, ABC):
         flex = []
         if not is_iterable(time_span):
             time_span = [time_span]
+        print(time_span)
         for idx in range(len(time_span)):
             t_start = time_span[idx]
             if t_start in self.flex:
