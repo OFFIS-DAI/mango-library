@@ -64,19 +64,20 @@ class Requirement:
 
     @staticmethod
     def build_message(forecast, owner, ttl):
-        if forecast.second < 0:
+        if forecast.second[0] < 0:
             msg_type = xboole.MessageType.DemandNotification
         else:
             msg_type = xboole.MessageType.OfferNotification
         return WinzentMessage(msg_type=msg_type,
                               time_span=forecast.first,
-                              value=[forecast.second],
+                              value=forecast.second,
                               sender=owner, id=str(uuid.uuid4()), ttl=ttl)
 
     @staticmethod
     def build_forecast(message):
         if message.msg_type == xboole.MessageType.DemandNotification:
+            val = [-val for val in message.value]
             return xboole.Forecast(
-                (message.time_span, -message.value[0]))
+                (message.time_span, val))
         else:
             return xboole.Forecast((message.time_span, message.value))

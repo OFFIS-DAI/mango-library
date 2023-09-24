@@ -61,7 +61,7 @@ async def create_six_base_agents(agent_tts=5):
     agent_e = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5)
     agent_f = WinzentBaseAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6)
 
-    # create random neighbors for agents
+    # create neighbors for agents
     agent_a.add_neighbor(aid=agent_b.aid,
                          addr=addr)
     agent_a.add_neighbor(aid=agent_c.aid,
@@ -77,7 +77,7 @@ async def create_six_base_agents(agent_tts=5):
     agent_c.add_neighbor(aid=agent_d.aid, addr=addr)
 
     agent_d.add_neighbor(aid=agent_a.aid, addr=addr)
-    agent_a.add_neighbor(aid=agent_d.aid, addr=addr)
+    # agent_a.add_neighbor(aid=agent_d.aid, addr=addr)
 
     agent_e.add_neighbor(aid=agent_d.aid, addr=addr)
     agent_d.add_neighbor(aid=agent_e.aid, addr=addr)
@@ -85,16 +85,24 @@ async def create_six_base_agents(agent_tts=5):
     agent_e.add_neighbor(aid=agent_c.aid, addr=addr)
     agent_c.add_neighbor(aid=agent_e.aid, addr=addr)
 
-    agent_f.add_neighbor(aid=agent_a.aid, addr=addr)
-    agent_a.add_neighbor(aid=agent_f.aid, addr=addr)
+    # agent_f.add_neighbor(aid=agent_a.aid, addr=addr)
+    # agent_a.add_neighbor(aid=agent_f.aid, addr=addr)
 
-    #agent_f.add_neighbor(aid=agent_b.aid, addr=addr)
-    #agent_b.add_neighbor(aid=agent_f.aid, addr=addr)
+    agent_f.add_neighbor(aid=agent_b.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_f.aid, addr=addr)
 
     return agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container
 
 
-async def create_six_ethical_agents():
+async def create_six_ethical_agents(
+        agent_a_ethics_score=1,
+        agent_b_ethics_score=1,
+        agent_c_ethics_score=1,
+        agent_d_ethics_score=1,
+        agent_e_ethics_score=1,
+        agent_f_ethics_score=1,
+        setup="default"
+):
     """
     Creates 6 simple agents, all living in one container and a neighborhood.
     """
@@ -105,44 +113,71 @@ async def create_six_ethical_agents():
     container = await Container.factory(addr=addr)
     tts = 3
     # create agents
-    agent_a = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=1)
-    agent_b = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=2)
-    agent_c = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=3)
-    agent_d = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=4)
-    agent_e = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=5)
-    agent_f = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts, ethics_score=6)
+    agent_a = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_a_ethics_score,
+                                  min_coverage=0.9,
+                                  coverage_weight=0.4,
+                                  ethics_score_weight=0.6)
+    agent_b = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_b_ethics_score)
+    agent_c = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_c_ethics_score)
+    agent_d = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_d_ethics_score)
+    agent_e = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_e_ethics_score)
+    agent_f = WinzentEthicalAgent(container=container, ttl=6, time_to_sleep=tts,
+                                  ethics_score=agent_f_ethics_score)
 
-    # create random neighbors for agents
-    agent_a.add_neighbor(aid=agent_b.aid,
-                         addr=addr)
-    agent_a.add_neighbor(aid=agent_c.aid,
-                         addr=addr)
+    if setup == "default":
+        await create_restartable_test_case_neighboring(agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, addr)
+    elif setup == "max_coverage_vs_best_ethics":
+        await create_max_coverage_vs_best_ethics_neighboring(agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, addr)
+    return agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container
 
-    agent_b.add_neighbor(aid=agent_a.aid, addr=addr)
-    agent_b.add_neighbor(aid=agent_e.aid, addr=addr)
-    agent_e.add_neighbor(aid=agent_b.aid, addr=addr)
 
-    agent_b.add_neighbor(aid=agent_c.aid, addr=addr)
-    agent_c.add_neighbor(aid=agent_a.aid, addr=addr)
-    agent_c.add_neighbor(aid=agent_b.aid, addr=addr)
-    agent_c.add_neighbor(aid=agent_d.aid, addr=addr)
+async def create_restartable_test_case_neighboring(agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, addr):
 
-    agent_d.add_neighbor(aid=agent_a.aid, addr=addr)
+    agent_a.add_neighbor(aid=agent_b.aid, addr=addr)
     agent_a.add_neighbor(aid=agent_d.aid, addr=addr)
 
-    agent_e.add_neighbor(aid=agent_d.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_a.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_c.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_e.aid, addr=addr)
+
+    agent_c.add_neighbor(aid=agent_b.aid, addr=addr)
+    agent_c.add_neighbor(aid=agent_f.aid, addr=addr)
+
+    agent_d.add_neighbor(aid=agent_a.aid, addr=addr)
     agent_d.add_neighbor(aid=agent_e.aid, addr=addr)
 
-    agent_e.add_neighbor(aid=agent_c.aid, addr=addr)
-    agent_c.add_neighbor(aid=agent_e.aid, addr=addr)
+    agent_e.add_neighbor(aid=agent_b.aid, addr=addr)
+    agent_e.add_neighbor(aid=agent_d.aid, addr=addr)
+    agent_e.add_neighbor(aid=agent_f.aid, addr=addr)
 
-    agent_f.add_neighbor(aid=agent_a.aid, addr=addr)
-    agent_a.add_neighbor(aid=agent_f.aid, addr=addr)
+    agent_f.add_neighbor(aid=agent_c.aid, addr=addr)
+    agent_f.add_neighbor(aid=agent_e.aid, addr=addr)
 
-    #agent_f.add_neighbor(aid=agent_b.aid, addr=addr)
-    #agent_b.add_neighbor(aid=agent_f.aid, addr=addr)
 
-    return agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container
+async def create_max_coverage_vs_best_ethics_neighboring(agent_a, agent_b, agent_c, agent_d, agent_e, agent_f,
+                                                         addr):
+    agent_a.add_neighbor(aid=agent_b.aid, addr=addr)
+
+    agent_b.add_neighbor(aid=agent_a.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_c.aid, addr=addr)
+    agent_b.add_neighbor(aid=agent_e.aid, addr=addr)
+
+    agent_c.add_neighbor(aid=agent_b.aid, addr=addr)
+    agent_c.add_neighbor(aid=agent_f.aid, addr=addr)
+
+    agent_d.add_neighbor(aid=agent_e.aid, addr=addr)
+
+    agent_e.add_neighbor(aid=agent_b.aid, addr=addr)
+    agent_e.add_neighbor(aid=agent_d.aid, addr=addr)
+    agent_e.add_neighbor(aid=agent_f.aid, addr=addr)
+
+    agent_f.add_neighbor(aid=agent_c.aid, addr=addr)
+    agent_f.add_neighbor(aid=agent_e.aid, addr=addr)
 
 
 async def create_agents(number_of_agents, ttl, time_to_sleep):
@@ -167,7 +202,7 @@ async def create_agents(number_of_agents, ttl, time_to_sleep):
             continue
 
         if agent_idx == 0:
-            agents[agent_idx].add_neighbor(aid=agents[agent_idx+1].aid, addr=addr)
+            agents[agent_idx].add_neighbor(aid=agents[agent_idx + 1].aid, addr=addr)
             agents[agent_idx + 1].add_neighbor(aid=agents[agent_idx].aid, addr=addr)
 
             agents[agent_idx].add_neighbor(aid=agents[-1].aid, addr=addr)

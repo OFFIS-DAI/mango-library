@@ -47,35 +47,39 @@ async def run_six_simple():
     # print("Current Time =", current_time)
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents()
-    agent_a.update_flexibility(t_start=2700, min_p=0, max_p=10)
-    agent_b.update_flexibility(t_start=2700, min_p=0, max_p=30)
-    agent_c.update_flexibility(t_start=2700, min_p=0, max_p=10)
-    agent_d.update_flexibility(t_start=2700, min_p=0, max_p=1000)
-    agent_e.update_flexibility(t_start=2700, min_p=0, max_p=1000)
-    agent_f.update_flexibility(t_start=2700, min_p=0, max_p=1000)
+    agent_a.update_flexibility(t_start=0, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=0, min_p=0, max_p=0)
+    agent_c.update_flexibility(t_start=0, min_p=0, max_p=300)
+    agent_d.update_flexibility(t_start=0, min_p=0, max_p=100)
+    agent_e.update_flexibility(t_start=0, min_p=0, max_p=100)
+    agent_f.update_flexibility(t_start=0, min_p=0, max_p=100)
 
-    await agent_b.start_negotiation(ts=[2700, 3600], value=140)
-    await agent_a.start_negotiation(ts=[2700, 3600], value=140)
-    await agent_c.start_negotiation(ts=[2700, 3600], value=140)
+    agent_a.update_flexibility(t_start=900, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=900, min_p=0, max_p=0)
+    agent_c.update_flexibility(t_start=900, min_p=0, max_p=300)
+    agent_d.update_flexibility(t_start=900, min_p=0, max_p=50)
+    agent_e.update_flexibility(t_start=900, min_p=0, max_p=50)
+    agent_f.update_flexibility(t_start=900, min_p=0, max_p=50)
+
+    await agent_a.start_negotiation(start_dates=[0, 900], values=[150, 150])
+    await agent_b.start_negotiation(start_dates=[0, 900], values=[150, 150])
     await agent_b.negotiation_done
-    await agent_c.negotiation_done
-    await agent_a.negotiation_done
-    # agent_a.update_flexibility(t_start=3600, min_p=0, max_p=10)
-    # agent_b.update_flexibility(t_start=3600, min_p=0, max_p=30)
-    # agent_c.update_flexibility(t_start=3600, min_p=0, max_p=10)
-    # agent_d.update_flexibility(t_start=3600, min_p=0, max_p=1000)
-    # agent_e.update_flexibility(t_start=3600, min_p=0, max_p=1000)
-    # agent_f.update_flexibility(t_start=3600, min_p=0, max_p=1000)
-    # await agent_b.start_negotiation(ts=[3600, 4500], value=140)
-    # await agent_a.start_negotiation(ts=[3600, 4500], value=140)
-    # await agent_c.start_negotiation(ts=[3600, 4500], value=140)
-    # await agent_b.negotiation_done
-    # await agent_c.negotiation_done
-    # await agent_a.negotiation_done
     print("now shutting down" + str(agent_c.negotiation_done))
     print(agent_a.aid + str(agent_a.final))
     print(agent_b.aid + str(agent_b.final))
-    print(agent_c.aid + str(agent_c.final))
+    # assert agent_a.flex[0] == [0, 0]
+    # assert agent_b.flex[0] == [0, 0]
+    # assert agent_c.flex[0] == [0, 0]
+    # assert agent_d.flex[0] == [0, 0]
+    # assert agent_e.flex[0] == [0, 0]
+    # assert agent_f.flex[0] == [0, 0]
+    #
+    # assert agent_a.flex[900] == [0, 0]
+    # assert agent_b.flex[900] == [0, 0]
+    # assert agent_c.flex[900] == [0, 0]
+    # assert agent_d.flex[900] == [0, 0]
+    # assert agent_e.flex[900] == [0, 0]
+    # assert agent_f.flex[900] == [0, 0]
     # after the negotiation, the agents should have updated their flexibility
     # assert agent_a.flex[0] == [0, 0]
     # assert agent_b.flex[0] == [0, 0]
@@ -87,6 +91,61 @@ async def run_six_simple():
 
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
 
+
+async def run_six_min_coverage_vs_best_ethics():
+    start_time = 2700
+    end_time = start_time + 900
+    # print("Current Time =", current_time)
+
+    agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents()
+    agent_a.update_flexibility(t_start=0, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=0, min_p=0, max_p=100)
+    agent_c.update_flexibility(t_start=0, min_p=0, max_p=3)
+    agent_d.update_flexibility(t_start=0, min_p=0, max_p=0)
+    agent_e.update_flexibility(t_start=0, min_p=0, max_p=0)
+    agent_f.update_flexibility(t_start=0, min_p=0, max_p=0)
+
+    agent_a.update_flexibility(t_start=900, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=900, min_p=0, max_p=50)
+    agent_c.update_flexibility(t_start=900, min_p=0, max_p=0)
+    agent_d.update_flexibility(t_start=900, min_p=0, max_p=50)
+    agent_e.update_flexibility(t_start=900, min_p=0, max_p=50)
+    agent_f.update_flexibility(t_start=900, min_p=0, max_p=50)
+
+    agent_a.update_flexibility(t_start=1800, min_p=0, max_p=0)
+    agent_b.update_flexibility(t_start=1800, min_p=0, max_p=50)
+    agent_c.update_flexibility(t_start=1800, min_p=0, max_p=0)
+    agent_d.update_flexibility(t_start=1800, min_p=0, max_p=50)
+    agent_e.update_flexibility(t_start=1800, min_p=0, max_p=50)
+    agent_f.update_flexibility(t_start=1800, min_p=0, max_p=50)
+
+    await agent_a.start_negotiation(start_dates=[0, 900, 1800], values=[105, 150, 150])
+    await agent_a.negotiation_done
+    print("now shutting down" + str(agent_c.negotiation_done))
+    print(agent_a.aid + str(agent_a.final))
+    # assert agent_a.flex[0] == [0, 0]
+    # assert agent_b.flex[0] == [0, 0]
+    # assert agent_c.flex[0] == [0, 0]
+    # assert agent_d.flex[0] == [0, 0]
+    # assert agent_e.flex[0] == [0, 0]
+    # assert agent_f.flex[0] == [0, 0]
+    #
+    # assert agent_a.flex[900] == [0, 0]
+    # assert agent_b.flex[900] == [0, 0]
+    # assert agent_c.flex[900] == [0, 0]
+    # assert agent_d.flex[900] == [0, 0]
+    # assert agent_e.flex[900] == [0, 0]
+    # assert agent_f.flex[900] == [0, 0]
+    # after the negotiation, the agents should have updated their flexibility
+    # assert agent_a.flex[0] == [0, 0]
+    # assert agent_b.flex[0] == [0, 0]
+    # assert agent_c.flex[0] == [0, 0]
+    # assert agent_d.flex[0] == [0, 0]
+    # assert agent_e.flex[0] == [0, 0]
+    # assert agent_f.flex[0] == [0, 0]
+    # assert 'agent0' and 'agent2' and 'agent3' and 'agent4' and 'agent5' in agent_b.final
+
+    await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
 
 def save_ethics_score_development(ethics_score_list, agent, success):
     ethics_score_tiers = list(ethics_score_list.keys())
@@ -107,16 +166,27 @@ async def run_muscle():
     # print("Current Time =", current_time)
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents()
-    agent_a.update_flexibility(t_start=2700, min_p=0, max_p=0)
-    agent_b.update_flexibility(t_start=2700, min_p=0, max_p=0)
-    agent_c.update_flexibility(t_start=2700, min_p=0, max_p=0)
-    agent_d.update_flexibility(t_start=2700, min_p=-50, max_p=100)
-    agent_e.update_flexibility(t_start=2700, min_p=-50, max_p=100)
-    agent_f.update_flexibility(t_start=2700, min_p=-50, max_p=100)
 
-    agent_b_values = -100
-    await agent_b.start_negotiation(ts=[2700, 3600], value=agent_b_values)
-    rounded_load_values[agent_b.aid] = agent_b_values
+
+    agent_a.update_flexibility(t_start=0, min_p=0, max_p=10)
+    agent_b.update_flexibility(t_start=0, min_p=0, max_p=30)
+    agent_c.update_flexibility(t_start=0, min_p=0, max_p=10)
+    agent_d.update_flexibility(t_start=0, min_p=0, max_p=20)
+    agent_e.update_flexibility(t_start=0, min_p=0, max_p=20)
+    agent_f.update_flexibility(t_start=0, min_p=0, max_p=20)
+
+    agent_a.update_flexibility(t_start=900, min_p=0, max_p=10)
+    agent_b.update_flexibility(t_start=900, min_p=0, max_p=30)
+    agent_c.update_flexibility(t_start=900, min_p=0, max_p=10)
+    agent_d.update_flexibility(t_start=900, min_p=0, max_p=20)
+    agent_e.update_flexibility(t_start=900, min_p=0, max_p=20)
+    agent_f.update_flexibility(t_start=900, min_p=0, max_p=20)
+
+    await agent_b.start_negotiation(start_dates=[0, 900], values=[110, 110])
+
+    #agent_b_values = -100
+    #await agent_b.start_negotiation(start_dates=[2700], values=[agent_b_values])
+    rounded_load_values[agent_b.aid] = [110, 110]
     agents_with_started_negotiation.append(agent_b)
 
     # agent_a_values = 100
@@ -177,4 +247,4 @@ async def run_muscle():
 
 
 
-asyncio.run(run_muscle())
+asyncio.run(run_six_min_coverage_vs_best_ethics())

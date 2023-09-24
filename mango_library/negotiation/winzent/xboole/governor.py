@@ -1,4 +1,5 @@
 from datetime import datetime
+from copy import deepcopy
 
 from mango_library.negotiation.winzent import xboole
 
@@ -47,9 +48,9 @@ class Governor:
         self._forecaster = None
         self._hardware_backend_module = None
         self._requirement = None
-        self.diff_to_real_value = 0
+        self.diff_to_real_value = []
         self.curr_time = None
-        self.curr_requirement_value = 0
+        self.curr_requirement_values = 0
         self.message_journal = MessageJournal()
         self.solution_journal = MessageJournal()
         self.solver_triggered = False
@@ -74,11 +75,12 @@ class Governor:
                     self._power_balance._ledger[self.curr_time].remove(offer)
                     break
 
-    def get_from_power_balance(self, agent_id):
+    def get_from_power_balance(self, agent_id, start_time):
         if self._power_balance is not None:
-            for offer in self._power_balance._ledger[self.curr_time]:
-                if offer.message.sender == agent_id:
-                    return offer
+            if start_time in self._power_balance._ledger:
+                for offer in self._power_balance._ledger[start_time]:
+                    if offer.message.sender == agent_id:
+                        return offer
 
     def get_msg_from_message_journal(self, sender, type):
         return_msg = None
@@ -86,7 +88,6 @@ class Governor:
             if msg.sender == sender and msg.msg_type == type:
                 return_msg = msg
         return return_msg
-
 
     @power_balance.setter
     def power_balance(self, power_balance):
