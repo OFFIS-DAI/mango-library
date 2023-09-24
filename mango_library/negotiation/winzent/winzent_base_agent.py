@@ -231,8 +231,6 @@ class WinzentBaseAgent(Agent, ABC):
 
         # for each value to negotiate about, check whether the request could be fulfilled internally completely.
         for idx in range(len(values)):
-            print(values)
-            print(message.value[idx])
             if abs(message.value[idx]) - abs(values[idx]) <= 0:
                 # If the own forecast is sufficient to completely solve the
                 # problem, a solution is found and no other agents are informed.
@@ -310,7 +308,6 @@ class WinzentBaseAgent(Agent, ABC):
         flex = []
         if not is_iterable(time_span):
             time_span = [time_span]
-        print(time_span)
         for idx in range(len(time_span)):
             t_start = time_span[idx]
             if t_start in self.flex:
