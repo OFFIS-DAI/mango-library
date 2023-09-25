@@ -592,11 +592,11 @@ class MoCohdaNegotiation:
 class MultiObjectiveCOHDARole(Role):
     """Negotiation role for COHDA."""
 
-    def __init__(self, *, schedule_provider, targets: List[Target], num_solution_points: int,
-                 local_acceptable_func=None, check_inbox_interval: float = 0.1,
-                 pick_func=None, mutate_func=None, num_iterations: int = 1,
+    def __init__(self, *, schedule_provider: object, targets: List[Target], num_solution_points: int,
+                 local_acceptable_func: object = None, check_inbox_interval: float = 0.1,
+                 pick_func: object = None, mutate_func: object = None, num_iterations: int = 1,
                  use_fixed_ref_point: bool = True, offsets: list = None, store_updates_to_db: bool = False,
-                 target_params: dict = {}):
+                 target_params: dict = {}) -> object:
         super().__init__()
 
         self._schedule_provider = schedule_provider
@@ -737,6 +737,7 @@ class MultiObjectiveCOHDARole(Role):
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                 if wm_to_send is not None:
+                    print(f'{self.context.aid} still updates neighbors')
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
