@@ -405,7 +405,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 else:
                     # take the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
-                    parameter_list = cluster_schedule
+                    parameter_list = cluster_schedule.tolist()[0]
                 assert [lower_limit <= idx <= upper_limit for idx in parameter_list]
 
                 # for other agents, take the chosen values as upper and lower levels,
