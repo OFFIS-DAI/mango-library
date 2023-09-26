@@ -737,7 +737,6 @@ class MultiObjectiveCOHDARole(Role):
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                 if wm_to_send is not None:
-                    print(f'{self.context.aid} still updates neighbors')
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
