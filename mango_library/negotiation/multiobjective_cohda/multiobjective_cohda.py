@@ -340,11 +340,8 @@ class MoCohdaNegotiation:
                         current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
                                                               num_solution_points=num_solution_points)
                         target_params = self._memory.target_params if self._memory.target_params is not None else {}
-                        target_params.update(
-                            {"selected_schedule": current_candidate.schedules[current_candidate.agent_id]})
                         current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
                                                                  target_params)
-
                         performances = current_candidate.perf
                         current_candidate.hypervolume = self.get_hypervolume(performances,
                                                                              current_candidate.solution_points)
@@ -381,8 +378,6 @@ class MoCohdaNegotiation:
             candidate_from_sysconfig: SolutionCandidate = \
                 SolutionCandidate.create_from_sysconf(sysconfig=sysconfig, agent_id=self._part_id)
             target_params = self._memory.target_params if self._memory.target_params is not None else {}
-            target_params.update(
-                {"selected_schedule": candidate_from_sysconfig.schedules[candidate_from_sysconfig.agent_id]})
             candidate_from_sysconfig.perf = self._perf_func(candidate_from_sysconfig.cluster_schedules,
                                                             target_params)
             all_solution_points = candidate_from_sysconfig.solution_points
@@ -398,7 +393,6 @@ class MoCohdaNegotiation:
 
             for new_point in new_solution_points:
                 target_params = self._memory.target_params if self._memory.target_params is not None else {}
-                target_params.update({'selected_schedule': new_point.idx})
                 new_perf = self._perf_func([new_point.cluster_schedule], target_params)[0]
                 new_point.performance = new_perf
 
@@ -581,7 +575,6 @@ class MoCohdaNegotiation:
             # calculate and set perf
             if target_params is None:
                 target_params = {}
-            target_params.update({'selected_schedule': candidate.schedules[candidate.agent_id]})
             candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
             # calculate and set hypervolume
             candidate.hypervolume = get_hypervolume(candidate.perf, candidate.solution_points)
