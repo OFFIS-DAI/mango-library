@@ -340,8 +340,20 @@ class MoCohdaNegotiation:
                         current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
                                                               num_solution_points=num_solution_points)
                         target_params = self._memory.target_params if self._memory.target_params is not None else {}
+
+                        new_sysconf = working_memory.system_config
+                        new_candidate = working_memory.solution_candidate
+
+                        # Merge new information into current_sysconfig and current_candidate
+                        perf_sysconfig = self._merge_sysconfigs(sysconfig_i=current_sysconfig,
+                                                                sysconfig_j=new_sysconf)
+                        perf_candidate = self._merge_candidates(
+                            candidate_i=current_candidate, candidate_j=new_candidate, agent_id=self._part_id,
+                            perf_func=self._perf_func, target_params=self._memory.target_params,
+                            get_hypervolume=self.get_hypervolume)
+
                         current_candidate.perf = self._perf_func(current_candidate.cluster_schedules,
-                                                                 target_params)
+                                                                 target_params, perf_candidate.schedules)
                         performances = current_candidate.perf
                         current_candidate.hypervolume = self.get_hypervolume(performances,
                                                                              current_candidate.solution_points)
@@ -379,7 +391,7 @@ class MoCohdaNegotiation:
                 SolutionCandidate.create_from_sysconf(sysconfig=sysconfig, agent_id=self._part_id)
             target_params = self._memory.target_params if self._memory.target_params is not None else {}
             candidate_from_sysconfig.perf = self._perf_func(candidate_from_sysconfig.cluster_schedules,
-                                                            target_params)
+                                                            target_params, candidate_from_sysconfig.schedules)
             all_solution_points = candidate_from_sysconfig.solution_points
 
             # pick solution points to mutate
@@ -393,7 +405,8 @@ class MoCohdaNegotiation:
 
             for new_point in new_solution_points:
                 target_params = self._memory.target_params if self._memory.target_params is not None else {}
-                new_perf = self._perf_func([new_point.cluster_schedule], target_params)[0]
+                new_perf = \
+                    self._perf_func([new_point.cluster_schedule], target_params, candidate_from_sysconfig.schedules)[0]
                 new_point.performance = new_perf
 
             all_solution_points.extend(new_solution_points)
@@ -575,7 +588,8 @@ class MoCohdaNegotiation:
             # calculate and set perf
             if target_params is None:
                 target_params = {}
-            candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params)
+            candidate.perf = perf_func(candidate.cluster_schedules, target_params=target_params,
+                                       schedules=candidate.schedules)
             # calculate and set hypervolume
             candidate.hypervolume = get_hypervolume(candidate.perf, candidate.solution_points)
 
@@ -647,7 +661,7 @@ class MultiObjectiveCOHDARole(Role):
                                   offsets=self._offsets,
                                   target_params=self._target_params)
 
-    def _perf_func(self, cluster_schedules: List[np.array], target_params: Dict) -> List[Tuple]:
+    def _perf_func(self, cluster_schedules: List[np.array], target_params: Dict, schedules: Dict = None) -> List[Tuple]:
         """
         Calculates performance of cluster schedules
         :param cluster_schedules: schedules to determine performance of
@@ -657,7 +671,7 @@ class MultiObjectiveCOHDARole(Role):
         for cs in cluster_schedules:
             perf_of_current = []
             for perf_func in self._perf_functions:
-                perf_of_current.append(perf_func(cs=cs, target_params=target_params))
+                perf_of_current.append(perf_func(cs=cs, target_params=target_params, schedules=schedules))
 
             performances.append(tuple(perf_of_current))
 

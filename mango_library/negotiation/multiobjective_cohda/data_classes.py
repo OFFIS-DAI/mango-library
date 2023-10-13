@@ -361,10 +361,10 @@ class Target:
         self._ref_point = ref_point
         self._factor = -1 if maximize else 1
 
-    def performance(self, cs: np.array, target_params=None) -> float:
+    def performance(self, cs: np.array, target_params=None, schedules=None) -> float:
         try:
             # try if the performance function accepts the target_params
-            return self._factor * self._target_function(cs, target_params)
+            return self._factor * self._target_function(cs, target_params, schedules)
         except TypeError:
             # if it doesn"t accept target params call the function without the target params
             return self._factor * self._target_function(cs)
