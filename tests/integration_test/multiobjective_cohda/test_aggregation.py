@@ -54,7 +54,7 @@ SCHEDULES_FOR_AGENTS_SIMPEL = [
 ]
 
 
-def determine_deviations(cs, target_params):
+def determine_deviations(cs, target_params, schedules):
     dev_per_time_step = []
     sum_cs = sum(map(abs, cs))
     for idx, entry in enumerate(sum_cs):
@@ -63,7 +63,7 @@ def determine_deviations(cs, target_params):
     return float(np.mean(dev_per_time_step))
 
 
-def determine_sums(cs, target_params):
+def determine_sums(cs, target_params, schedules):
     sum_cs = sum(map(abs, cs))
     return np.max(sum_cs)
 

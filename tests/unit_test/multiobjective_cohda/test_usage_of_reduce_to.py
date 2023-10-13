@@ -8,7 +8,7 @@ from mango_library.negotiation.multiobjective_cohda.data_classes import SystemCo
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import MoCohdaNegotiation
 
 
-def min_perf_func(cluster_schedules, target_params):
+def min_perf_func(cluster_schedules, target_params, schedules):
     performances = []
     for cs in cluster_schedules:
         performances.append(tuple(np.mean(cs, axis=0)))

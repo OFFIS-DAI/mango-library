@@ -32,7 +32,7 @@ def test_init():
                                    '2': schedules_2} and candidate.agent_id == '1'
 
 
-def perf_fkt(cluster_schedules: List[np.array], target_params=None) -> List[Tuple[float, ...]]:
+def perf_fkt(cluster_schedules: List[np.array], target_params=None, schedules=None) -> List[Tuple[float, ...]]:
     # test with dummy perf fkt
     perf_list = []
     for cs in cluster_schedules:
@@ -42,7 +42,7 @@ def perf_fkt(cluster_schedules: List[np.array], target_params=None) -> List[Tupl
     return perf_list
 
 
-def perf_fkt_min(solution_points: List[SolutionPoint], target_params=None) -> List[Tuple[float, ...]]:
+def perf_fkt_min(solution_points: List[SolutionPoint], target_params=None, schedules=None) -> List[Tuple[float, ...]]:
     perf_list = []
     for solution_point in solution_points:
         print('cluster_schedule', solution_point.cluster_schedule)
