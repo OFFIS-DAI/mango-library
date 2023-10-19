@@ -14,7 +14,7 @@ from setuptools import find_packages, setup, Command
 # Package meta-data.
 NAME = "mango-library"
 DESCRIPTION = "Library for the Modular Python Agent Framework MANGO"
-URL = "https://gitlab.com/mango-agents/mango-library"
+URL = "https://github.com/OFFIS-DAI/mango-library"
 EMAIL = "mango@offis.de"
 AUTHOR = "Mango Team"
 REQUIRES_PYTHON = ">=3.7.0"
