@@ -28,7 +28,7 @@ jobs:
       - name: Test+Coverage
         run: |
           source venv/bin/activate
-          coverage run --source ./mango-library -m pytest
+          coverage run --source ./mango_library -m pytest
           coverage report
       - name: Build package
         run: |
