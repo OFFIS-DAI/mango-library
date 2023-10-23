@@ -405,8 +405,10 @@ class MoCohdaNegotiation:
 
             for new_point in new_solution_points:
                 target_params = self._memory.target_params if self._memory.target_params is not None else {}
-                new_perf = \
-                    self._perf_func([new_point.cluster_schedule], target_params, candidate_from_sysconfig.schedules)[0]
+                schedules = {}
+                for agent, idx in new_point.idx.items():
+                    schedules[agent] = [new_point.cluster_schedule[idx]]
+                new_perf = self._perf_func([new_point.cluster_schedule], target_params, schedules)[0]
                 new_point.performance = new_perf
 
             all_solution_points.extend(new_solution_points)
@@ -537,7 +539,7 @@ class MoCohdaNegotiation:
         """
         Merge *candidate_i* and *candidate_j* and return the result.
 
-        Returns a merged Candidate. If the scandidate_i remains unchanged, the same instance of candidate_i is
+        Returns a merged Candidate. If the candidate_i remains unchanged, the same instance of candidate_i is
         returned, otherwise a new object is created with agent_id as candidate.agent_id
         :param candidate_i: First Candidate
         :param candidate_j: Second Candidate
@@ -668,10 +670,13 @@ class MultiObjectiveCOHDARole(Role):
         :return: Performances
         """
         performances = []
-        for cs in cluster_schedules:
+        for sp_number, cs in enumerate(cluster_schedules):
             perf_of_current = []
             for perf_func in self._perf_functions:
-                perf_of_current.append(perf_func(cs=cs, target_params=target_params, schedules=schedules))
+                single_schedules = {}
+                for agent, schedule_list in schedules.items():
+                    single_schedules[agent] = schedule_list[sp_number]
+                perf_of_current.append(perf_func(cs=cs, target_params=target_params, schedules=single_schedules))
 
             performances.append(tuple(perf_of_current))
 

@@ -1,6 +1,8 @@
+import ast
 import math
 import os
 import time
+import csv
 
 import h5py
 import matplotlib.pyplot as plt
@@ -224,6 +226,20 @@ def create_reference_front(problem, number_of_points):
             f2 = 1 - math.sqrt(f1)
             performances.append([f1, f2])
 
+    elif problem == "Zitzler_2":
+        lower_boundary = 0
+        upper_boundary = 1
+        step_size = upper_boundary / number_of_points
+        n = lower_boundary
+        while n <= upper_boundary:
+            values.append(n)
+            n = n + step_size
+
+        for x in values:
+            f1 = x
+            f2 = 1 - f1**2
+            performances.append([f1, f2])
+
     else:
         p_front = get_problem(problem).pareto_front()
         return p_front
@@ -233,22 +249,23 @@ def create_reference_front(problem, number_of_points):
 
 if __name__ == '__main__':
     problem = "Zitzler_3"
-    scenario_id = "Scenario07"
+    scenario_id = "2_03"
     number_of_runs = 100
     reference_point = (1.1, 1.1)
     p = 2
     inside_exponent = False
     minimize = True
 
-    path = os.path.dirname(__file__)
+    path = "C:/Users/sstark/Documents/MO-COHDA/results"
 
     # get approximated front from database
     idx = 0
     merged_approximated_front = []
     average_hv = 0
     average_duration = 0
+    all_hv = []
     while idx < number_of_runs:
-        with h5py.File(path + '/' + f"{problem}_NSGA2_{scenario_id}_simulation_idx_{idx}.hdf5", 'r') as results:
+        with h5py.File(path + '/' + f"Scenario {scenario_id}" + '/' + f"{problem}_nsga2__simulation_idx_{idx}.hdf5", 'r') as results:
             performances = np.array(results['Results']['Results_0']['performances'])
             for performance_tuple in performances:
                 f1 = float(performance_tuple[0])
@@ -257,27 +274,41 @@ if __name__ == '__main__':
             hv = results['Results']['Results_0']['general results']['Hypervolume']
             duration = results['Results']['Results_0']['general results']['Duration']
             average_hv += hv
+            all_hv.append(hv)
             average_duration += duration
         idx += 1
     average_hv = average_hv / number_of_runs
     average_duration = average_duration / number_of_runs
+    min_hv = min(all_hv)
+    max_hv = max(all_hv)
 
     # get results for central approach
-    central_idx = 0
+    file = open(path + '/' + 'central' + '/' + f'central_solutions_{problem}.csv')
+    central_data = list(csv.reader(file, delimiter=";"))
+    file.close()
     central_merged_front = []
     central_average_duration = 0
-    while central_idx < number_of_runs:
-        start = time.time()
-        central_front = get_solution(problem)
-        end = time.time()
-        central_duration = end - start
-        central_average_duration += central_duration
-        for performance_tuple in central_front:
+    central_average_hv = 0
+    all_hv_central = []
+    c_idx = 0
+    while c_idx < number_of_runs:
+        run = central_data[c_idx]
+        string_front = run[0]
+        front = ast.literal_eval(string_front)
+        hv = float(run[1])
+        duration = float(run[2])
+        central_average_duration += duration
+        central_average_hv += hv
+        all_hv_central.append(hv)
+        for performance_tuple in front:
             f1 = float(performance_tuple[0])
             f2 = float(performance_tuple[1])
             central_merged_front.append([f1, f2])
-        central_idx += 1
-    central_average_duration = average_duration / number_of_runs
+        c_idx += 1
+    central_average_duration = central_average_duration / len(central_data)
+    central_average_hv = central_average_hv / len(central_data)
+    min_hv_central = min(all_hv_central)
+    max_hv_central = max(all_hv_central)
 
     # create reference front
     reference_front = create_reference_front(problem, 500)
@@ -291,8 +322,10 @@ if __name__ == '__main__':
     metrics_reference_front = get_performance_metrics(np.array(reference_front), np.array(reference_front),
                                                       reference_point, p, inside_exponent, minimize)
 
-    print("Average HV:", average_hv)
-    print("Average Duration:", average_duration)
+    print("Average HV MO-COHDA:", average_hv, "Min HV MO-COHDA:", min_hv, "Max HV MO-COHDA:", max_hv)
+    print("Average HV Central:", central_average_hv, "Min HV Central:", min_hv_central, "Max HV Central:", max_hv_central)
+    print("Average Duration MO-COHDA:", average_duration)
+    print("Average Duration Central:", central_average_duration)
     print("Results for merged front with MO-COHDA for", problem, ":", metrics_merged_approximated_front)
     print("Results for central front for", problem, ":", metrics_central_merged_front)
     print("Results for Reference Front:", metrics_reference_front)

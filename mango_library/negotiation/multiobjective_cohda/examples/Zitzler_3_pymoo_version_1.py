@@ -14,19 +14,20 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 #  For the version in which every agent can control each variable with NSGA2 (from pymoo),
 #  have a look at: Zitzler_3_pymoo_version_1.py.
 
-SIM_NAME = 'Zitzler_2_nsga2_'
-PROBLEM = 'zdt2'
+SIM_NAME = 'Zitzler_1_nsga2_'
+PROBLEM = 'zdt1'
 NUM_AGENTS = 30
 NUM_SOLUTION_POINTS = 25
 POPULATION_SIZE = 1
-NUM_ITERATIONS = 10
+NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
-PICK_FKT = MoCohdaNegotiation.pick_all_points
-# PICK_FKT = MoCohdaNegotiation.pick_random_point
-MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value  # mutate_NSGA2
+# PICK_FKT = MoCohdaNegotiation.pick_all_points
+PICK_FKT = MoCohdaNegotiation.pick_random_point
+# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value
+MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
 
-NUM_SIMULATIONS = 1
+NUM_SIMULATIONS = 50
 p = get_problem(PROBLEM)
 ALGORITHM = NSGA2(pop_size=POPULATION_SIZE)
 
