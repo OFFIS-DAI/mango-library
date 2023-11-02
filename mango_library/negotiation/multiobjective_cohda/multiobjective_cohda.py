@@ -188,7 +188,8 @@ class MoCohdaNegotiation:
         """
         schedules = schedule_creator(system_config=None,
                                      candidate=None,
-                                     target_params=target_params)
+                                     target_params=target_params,
+                                     agent_id=agent_id)
         if len(schedules) > 1:
             new_solution_points = []
             for solution_point in solution_points:
@@ -284,14 +285,20 @@ class MoCohdaNegotiation:
         old_candidate = self._memory.solution_candidate
 
         # perceive
+        now = time.time()
         sysconf, candidate = self._perceive(messages)
+        print('perceive took: ', time.time() - now)
 
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
+            now = time.time()
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
+            print('decide took: ', time.time() - now)
 
             # act
+            now = time.time()
             new_wm = self._act(new_sysconfig=sysconf, new_candidate=candidate)
+            print('act took: ', time.time() - now)
             return new_wm
         else:
             return None
@@ -319,7 +326,8 @@ class MoCohdaNegotiation:
                     num_solution_points = working_memory.system_config.num_solution_points
                     initial_schedules = self._schedule_provider(system_config=self._memory.system_config,
                                                                 candidate=self._memory.solution_candidate,
-                                                                target_params=self._memory.target_params)
+                                                                target_params=self._memory.target_params,
+                                                                agent_id=self._part_id)
                     num_initial_schedules = len(initial_schedules)
                     initial_schedules = [initial_schedules[n % num_initial_schedules] for n in
                                          range(num_solution_points)]

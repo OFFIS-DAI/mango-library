@@ -49,6 +49,7 @@ class MoCohdaSolutionAggregationRole(Role):
             self.solution_point_choosing_function = self.choose_random_solution_point
         else:
             self.solution_point_choosing_function = solution_point_choosing_function
+        self.complete_solution = None
 
     def setup(self):
         super().setup()
@@ -160,6 +161,7 @@ class MoCohdaSolutionAggregationRole(Role):
             final_solution_front = self.aggregate_solution(
                 list(self._open_solution_requests[negotiation_id].values())
             )
+            self.complete_solution = final_solution_front
             final_solution = self.solution_point_choosing_function(final_solution_front)
             # store the result
             self.cohda_solutions[negotiation_id] = final_solution
