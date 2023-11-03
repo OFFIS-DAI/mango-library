@@ -216,7 +216,7 @@ class MoCohdaNegotiation:
         :target_params: parameters regarding optimization target
         :return: mutated solution points
         """
-        allowed_max_change = 5  # in kW
+        allowed_max_change = 10  # in kW
 
         max_values = schedule_creator(system_config=None,
                                       candidate=None,
