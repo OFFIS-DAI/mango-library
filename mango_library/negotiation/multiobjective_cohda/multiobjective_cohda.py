@@ -205,6 +205,49 @@ class MoCohdaNegotiation:
             return solution_points
 
     @staticmethod
+    def mutate_with_neighbouring_schedule(solution_points: List[SolutionPoint], schedule_creator, agent_id,
+                                           target_params) -> List[SolutionPoint]:
+        """
+        Mutates existing schedules by randomly picking a slightly lower/higher schedule
+        :param solution_points: original solution points to be mutated
+        :param schedule_creator: method to provide max values for mutation
+        :param agent_id: id of current agent
+        :target_params: parameters regarding optimization target
+        :return: mutated solution points
+        """
+
+        allowed_max_change = 10  # in kW
+
+        max_values = schedule_creator(system_config=None,
+                                      candidate=None,
+                                      target_params=target_params)[0]
+        min_values = [0.0 for _ in range(len(target_params['target_schedule']))]
+
+        new_solution_points = []
+        for solution_point in solution_points:
+            agent_schedule = solution_point.cluster_schedule[solution_point.idx[agent_id]]
+            if all(value1 == value2 for value1, value2 in zip(agent_schedule, max_values)):
+                mutation = "decrease"
+            elif all(value1 == value2 for value1, value2 in zip(agent_schedule, min_values)):
+                mutation = "increase"
+            else:
+                mutation = random.choice(["decrease", "increase"])
+            new_schedule = []
+            # randomly increase/decrease current schedule value between 0 and allowed_max_change
+            for x, old_value in enumerate(agent_schedule):
+                if mutation == "decrease":
+                    new_value = random.uniform(max(0, old_value-allowed_max_change), old_value)
+                elif mutation == "increase":
+                    new_value = random.uniform(old_value, min(max_values[x], old_value+allowed_max_change))
+                new_schedule.append(new_value)
+            new_cs = np.copy(solution_point.cluster_schedule)
+            new_cs[solution_point.idx[agent_id]] = new_schedule
+            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
+
+        return new_solution_points
+
+
+    @staticmethod
     def mutate_with_one_random_value(solution_points: List[SolutionPoint], schedule_creator, agent_id, target_params) \
             -> List[SolutionPoint]:
         """
