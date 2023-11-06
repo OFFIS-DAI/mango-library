@@ -237,9 +237,9 @@ class MoCohdaNegotiation:
             # randomly increase/decrease current schedule value between 0 and allowed_max_change
             for x, old_value in enumerate(agent_schedule):
                 if mutation == "decrease":
-                    new_value = random.uniform(max(0, old_value - allowed_max_change), old_value)
+                    new_value = random.randint(max(0, int(old_value - allowed_max_change)), int(old_value))
                 elif mutation == "increase":
-                    new_value = random.uniform(old_value, min(max_values[x], old_value + allowed_max_change))
+                    new_value = random.randint(int(old_value), int(min(max_values[x], old_value + allowed_max_change)))
                 new_schedule.append(new_value)
             new_cs = np.copy(solution_point.cluster_schedule)
             new_cs[solution_point.idx[agent_id]] = new_schedule
@@ -484,9 +484,10 @@ class MoCohdaNegotiation:
             # calculate hypervolume of new front
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
-
+            # only send updates to other agents, if there is a change bigger than this value
+            minimal_change = 0.0001
             # if new is better than current, exchange current
-            if new_hyper_volume > current_best_candidate.hypervolume:
+            if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
                 new_schedule_dict = {aid: [] for aid in idx.keys()}
                 new_perf = []
@@ -575,9 +576,7 @@ class MoCohdaNegotiation:
             reference_point = self._selection.construct_ref_point(population, self._selection.offsets)
             self._selection.sorting_component.reference_point = reference_point
             self._ref_point = reference_point
-
-        return self._selection.sorting_component.hypervolume_indicator. \
-            assess_non_dom_front(performances)
+        return self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
 
     @staticmethod
     def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
