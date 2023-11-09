@@ -216,7 +216,7 @@ class MoCohdaNegotiation:
         :target_params: parameters regarding optimization target
         :return: mutated solution points
         """
-        allowed_max_change = 20  # in kW
+        allowed_max_change = 25  # in kW
 
         max_values = schedule_creator(system_config=None,
                                       candidate=None,
@@ -485,7 +485,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.00025
+            minimal_change = 0.0001
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
@@ -576,7 +576,7 @@ class MoCohdaNegotiation:
             reference_point = self._selection.construct_ref_point(population, self._selection.offsets)
             self._selection.sorting_component.reference_point = reference_point
             self._ref_point = reference_point
-        return round(self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances), 2)
+        return self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
 
     @staticmethod
     def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
