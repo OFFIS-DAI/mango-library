@@ -112,6 +112,9 @@ class MoCohdaNegotiation:
         # Without a given ref point, it is possible to give offsets for the calculation of the reference point.
         self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False, offsets=offsets)
 
+        # for evaluation, store each hv value
+        self.hvs = []
+
         if use_fixed_ref_point:
             self._selection.construct_ref_point = self.construct_ref_point
             self._selection.sorting_component.hypervolume_indicator.reference_point = reference_point
@@ -216,7 +219,7 @@ class MoCohdaNegotiation:
         :target_params: parameters regarding optimization target
         :return: mutated solution points
         """
-        allowed_max_change = 25  # in kW
+        allowed_max_change = 10  # in kW
 
         max_values = schedule_creator(system_config=None,
                                       candidate=None,
@@ -485,7 +488,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.0001
+            minimal_change = 0.001
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
@@ -576,7 +579,17 @@ class MoCohdaNegotiation:
             reference_point = self._selection.construct_ref_point(population, self._selection.offsets)
             self._selection.sorting_component.reference_point = reference_point
             self._ref_point = reference_point
-        return self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
+        self._selection.sorting_component.hypervolume_indicator.preprocess(performances)
+        hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
+        # TODO: discuss
+        # if hv >= 1.:
+        #     # TODO get not dominated solutions
+        # https://dl.acm.org/doi/abs/10.1145/2001576.2001678
+        #     first_front = self._selection.sorting_component.hypervolume_indicator.non_dom_sorting.identify_best_group(
+        #         population)
+        #     hv = self._selection.sorting_component.hypervolume_indicator.assess(first_front)
+        self.hvs.append(hv)
+        return hv
 
     @staticmethod
     def _merge_candidates(candidate_i: SolutionCandidate, candidate_j: SolutionCandidate, agent_id: str,
