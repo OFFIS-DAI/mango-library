@@ -113,7 +113,10 @@ class MoCohdaNegotiation:
         self._selection = HyperVolumeContributionSelection(prefer_boundary_points=False, offsets=offsets)
 
         # for evaluation, store each hv value
-        self.hvs = []
+        self.hvs_total = {}
+        self.hvs_after_decide = {}
+        self.hvs_after_update = {}
+        self.all_agents_known = None
 
         if use_fixed_ref_point:
             self._selection.construct_ref_point = self.construct_ref_point
@@ -329,12 +332,10 @@ class MoCohdaNegotiation:
         old_candidate = self._memory.solution_candidate
 
         # perceive
-        now = time.time()
         sysconf, candidate = self._perceive(messages)
 
         # decide
         if sysconf is not old_sysconf or candidate is not old_candidate:
-            now = time.time()
             sysconf, candidate = self._decide(sysconfig=sysconf, candidate=candidate)
 
             # act
@@ -422,6 +423,8 @@ class MoCohdaNegotiation:
                 perf_func=self._perf_func, target_params=self._memory.target_params,
                 get_hypervolume=self.get_hypervolume)
 
+        if len(current_sysconfig.schedule_choices) == 30:
+            self.all_agents_known = time.time()
         return current_sysconfig, current_candidate
 
     def _decide(self, sysconfig: SystemConfig, candidate: SolutionCandidate) -> Tuple[SystemConfig, SolutionCandidate]:
@@ -491,6 +494,7 @@ class MoCohdaNegotiation:
             minimal_change = 0.001
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
+                self.hvs_after_update[time.time()] = new_hyper_volume
                 idx = solution_points_to_mutate[0].idx
                 new_schedule_dict = {aid: [] for aid in idx.keys()}
                 new_perf = []
@@ -515,7 +519,7 @@ class MoCohdaNegotiation:
                     schedules=schedules_in_candidate, counter=self._counter + 1)
                 # update counter
                 self._counter += 1
-
+        self.hvs_after_decide[time.time()] = current_best_candidate.hypervolume
         return sysconfig, current_best_candidate
 
     def _act(self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate) -> WorkingMemory:
@@ -580,8 +584,12 @@ class MoCohdaNegotiation:
             self._selection.sorting_component.reference_point = reference_point
             self._ref_point = reference_point
         self._selection.sorting_component.hypervolume_indicator.preprocess(performances)
-        hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
-        self.hvs.append(hv)
+        # find the non-dominated elements
+        min_elements = self._selection.sorting_component.non_dom_sorting.compute_non_dom_front_arbitrary_dim(
+            population)
+        min_elements = [a.objective_values for a in min_elements]
+        hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(min_elements)
+        self.hvs_total[time.time()] = hv
         return hv
 
     @staticmethod
