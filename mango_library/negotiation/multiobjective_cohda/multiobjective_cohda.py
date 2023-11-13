@@ -581,13 +581,6 @@ class MoCohdaNegotiation:
             self._ref_point = reference_point
         self._selection.sorting_component.hypervolume_indicator.preprocess(performances)
         hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(performances)
-        # TODO: discuss
-        # if hv >= 1.:
-        #     # TODO get not dominated solutions
-        # https://dl.acm.org/doi/abs/10.1145/2001576.2001678
-        #     first_front = self._selection.sorting_component.hypervolume_indicator.non_dom_sorting.identify_best_group(
-        #         population)
-        #     hv = self._selection.sorting_component.hypervolume_indicator.assess(first_front)
         self.hvs.append(hv)
         return hv
 
