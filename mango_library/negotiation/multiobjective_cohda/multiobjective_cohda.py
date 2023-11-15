@@ -491,10 +491,9 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.001
+            minimal_change = 0.00
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
-                self.hvs_after_update[time.time()] = new_hyper_volume
                 idx = solution_points_to_mutate[0].idx
                 new_schedule_dict = {aid: [] for aid in idx.keys()}
                 new_perf = []
@@ -519,6 +518,9 @@ class MoCohdaNegotiation:
                     schedules=schedules_in_candidate, counter=self._counter + 1)
                 # update counter
                 self._counter += 1
+        if current_best_candidate.hypervolume not in self.hvs_after_update.values():
+            if all(x < current_best_candidate.hypervolume for x in self.hvs_after_update.values()):
+                self.hvs_after_update[time.time()] = current_best_candidate.hypervolume
         self.hvs_after_decide[time.time()] = current_best_candidate.hypervolume
         return sysconfig, current_best_candidate
 
@@ -590,6 +592,7 @@ class MoCohdaNegotiation:
         min_elements = [a.objective_values for a in min_elements]
         hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(min_elements)
         self.hvs_total[time.time()] = hv
+        print(hv)
         return hv
 
     @staticmethod
@@ -808,6 +811,7 @@ class MultiObjectiveCOHDARole(Role):
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                 if wm_to_send is not None:
+                    print(self.context._aid, ' still updates.')
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
