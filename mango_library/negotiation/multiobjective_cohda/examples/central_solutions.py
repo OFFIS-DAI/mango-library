@@ -9,10 +9,10 @@ import pandas as pd
 
 NUM_SOLUTION_POINTS = 25
 
-PROBLEM = 'Zitzler_2'
+PROBLEM = 'Zitzler_3'
 ALGORITHM = NSGA2(pop_size=NUM_SOLUTION_POINTS)
 NUM_AGENTS = 30
-number_of_runs = 50
+number_of_runs = 25
 
 
 def get_solution(problem):
@@ -33,19 +33,17 @@ def get_solution(problem):
 
 if __name__ == '__main__':
     x = 0
-    all_results = []
+    all_results = {'fronts': [], 'hv': [], 'duration': []}
     while x < number_of_runs:
-        results = []
         start_time = time.time()
         front = get_solution(PROBLEM)
         end_time = time.time()
         duration = end_time - start_time
         selection = HyperVolumeContributionSelection(prefer_boundary_points=False)
-        selection.sorting_component.hypervolume_indicator.reference_point = (1.1, 1.1)
+        selection.sorting_component.hypervolume_indicator.reference_point = (1.1, 6.9)
         hv = selection.sorting_component.hypervolume_indicator.assess_non_dom_front(front)
-        results.append(front.tolist())
-        results.append(hv)
-        results.append(duration)
-        all_results.append(results)
+        all_results['fronts'].append(front.tolist())
+        all_results['hv'].append(hv)
+        all_results['duration'].append(duration)
         x += 1
-    pd.DataFrame(all_results).to_excel(f"central_solutions2_{PROBLEM}.xlsx")
+    pd.DataFrame(all_results).to_csv(f"central_solution_{PROBLEM}.csv", index=False)
