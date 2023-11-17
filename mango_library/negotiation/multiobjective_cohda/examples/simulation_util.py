@@ -311,6 +311,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             {}
         )  # will be filled and returned (for storing in database)
         overlay = {}  # # will be filled and returned (for storing in database)
+        initial_params = {'initial_params': [1. for _ in range(num_agents)]}
 
         # create agents for negotiation
         for i in range(num_agents):
@@ -431,25 +432,31 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 solution = [np.asarray(sol) for sol in solution]
                 return solution
 
-            def provide_new_value(solution_point=None, agent_id=None, candidate=None):
-                if solution_point is None:
-                    cluster_schedule = [[0. for _ in range(num_agents)] for x in range(num_solution_points)]
-                    if agent_id is None:
-                        agent_id = int(candidate.agent_id) - 1
-                    else:
-                        agent_id = int(agent_id) - 1
+            def provide_new_value(solution_point=None, agent_id=None, candidate=None, target_params=None):
+                if agent_id is None:
+                    agent_id = int(candidate.agent_id) - 1
+                elif isinstance(agent_id, str):
+                    agent_id = int(agent_id) - 1
 
-                    for idx, schedule in enumerate(cluster_schedule):
-                        schedule[agent_id] = random.uniform(lower_limit, upper_limit)
-                        cluster_schedule[idx] = schedule
+                if solution_point is None:
+                    cluster_schedule = target_params['initial_params']
+                    cluster_schedule[agent_id] = random.uniform(lower_limit, upper_limit)
+                    return [cluster_schedule]
                 else:
                     # determine the cluster schedule
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
-                    # determine the schedule of the agent from the cluster schedule
-                    agent_schedule = cluster_schedule[solution_point.idx[agent_id]]
-                    # set new values accordingly
-                    cluster_schedule[solution_point.idx[agent_id]] = random.uniform(lower_limit, upper_limit)
-                return cluster_schedule
+                    second_solution = deepcopy(cluster_schedule)
+
+                    new_value_decrease = cluster_schedule[0][agent_id] + random.uniform(0, 0.2)
+                    if new_value_decrease > 1:
+                        new_value_decrease = 1
+                    second_solution[0][agent_id] = new_value_decrease
+
+                    new_value_increase = cluster_schedule[0][agent_id] - random.uniform(0, 0.2)
+                    if new_value_increase < 0 :
+                        new_value_increase = 0
+                    cluster_schedule[0][agent_id] = new_value_increase
+                    return [cluster_schedule, second_solution]
 
             if mutate_with_one_random_value:
                 a.add_role(MultiObjectiveCOHDARole(
@@ -461,7 +468,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     pick_func=pick_func, mutate_func=mutate_func,
                     store_updates_to_db=store_updates_to_db)
                 )
-                schedules_per_agent[a.aid] = provide_new_value(agent_id=i + 1)
+                schedules_per_agent[a.aid] = provide_new_value(agent_id=i, target_params=initial_params)
             elif control_all_variables:
                 a.add_role(MultiObjectiveCOHDARole(
                     schedule_provider=provide_optimized_values_control_all_variables,
@@ -507,7 +514,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 topology_creator=topology_creator,
             )
         )
-        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=500)
         print("Done building a coalition.")
 
         # fill the overlay dictionary
@@ -523,11 +530,20 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
         # start the negotiation
         start_time = time.time()
-        agents[0].add_role(
-            MoCohdaNegotiationDirectStarterRole(
-                num_solution_points=num_solution_points, target_params=None
+        if mutate_with_one_random_value:
+            agents[0].add_role(
+                MoCohdaNegotiationDirectStarterRole(
+                    num_solution_points=num_solution_points,
+                    target_params=initial_params
+                )
             )
-        )
+        else:
+            agents[0].add_role(
+                MoCohdaNegotiationDirectStarterRole(
+                    num_solution_points=num_solution_points,
+                    target_params={}
+                )
+            )
         await wait_for_term(controller_agent)
         end_time = time.time()
         print("Negotiation terminated.")
@@ -702,7 +718,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                 topology_creator=topology_creator,
             )
         )
-        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=500)
         print("Done building a coalition.")
 
         # fill the overlay dictionary
