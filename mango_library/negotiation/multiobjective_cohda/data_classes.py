@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
 import numpy as np
+
 from mango.messages.codecs import json_serializable
 
 
@@ -134,16 +135,24 @@ class SolutionCandidate:
         :return: list of SolutionPoints
         """
         solution_points = []
+        if self.cluster_schedules:
 
-        idx = {k: i for i, k in enumerate(sorted(self.schedules.keys()))}
-        for i in range(self.num_solution_points):
-            current_candidate = []
-            for part_id in sorted(self.schedules.keys()):
-                current_candidate.append(self.schedules[part_id][i])
-            perf = self.perf[i] if self.perf else None
-            solution_points.append(
-                SolutionPoint(cluster_schedule=np.array(current_candidate, dtype=float), performance=perf, idx=idx)
-            )
+            idx = {k: i for i, k in enumerate(sorted(self.schedules.keys()))}
+            for i in range(self.num_solution_points):
+                perf = self._perf[i] if self._perf else None
+                solution_points.append(
+                    SolutionPoint(cluster_schedule=self.cluster_schedules[i], performance=perf, idx=idx)
+                )
+        else:
+            idx = {k: i for i, k in enumerate(sorted(self.schedules.keys()))}
+            for i in range(self.num_solution_points):
+                current_candidate = []
+                for part_id in sorted(self.schedules.keys()):
+                    current_candidate.append(self.schedules[part_id][i])
+                perf = self.perf[i] if self.perf else None
+                solution_points.append(
+                    SolutionPoint(cluster_schedule=np.array(current_candidate, dtype=float), performance=perf, idx=idx)
+                )
         return solution_points
 
     @property
