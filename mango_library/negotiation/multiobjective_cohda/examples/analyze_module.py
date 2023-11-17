@@ -3,14 +3,17 @@ import math
 import os
 import time
 import csv
-
+import json
 import h5py
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from evoalgos.selection import HyperVolumeContributionSelection
 from pymoo.problems import get_problem
 
 from mango_library.negotiation.multiobjective_cohda.examples.central_solutions import get_solution
+from os.path import abspath
+from pathlib import Path
 
 
 def get_performance_metrics(approximated_front, reference_front, reference_point, p, inside_exponent, minimize):
@@ -237,7 +240,7 @@ def create_reference_front(problem, number_of_points):
 
         for x in values:
             f1 = x
-            f2 = 1 - f1**2
+            f2 = 1 - f1 ** 2
             performances.append([f1, f2])
 
     else:
@@ -250,13 +253,13 @@ def create_reference_front(problem, number_of_points):
 if __name__ == '__main__':
     problem = "Zitzler_3"
     scenario_id = "2_03"
-    number_of_runs = 100
-    reference_point = (1.1, 1.1)
+    number_of_runs = 1
+    reference_point = (1.1, 6.9)
     p = 2
     inside_exponent = False
     minimize = True
 
-    path = "C:/Users/sstark/Documents/MO-COHDA/results"
+    path = Path(abspath(__file__)).parent
 
     # get approximated front from database
     idx = 0
@@ -265,7 +268,8 @@ if __name__ == '__main__':
     average_duration = 0
     all_hv = []
     while idx < number_of_runs:
-        with h5py.File(path + '/' + f"Scenario {scenario_id}" + '/' + f"{problem}_nsga2__simulation_idx_{idx}.hdf5", 'r') as results:
+        with h5py.File(str(path) + f"/{problem}_nsga2__simulation_idx_{idx}.hdf5",
+                       'r') as results:
             performances = np.array(results['Results']['Results_0']['performances'])
             for performance_tuple in performances:
                 f1 = float(performance_tuple[0])
@@ -283,30 +287,29 @@ if __name__ == '__main__':
     max_hv = max(all_hv)
 
     # get results for central approach
-    file = open(path + '/' + 'central' + '/' + f'central_solutions_{problem}.csv')
-    central_data = list(csv.reader(file, delimiter=";"))
-    file.close()
+    file = pd.read_csv(str(path) + '/' + f'central_solution_{problem}.csv')
+    hvs = file['hv'].tolist()
+    durations = file['duration'].tolist()
+    fronts = file['fronts'].tolist()
+    fronts = [json.loads(str.encode(entry).decode()) for entry in fronts]
     central_merged_front = []
     central_average_duration = 0
     central_average_hv = 0
     all_hv_central = []
     c_idx = 0
     while c_idx < number_of_runs:
-        run = central_data[c_idx]
-        string_front = run[0]
-        front = ast.literal_eval(string_front)
-        hv = float(run[1])
-        duration = float(run[2])
+        hv = float(hvs[c_idx])
+        duration = float(durations[c_idx])
         central_average_duration += duration
         central_average_hv += hv
         all_hv_central.append(hv)
-        for performance_tuple in front:
+        for performance_tuple in fronts[c_idx]:
             f1 = float(performance_tuple[0])
             f2 = float(performance_tuple[1])
             central_merged_front.append([f1, f2])
         c_idx += 1
-    central_average_duration = central_average_duration / len(central_data)
-    central_average_hv = central_average_hv / len(central_data)
+    central_average_duration = central_average_duration / len(hvs)
+    central_average_hv = central_average_hv / len(hvs)
     min_hv_central = min(all_hv_central)
     max_hv_central = max(all_hv_central)
 
@@ -323,7 +326,8 @@ if __name__ == '__main__':
                                                       reference_point, p, inside_exponent, minimize)
 
     print("Average HV MO-COHDA:", average_hv, "Min HV MO-COHDA:", min_hv, "Max HV MO-COHDA:", max_hv)
-    print("Average HV Central:", central_average_hv, "Min HV Central:", min_hv_central, "Max HV Central:", max_hv_central)
+    print("Average HV Central:", central_average_hv, "Min HV Central:", min_hv_central, "Max HV Central:",
+          max_hv_central)
     print("Average Duration MO-COHDA:", average_duration)
     print("Average Duration Central:", central_average_duration)
     print("Results for merged front with MO-COHDA for", problem, ":", metrics_merged_approximated_front)
@@ -334,9 +338,9 @@ if __name__ == '__main__':
     # decentralized solution vs. central solution finding
     figure, axis = plt.subplots(2, 2)
     axis[0, 0].scatter(np.array(merged_approximated_front)[:, 0],
-                       np.array(merged_approximated_front)[:, 1], s=3,
-                       c='#1f77b4')
-    axis[0, 0].set_title("MO-COHDA")
+                       np.array(merged_approximated_front)[:, 1], c='blue')
+    axis[0, 0].set_xlabel('f1', labelpad=20)
+    axis[0, 0].set_ylabel('f2', labelpad=20)
     axis[0, 1].scatter(np.array(central_merged_front)[:, 0], np.array(central_merged_front)[:, 1], s=3, c='#ff7f0e')
     axis[0, 1].set_title("Central Solution")
     axis[1, 0].scatter(reference_front[:, 0], reference_front[:, 1], s=3, c='#2ca02c')
