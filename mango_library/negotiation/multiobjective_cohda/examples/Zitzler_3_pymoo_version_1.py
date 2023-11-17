@@ -1,5 +1,4 @@
 import asyncio
-import time
 
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.problems import get_problem
@@ -14,8 +13,8 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
 #  For the version in which every agent can control each variable with NSGA2 (from pymoo),
 #  have a look at: Zitzler_3_pymoo_version_1.py.
 
-SIM_NAME = 'Zitzler_1_nsga2_'
-PROBLEM = 'zdt1'
+SIM_NAME = 'Zitzler_3_nsga2_'
+PROBLEM = 'zdt3'
 NUM_AGENTS = 30
 NUM_SOLUTION_POINTS = 25
 POPULATION_SIZE = 1
@@ -23,9 +22,9 @@ NUM_ITERATIONS = 1
 CHECK_INBOX_INTERVAL = 0.05
 
 # PICK_FKT = MoCohdaNegotiation.pick_all_points
-PICK_FKT = MoCohdaNegotiation.pick_random_point
+PICK_FKT = MoCohdaNegotiation.pick_all_points
 # MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value
-MUTATE_FKT = MoCohdaNegotiation.mutate_NSGA2
+MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random_value
 
 NUM_SIMULATIONS = 50
 p = get_problem(PROBLEM)
@@ -50,7 +49,7 @@ def target_func_2(cs):
 
 # minimize, range between 0 and 1
 TARGET_1 = Target(target_function=target_func_1, ref_point=1.1, maximize=False)
-TARGET_2 = Target(target_function=target_func_2, ref_point=1.1, maximize=False)
+TARGET_2 = Target(target_function=target_func_2, ref_point=6.9, maximize=False)
 TARGETS = [TARGET_1, TARGET_2]
 
 # every agent controls one variable, set number of agents to 30, each agent controls only one position in schedule
