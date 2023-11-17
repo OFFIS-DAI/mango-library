@@ -12,8 +12,8 @@ from uuid import UUID
 import h5py
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-from mango import Role
 
+from mango import Role
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
     MoCohdaNegotiationMessage,
@@ -66,7 +66,7 @@ class MoCohdaNegotiation:
 
         def complete_schedule_provider(system_config: SystemConfig, candidate: SolutionCandidate,
                                        target_params: Dict, solution_point: SolutionPoint = None,
-                                       agent_id: str = None, cs=None):
+                                       agent_id: str = None, cs=None, **kwargs):
             schedule_provider_args = inspect.signature(schedule_provider).parameters.keys()
             args = {}
             if "candidate" in schedule_provider_args:
@@ -81,6 +81,8 @@ class MoCohdaNegotiation:
                 args["agent_id"] = agent_id
             if "cs" in schedule_provider_args:
                 args["cs"] = cs
+            for key, value in kwargs.items():
+                args[key] = value
             return schedule_provider(**args)
 
         self._schedule_provider = complete_schedule_provider
@@ -263,15 +265,18 @@ class MoCohdaNegotiation:
         :target_params: parameters regarding optimization target
         :return: mutated solution points
         """
+        agent_id = int(agent_id) - 1
         new_solution_points = []
-        new_values = schedule_creator(system_config=None,
-                                      candidate=None,
-                                      target_params=target_params,
-                                      agent_id=agent_id)
         for idx, solution_point in enumerate(solution_points):
-            new_cs = np.copy(solution_point.cluster_schedule)
-            new_cs[solution_point.idx[agent_id]] = new_values[idx]
-            new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
+            new_values = schedule_creator(system_config=None,
+                                          candidate=None,
+                                          target_params=target_params,
+                                          agent_id=agent_id,
+                                          solution_point=solution_point)
+            for new_value in new_values:
+                new_cs = np.copy(solution_point.cluster_schedule)
+                new_cs[0][agent_id] = new_value[0][agent_id]
+                new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
         return new_solution_points
 
     @staticmethod
@@ -384,7 +389,7 @@ class MoCohdaNegotiation:
                     if self._part_id not in self._memory.solution_candidate.schedules:
                         # if you have not yet selected any schedule in the sysconfig, choose any to start with
                         schedules = self._memory.solution_candidate.schedules
-                        schedules[self._part_id] = np.array(initial_schedules)
+                        schedules[self._part_id] = initial_schedules
                         # we need to create a new class of SolutionCandidate so the updates are
                         # recognized in handle_cohda_msgs()
                         current_candidate = SolutionCandidate(agent_id=self._part_id, schedules=schedules,
@@ -491,7 +496,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.00
+            minimal_change = 0.01
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
@@ -545,7 +550,6 @@ class MoCohdaNegotiation:
         Returns a merged systemconfig. If the sysconfig_i remains unchanged, the same instance of sysconfig_i is
         returned, otherwise a new object is created.
         """
-
         sysconfig_i_schedules: Dict[str, ScheduleSelections] = sysconfig_i.schedule_choices
         sysconfig_j_schedules: Dict[str, ScheduleSelections] = sysconfig_j.schedule_choices
         key_set_i = set(sysconfig_i_schedules.keys())
@@ -592,7 +596,6 @@ class MoCohdaNegotiation:
         min_elements = [a.objective_values for a in min_elements]
         hv = self._selection.sorting_component.hypervolume_indicator.assess_non_dom_front(min_elements)
         self.hvs_total[time.time()] = hv
-        print(hv)
         return hv
 
     @staticmethod
@@ -609,7 +612,6 @@ class MoCohdaNegotiation:
         :param perf_func: Performance Function
         :return: An Instance of SolutionCandidate
         """
-
         key_set_i = set(candidate_i.schedules.keys())
         key_set_j = set(candidate_j.schedules.keys())
 
@@ -811,7 +813,6 @@ class MultiObjectiveCOHDARole(Role):
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
 
                 if wm_to_send is not None:
-                    print(self.context._aid, ' still updates.')
                     # send message to all neighbors
                     if self._store_updates_to_db:
                         self.store_update_in_db(wm_to_send)
