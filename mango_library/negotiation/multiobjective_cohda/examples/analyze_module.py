@@ -251,7 +251,7 @@ def create_reference_front(problem, number_of_points):
 
 
 if __name__ == '__main__':
-    problem = "Zitzler_3"
+    problem = "Zitzler_2"
     scenario_id = "2_03"
     number_of_runs = 1
     reference_point = (1.1, 6.9)
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     # decentralized solution vs. central solution finding
     figure, axis = plt.subplots(2, 2)
     axis[0, 0].scatter(np.array(merged_approximated_front)[:, 0],
-                       np.array(merged_approximated_front)[:, 1], c='blue')
+                       np.array(merged_approximated_front)[:, 1], s=3, c='blue')
     axis[0, 0].set_xlabel('f1', labelpad=20)
     axis[0, 0].set_ylabel('f2', labelpad=20)
     axis[0, 1].scatter(np.array(central_merged_front)[:, 0], np.array(central_merged_front)[:, 1], s=3, c='#ff7f0e')
