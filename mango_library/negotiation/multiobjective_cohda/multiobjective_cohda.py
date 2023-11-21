@@ -829,13 +829,13 @@ class MultiObjectiveCOHDARole(Role):
                             receiver_addr=neighbor[1], receiver_id=neighbor[2],
                             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}))
                 end = time.time()
-                dur = start - end
+                dur = end - start
                 self._duration_per_iteration.append(dur)
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
                 end = time.time()
-                dur = start - end
+                dur = end - start
                 self._duration_per_iteration.append(dur)
 
         return process_msg
