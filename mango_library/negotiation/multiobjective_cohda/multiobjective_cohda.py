@@ -806,9 +806,9 @@ class MultiObjectiveCOHDARole(Role):
         """
 
         async def process_msg():
+            start = time.time()
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
-                start = time.time()
                 cohda_message_queue, self._cohda_msg_queues[negotiation_id] = \
                     self._cohda_msg_queues[negotiation_id], []
 
@@ -828,12 +828,16 @@ class MultiObjectiveCOHDARole(Role):
                             ),
                             receiver_addr=neighbor[1], receiver_id=neighbor[2],
                             acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}))
-
+                end = time.time()
+                dur = start - end
+                self._duration_per_iteration.append(dur)
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
-        end = time.time()
-        self._duration_per_iteration.append(end)
+                end = time.time()
+                dur = start - end
+                self._duration_per_iteration.append(dur)
+
         return process_msg
 
     def store_update_in_db(self, wm_to_send):
