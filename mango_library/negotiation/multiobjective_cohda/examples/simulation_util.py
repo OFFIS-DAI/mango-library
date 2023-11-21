@@ -447,13 +447,13 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                     cluster_schedule = np.copy(solution_point.cluster_schedule)
                     second_solution = deepcopy(cluster_schedule)
 
-                    new_value_decrease = cluster_schedule[0][agent_id] + random.uniform(0, 0.2)
+                    new_value_decrease = cluster_schedule[0][agent_id] + random.uniform(0.4, 0.6)
                     if new_value_decrease > 1:
                         new_value_decrease = 1
                     second_solution[0][agent_id] = new_value_decrease
 
-                    new_value_increase = cluster_schedule[0][agent_id] - random.uniform(0, 0.2)
-                    if new_value_increase < 0 :
+                    new_value_increase = cluster_schedule[0][agent_id] - random.uniform(0.4, 0.6)
+                    if new_value_increase < 0:
                         new_value_increase = 0
                     cluster_schedule[0][agent_id] = new_value_increase
                     return [cluster_schedule, second_solution]
@@ -576,6 +576,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
         await container.shutdown()
 
         # append results
+        print('duration', end_time - start_time)
         results.append(
             {
                 "final_memory": final_memory,

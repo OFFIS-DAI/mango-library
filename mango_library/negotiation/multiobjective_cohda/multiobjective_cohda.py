@@ -496,7 +496,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.01
+            minimal_change = 0.001
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
@@ -693,6 +693,7 @@ class MultiObjectiveCOHDARole(Role):
         self._hf = None
         self._updates_iter = 0
         self._target_params = target_params
+        self._duration_per_iteration = []
 
     def setup(self):
         # negotiation message
@@ -807,6 +808,7 @@ class MultiObjectiveCOHDARole(Role):
         async def process_msg():
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
+                start = time.time()
                 cohda_message_queue, self._cohda_msg_queues[negotiation_id] = \
                     self._cohda_msg_queues[negotiation_id], []
 
@@ -830,7 +832,8 @@ class MultiObjectiveCOHDARole(Role):
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
-
+        end = time.time()
+        self._duration_per_iteration.append(end)
         return process_msg
 
     def store_update_in_db(self, wm_to_send):

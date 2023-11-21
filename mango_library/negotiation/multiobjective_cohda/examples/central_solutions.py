@@ -9,7 +9,7 @@ import pandas as pd
 
 NUM_SOLUTION_POINTS = 25
 
-PROBLEM = 'Zitzler_3'
+PROBLEM = 'Zitzler_2'
 ALGORITHM = NSGA2(pop_size=NUM_SOLUTION_POINTS)
 NUM_AGENTS = 30
 number_of_runs = 25
