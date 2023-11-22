@@ -251,7 +251,7 @@ def create_reference_front(problem, number_of_points):
 
 
 if __name__ == '__main__':
-    problem = "Zitzler_2"
+    problem = "Zitzler_1"
     scenario_id = "2_03"
     number_of_runs = 1
     reference_point = (1.1, 6.9)

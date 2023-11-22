@@ -496,7 +496,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.001
+            minimal_change = 0.01
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx

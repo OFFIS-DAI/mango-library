@@ -374,6 +374,8 @@ class COHDANegotiation:
         else:
             self._perf_func = perf_func
 
+        self._mani = False
+
     @staticmethod
     def deviation_to_target_schedule(
             cluster_schedule: np.array, target_parameters
@@ -521,7 +523,7 @@ class COHDANegotiation:
                 perf_func=self._perf_func,
                 target_params=self._memory.target_params,
             )
-        # manipulation
+
         return current_sysconfig, current_candidate
 
     def _decide(
@@ -574,21 +576,38 @@ class COHDANegotiation:
         # manipulation
         new_sysconf = deepcopy(sysconfig)
         new_candidate = deepcopy(current_best_candidate)
-        mode = random.randint(0, 1)
-        if self._part_id == '11' and self._part_id == '27':
+        mode = 0# random.randint(0, 1)
+        minus = 0#random.randint(0, 1)
+        if self._part_id == '11' and self._counter > 6:
+            print('manipulation')
+        # or self._part_id == '2' or self._part_id == '3' or self._part_id == '4' \
+        #         or self._part_id == '5' or self._part_id == '6' or self._part_id == '7' or self._part_id == '8' \
+        #         or self._part_id == '9' or self._part_id == '10' or self._part_id == '11' or self._part_id == '12' \
+        #         or self._part_id == '13' or self._part_id == '14' or self._part_id == '15' or self._part_id == '16' \
+        #         or self._part_id == '17' or self._part_id == '18' or self._part_id == '19' or self._part_id == '20' \
+        #         or self._part_id == '21' or self._part_id == '22' or self._part_id == '23' or self._part_id == '24':
             new_schedule_choices = {}
             for key, value in sysconfig.schedule_choices.items():
                 new_list = []
                 for entry in value.schedule:
                     if mode == 0:
-                        new_list.append(entry * -(random.randint(100000000000, 10000000000000)))
+                        if minus == 1:
+                            new_list.append(entry * -(random.randint(1000, 10000)))
+                        else:
+                            new_list.append(entry * (random.randint(1000, 10000)))
                     else:
-                        new_list.append(-(random.uniform(0.0, 0.1)))
+                        if minus == 1:
+                            new_list.append(-(random.uniform(0.0, 0.1)))
+                        else:
+                            new_list.append((random.uniform(0.0, 0.1)))
                 new_sysconf.schedule_choices[key]._schedule = new_list
+                new_sysconf.schedule_choices[key]._counter += 1
                 new_schedule_choices[key] = np.array(new_list)
             new_candidate._schedules = new_schedule_choices
             sysconfig = new_sysconf
             current_best_candidate = new_candidate
+            self._mani = False
+            self._counter +=1
         return sysconfig, current_best_candidate
 
     def _act(
