@@ -224,7 +224,7 @@ class MoCohdaNegotiation:
         :target_params: parameters regarding optimization target
         :return: mutated solution points
         """
-        allowed_max_change = 10  # in kW
+        allowed_max_change = 100  # in kW
 
         max_values = schedule_creator(system_config=None,
                                       candidate=None,
@@ -427,7 +427,6 @@ class MoCohdaNegotiation:
                 candidate_i=current_candidate, candidate_j=new_candidate, agent_id=self._part_id,
                 perf_func=self._perf_func, target_params=self._memory.target_params,
                 get_hypervolume=self.get_hypervolume)
-
         if len(current_sysconfig.schedule_choices) == 30:
             self.all_agents_known = time.time()
         return current_sysconfig, current_candidate
@@ -496,7 +495,7 @@ class MoCohdaNegotiation:
             new_hyper_volume = self.get_hypervolume(performances=[ind.objective_values for ind in all_solution_points],
                                                     population=all_solution_points)
             # only send updates to other agents, if there is a change bigger than this value
-            minimal_change = 0.01
+            minimal_change = 0.0005
             # if new is better than current, exchange current
             if new_hyper_volume > (current_best_candidate.hypervolume + minimal_change):
                 idx = solution_points_to_mutate[0].idx
@@ -806,7 +805,9 @@ class MultiObjectiveCOHDARole(Role):
         """
 
         async def process_msg():
+            sleep_time = random.uniform(0.01, 0.08)
             start = time.time()
+            await asyncio.sleep(sleep_time)
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
                 cohda_message_queue, self._cohda_msg_queues[negotiation_id] = \
@@ -883,7 +884,7 @@ class MultiObjectiveCOHDARole(Role):
                 data_solution_points.append((part_id,) + tuple(solution_point.cluster_schedule[index]))
             data_solution_points = np.array(data_solution_points, dtype=dtype_solution_points)
             general_group.create_dataset(f'Solutionpoint_{i}', data=data_solution_points)
-        self._updates_iter += 1
+        # self._updates_iter += 1
         self._hf.close()
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
@@ -956,7 +957,7 @@ class MultiObjectiveCOHDARole(Role):
         # get part id from negotiation
         part_id = self.context.get_or_create_model(MoCohdaNegotiationModel).by_id(neg_id)._part_id
         # get individual schedule from final candidate
-        final_schedule = final_candidate.cluster_schedule[final_candidate.idx[part_id]]
+        final_schedule = final_candidate  # .cluster_schedule[final_candidate.idx[part_id]]
 
         # add final schedule to CohdaSolutionModel
         model = self.context.get_or_create_model(MoCohdaSolutionModel)
@@ -965,7 +966,7 @@ class MultiObjectiveCOHDARole(Role):
         # reply with a confirmation
         self.context.schedule_instant_task(
             self.context.send_acl_message(
-                content=ConfirmMoCohdaSolutionMessage(negotiation_id=neg_id, solution_point=final_candidate),
+                content=ConfirmMoCohdaSolutionMessage(negotiation_id=neg_id, solution_point=final_schedule),
                 receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
                 acl_metadata={'sender_id': self.context.aid})
         )
