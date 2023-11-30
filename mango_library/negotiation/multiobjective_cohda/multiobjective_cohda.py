@@ -805,6 +805,8 @@ class MultiObjectiveCOHDARole(Role):
         """
 
         async def process_msg():
+            sleep_time = random.uniform(0.01, 0.08)
+            await asyncio.sleep(sleep_time)
             start = time.time()
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
