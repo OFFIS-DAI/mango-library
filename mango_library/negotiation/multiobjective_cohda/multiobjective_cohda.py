@@ -12,8 +12,8 @@ from uuid import UUID
 import h5py
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-
 from mango import Role
+
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
     MoCohdaNegotiationMessage,
@@ -668,7 +668,7 @@ class MultiObjectiveCOHDARole(Role):
                  local_acceptable_func: object = None, check_inbox_interval: float = 0.1,
                  pick_func: object = None, mutate_func: object = None, num_iterations: int = 1,
                  use_fixed_ref_point: bool = True, offsets: list = None, store_updates_to_db: bool = False,
-                 target_params: dict = {}) -> object:
+                 target_params: dict = {}, improve_inter_agent_variation=False) -> object:
         super().__init__()
 
         self._schedule_provider = schedule_provider
@@ -693,6 +693,11 @@ class MultiObjectiveCOHDARole(Role):
         self._updates_iter = 0
         self._target_params = target_params
         self._duration_per_iteration = []
+        # Differentiating the check msgs queue interval can improve the solutions due to inter-agent variation
+        # (Bremer et al., 2019: The effect of laziness on agents for large scale global optimization)
+        self._improve_inter_agent_variation = improve_inter_agent_variation
+        if self._improve_inter_agent_variation:
+            self._check_inbox_interval = 0
 
     def setup(self):
         # negotiation message
@@ -805,8 +810,9 @@ class MultiObjectiveCOHDARole(Role):
         """
 
         async def process_msg():
-            sleep_time = random.uniform(0.01, 0.08)
-            await asyncio.sleep(sleep_time)
+            if self._improve_inter_agent_variation:
+                sleep_time = random.uniform(0.01, 0.08)
+                await asyncio.sleep(sleep_time)
             start = time.time()
             if len(self._cohda_msg_queues[negotiation_id]) > 0 and not cohda_negotiation.stopped:
                 # get queue
