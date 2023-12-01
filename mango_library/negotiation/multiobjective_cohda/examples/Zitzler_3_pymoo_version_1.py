@@ -1,5 +1,4 @@
 import asyncio
-import time
 
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.problems import get_problem
@@ -59,7 +58,6 @@ possible_interval = 1
 
 
 async def simulate_zitzler_3_NSGA2(name):
-    print('start', time.time())
     await simulate_mo_cohda_NSGA2(
         num_simulations=NUM_SIMULATIONS,
         num_agents=NUM_AGENTS,
