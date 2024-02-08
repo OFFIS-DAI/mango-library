@@ -429,9 +429,9 @@ class Tvl:
                 self._tv[position_one][first_pos_in_tv] = xboole.Tval('-')
             else:
                 self._tv[position_one][first_pos_in_tv], \
-                 self._tv[position_two][sec_pos_in_tv] = \
-                 self._tv[position_two][sec_pos_in_tv], \
-                 self._tv[position_one][first_pos_in_tv]
+                self._tv[position_two][sec_pos_in_tv] = \
+                    self._tv[position_two][sec_pos_in_tv], \
+                    self._tv[position_one][first_pos_in_tv]
                 self._vv[key_one][position_one], self._vv[key_two][
                     position_two] \
                     = self._vv[key_two][position_two], self._vv[key_one][

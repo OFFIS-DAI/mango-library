@@ -1,1 +1,4 @@
-Winzent Implementation on the basis of: Eric MSP Veith: Universal Smart Grid Agent for Distributed Power Generation Management, 2017.
+# Winzent Standalone
+
+An assortment of Winzent files that represent the coding work done in this thesis. 
+These files are also used in tests in the **tests** folder.

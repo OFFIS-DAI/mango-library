@@ -10,9 +10,9 @@ from .tv import Tv
 from .tval import Tval
 from .tvl import Tvl
 from .tvproxy import TVProxy
+from .xboole_ethical_solver_strategy import XbooleEthicalPowerBalanceSolverStrategy
 from .xboole_power_balance_solver_strategy import \
     XboolePowerBalanceSolverStrategy
-from .xboole_ethical_solver_strategy import XbooleEthicalPowerBalanceSolverStrategy
 
 __all__ = ['Forecast', 'Governor',
            'MessageType', 'ForwardableGridMessage',

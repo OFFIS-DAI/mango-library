@@ -1,6 +1,3 @@
-from datetime import datetime
-from copy import deepcopy
-
 from mango_library.negotiation.winzent import xboole
 
 
@@ -37,6 +34,7 @@ class MessageJournal:
 
     def replace(self, dict):
         self._entries = dict
+
 
 class Governor:
     # controlling business logic that ties all modules together

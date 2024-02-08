@@ -1,5 +1,6 @@
-import intervals
 import datetime
+
+import intervals
 
 
 class TimeSpan:

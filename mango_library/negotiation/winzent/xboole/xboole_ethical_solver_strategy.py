@@ -1,6 +1,4 @@
 import math
-from collections import namedtuple
-from datetime import datetime
 from copy import deepcopy
 from itertools import combinations
 
@@ -83,6 +81,15 @@ def are_all_offers_in_same_time_span(req_list):
 
 
 class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
+    """
+    The solving strategy for the ethics module. Contains the algorithm to create new solutions by
+    deliberately cutting away requirements. It then compares these solutions to one another based
+    on a weighted sum equation.
+    :param min_coverage: The minimum coverage a solution must reach to be eligible
+    :param coverage_weight: The weight of the coverage ratio in the weighted sum equation
+    :param ethics_score_weight: The weight of the ethics score in the weighted sum equation
+    """
+
     def __init__(self, min_coverage=1.0, coverage_weight=0.9, ethics_score_weight=0.1):
         self.power_balance_strategy = xboole.XboolePowerBalanceSolverStrategy()
         self.initial_requirement = None
@@ -108,6 +115,15 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         return new_final
 
     def calc_solution_quality(self, final, afforded_values, initial_values, full_req_list, req_list):
+        """
+        This method calculates the quality score of a solution with a weighted sum equation.
+        :param final: The composition of the final solution
+        :param afforded_values: The values reached in the negotiation
+        :param initial_values: The values set out to be reached at the start of the negotiation
+        :param full_req_list: A list of all the requirements that came in.
+        :param req_list: A list of all the requirements that were used in this particular solution.
+        :return: the solution quality score
+        """
         temp_req_list = deepcopy(req_list)
         temp_req_list.ledger[self.start_time].remove(self.initial_requirement)
         coverage = calc_solution_coverage(afforded_values, initial_values)
@@ -122,11 +138,20 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             return -1
 
     def ethical_solution_algorithm(self, req_list, initiator):
+        """
+        This method creates solutions by cutting away replies and using the solver contained in
+        XboolePowerBalanceSolverStrategy with that new composition of replies.
+        It then sorts the solution based on ethics score and coverage and picks the best one based
+        on a weighted sum equation.
+        :param req_list: The replies for the negotiation.
+        :param initiator: The initiator for the boolean solver
+        """
         final, afforded_values, initial_req = self.power_balance_strategy.solve(req_list, initiator)
         initial_values = initial_req.forecast.second
         initial_sol_score = self.calc_solution_quality(final, afforded_values, initial_values, req_list, req_list)
         if initial_sol_score == -1:
-            print("min coverage unterschritten")
+            print("Min. coverage undercut!")
+            # returns the initial solution since the minimum coverage can already not be fulfilled
             return final, afforded_values, initial_req
         else:
             temp_sol_dict = {}
@@ -134,6 +159,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             reqs_to_be_removed = 1
             agent_list = self.create_list_of_agents(full_req_list)
             while reqs_to_be_removed <= self.req_removal_depth:
+                # creates the possible combinations for the group size in reqs_to_be_removed
                 possible_req_combinations = find_groups(agent_list, reqs_to_be_removed)
                 for combination in possible_req_combinations:
                     removed_reqs = []
@@ -148,6 +174,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
                     else:
                         temp_final, temp_afforded_values, temp_initial_req = self.power_balance_strategy.solve(
                             req_list, initiator)
+                    # adds created solution solution dictionary
                     temp_sol_dict[tuple(removed_reqs_ids)] = (
                         [temp_final, temp_afforded_values, temp_initial_req],
                         self.calc_solution_quality(temp_final,
@@ -156,11 +183,14 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
                                                    full_req_list,
                                                    req_list))
                     for removed_req in removed_reqs:
+                        # adds the removed requirements back to the requirement list
                         req_list.ledger[self.start_time].append(removed_req)
                     removed_reqs.clear()
                     removed_reqs_ids.clear()
+                # increases the requirements to be removed by one, starting a new cycle
                 reqs_to_be_removed += 1
             highest_sol_score = initial_sol_score
+            # solution scores are compared with one another
             for key in temp_sol_dict.keys():
                 if temp_sol_dict[key][1] > highest_sol_score:
                     highest_sol_score = temp_sol_dict[key][1]
@@ -171,11 +201,11 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
 
     def solve(self, power_balance, initiator):
         """
-        Currently, this method sorts the available offers based on their ethics score
-        and cuts off the unnecessary ones with the lowest score if enough are
-        available to satisfy the initial requirement.
-        Afterwards, the offers are handed to the solving algorithm.
-        5.4.2023
+        This method either starts the solving process for multiple time slots or just
+        sorts the requirements based on their ethics score and picks the top ones
+        until the negotiation target is satisfied.
+        :param power_balance: The replies for the negotiation.
+        :param initiator: The initiator for the boolean solver
         """
         # in this case, the agent did not receive any offers and the only requirement in the power balance is
         # his own. Consequently, no solution can be created.

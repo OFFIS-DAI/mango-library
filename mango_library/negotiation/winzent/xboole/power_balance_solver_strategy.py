@@ -36,6 +36,7 @@ class PowerBalanceSolverStrategy:
             return r[1]
         return r
 
+
 class Result:
 
     def __init__(self):

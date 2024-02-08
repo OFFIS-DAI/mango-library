@@ -302,6 +302,7 @@ def is_iterable(obj):
     except TypeError:
         return False
 
+
 class DictList:
     def __init__(self):
         """

@@ -81,7 +81,7 @@ class Tv:
 
             if self[i].a ^ other[i].a:
                 # 01 combination found
-                if bb_test: # second time combination 01
+                if bb_test:  # second time combination 01
                     return False
                 bb_test = True
         return bb_test
