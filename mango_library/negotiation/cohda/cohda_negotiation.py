@@ -382,7 +382,7 @@ class COHDANegotiation:
         else:
             self._perf_func = perf_func
         self._attack_scenario = attack_scenario
-        self._last_perf = 0
+        self._last_perf = 100
         self._additional_agent_id = 500
         self._manipulated_agent = manipulated_agent
 
@@ -523,13 +523,12 @@ class COHDANegotiation:
                     current_candidate = SolutionCandidate(
                         agent_id=self._part_id, schedules=schedules, perf=None
                     )
+                    current_candidate.perf = self._perf_func(
+                        current_candidate.cluster_schedule, self._memory.target_params
+                    )
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
                         current_candidate.perf = self._last_perf
                         self._last_perf *= 5
-                    else:
-                        current_candidate.perf = self._perf_func(
-                            current_candidate.cluster_schedule, self._memory.target_params
-                        )
                 else:
                     current_candidate = self._memory.solution_candidate
 
@@ -599,13 +598,13 @@ class COHDANegotiation:
                     sysconfig=sysconfig,
                     new_schedule=np.array(schedule),
                 )
+                new_performance = self._perf_func(
+                    new_candidate.cluster_schedule, self._memory.target_params
+                )
                 if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
                     new_performance = self._last_perf
                     self._last_perf *= 5
-                else:
-                    new_performance = self._perf_func(
-                        new_candidate.cluster_schedule, self._memory.target_params
-                    )
+
                 # only keep new candidates that perform better than the current one
                 if new_performance > current_best_candidate.perf:
                     new_candidate.perf = new_performance
