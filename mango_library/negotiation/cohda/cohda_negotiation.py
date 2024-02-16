@@ -37,7 +37,8 @@ class COHDANegotiationRole(Role):
             local_acceptable_func: Callable = None,
             perf_func: Callable = None,
             check_inbox_interval: float = 0.1,
-            attack_scenario=0
+            attack_scenario=0,
+            manipulated_agent=None
     ):
         """
         Init of COHDANegotiationRole
@@ -71,7 +72,8 @@ class COHDANegotiationRole(Role):
             UUID, asyncio.Task
         ] = {}  # stores the tasks that process the inbox
         self.check_inbox_interval = check_inbox_interval
-        self.attack_scenario = attack_scenario
+        self._attack_scenario = attack_scenario
+        self._manipulated_agent = manipulated_agent
 
     def setup(self) -> None:
         super().setup()
@@ -147,7 +149,8 @@ class COHDANegotiationRole(Role):
                     schedule_provider=self._schedules_provider,
                     is_local_acceptable=self._is_local_acceptable,
                     perf_func=self._perf_func,
-                    attack_scenario=self.attack_scenario
+                    attack_scenario=self._attack_scenario,
+                    manipulated_agent=self._manipulated_agent
                 ),
             )
         cohda_negotiation = cohda_negotiation_model.by_id(
@@ -331,7 +334,8 @@ class COHDANegotiation:
             is_local_acceptable: Callable,
             part_id: str,
             perf_func=None,
-            attack_scenario=0
+            attack_scenario=0,
+            manipulated_agent=None
     ):
         """
         Init of the CohdaNegotiation
@@ -377,9 +381,10 @@ class COHDANegotiation:
             self._perf_func = self.deviation_to_target_schedule
         else:
             self._perf_func = perf_func
-        self.attack_scenario = attack_scenario
+        self._attack_scenario = attack_scenario
         self._last_perf = 0
         self._additional_agent_id = 500
+        self._manipulated_agent = manipulated_agent
 
     @staticmethod
     def deviation_to_target_schedule(
@@ -489,7 +494,7 @@ class COHDANegotiation:
                         self._counter + 1,
                     )
                     self._counter += 1
-                    if self._part_id == '15' and self.attack_scenario == 1:
+                    if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
                         chosen_schedule = schedule_choices[self._part_id]._schedule
                         manipulated_schedule = []
                         for value in chosen_schedule:
@@ -507,7 +512,7 @@ class COHDANegotiation:
                         candidate=self._memory.solution_candidate,
                         system_config=self._memory.system_config,
                     )[0]
-                    if self._part_id == '15' and self.attack_scenario == 1:
+                    if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
                         chosen_schedule = schedules[self._part_id]
                         manipulated_schedule = []
                         for value in chosen_schedule:
@@ -518,7 +523,7 @@ class COHDANegotiation:
                     current_candidate = SolutionCandidate(
                         agent_id=self._part_id, schedules=schedules, perf=None
                     )
-                    if self._part_id == '15' and self.attack_scenario == 3:
+                    if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
                         current_candidate.perf = self._last_perf
                         self._last_perf *= 5
                     else:
@@ -542,10 +547,10 @@ class COHDANegotiation:
                 perf_func=self._perf_func,
                 target_params=self._memory.target_params,
             )
-            if self._part_id == '15' and self.attack_scenario == 3:
+            if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
                 current_candidate.perf = self._last_perf
                 self._last_perf *= 5
-        if self._part_id == '15' and self.attack_scenario == 4:
+        if self._part_id == self._manipulated_agent and self._attack_scenario == 4:
             # manipulation: in each iteration, add another agent to candidate
             schedules = current_candidate.schedules
             schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
@@ -559,7 +564,7 @@ class COHDANegotiation:
 
             # also add new agent to system config
             schedule_choices = current_sysconfig.schedule_choices
-            schedule_choices[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
+            schedule_choices[str(self._additional_agent_id)] = deepcopy(schedule_choices[self._part_id])
             current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
 
             # increase id in order to make sure to add other agents in next iteration
@@ -579,7 +584,7 @@ class COHDANegotiation:
         possible_schedules = self._schedule_provider(
             candidate=candidate, system_config=sysconfig
         )
-        if self._part_id == '15' and self.attack_scenario == 1:
+        if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
             chosen_schedule = possible_schedules[random.choice([0, len(possible_schedules) - 1])]
             manipulated_schedule = []
             for value in chosen_schedule:
@@ -594,7 +599,7 @@ class COHDANegotiation:
                     sysconfig=sysconfig,
                     new_schedule=np.array(schedule),
                 )
-                if self._part_id == '15' and self.attack_scenario == 3:
+                if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
                     new_performance = self._last_perf
                     self._last_perf *= 5
                 else:
