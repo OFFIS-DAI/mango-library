@@ -545,25 +545,25 @@ class COHDANegotiation:
             if self._part_id == '15' and self.attack_scenario == 3:
                 current_candidate.perf = self._last_perf
                 self._last_perf *= 5
-            if self._part_id == '15' and self.attack_scenario == 4:
-                # manipulation: in each iteration, add another agent to candidate
-                schedules = current_candidate.schedules
-                schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
+        if self._part_id == '15' and self.attack_scenario == 4:
+            # manipulation: in each iteration, add another agent to candidate
+            schedules = current_candidate.schedules
+            schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
 
-                current_candidate = SolutionCandidate(
-                    agent_id=str(self._additional_agent_id), schedules=schedules, perf=None
-                )
-                current_candidate.perf = self._perf_func(
-                    current_candidate.cluster_schedule, self._memory.target_params
-                )
+            current_candidate = SolutionCandidate(
+                agent_id=str(self._additional_agent_id), schedules=schedules, perf=None
+            )
+            current_candidate.perf = self._perf_func(
+                current_candidate.cluster_schedule, self._memory.target_params
+            )
 
-                # also add new agent to system config
-                schedule_choices = current_sysconfig.schedule_choices
-                schedule_choices[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
-                current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
+            # also add new agent to system config
+            schedule_choices = current_sysconfig.schedule_choices
+            schedule_choices[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
+            current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
 
-                # increase id in order to make sure to add other agents in next iteration
-                self._additional_agent_id += 1
+            # increase id in order to make sure to add other agents in next iteration
+            self._additional_agent_id += 1
         return current_sysconfig, current_candidate
 
     def _decide(
