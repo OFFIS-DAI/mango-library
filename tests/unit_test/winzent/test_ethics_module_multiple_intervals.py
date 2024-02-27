@@ -1,10 +1,13 @@
 import asyncio
 from typing import Dict
 
+import pytest
+
 from util_functions import shutdown, create_six_ethical_agents
 
 
-async def max_coverage_vs_best_ethics():
+@pytest.mark.asyncio
+async def test_max_coverage_vs_best_ethics():
     """
     In this test case, agent a is negotiating for a solution over three intervals and foregoes the offer
     for more coverage from agent c. This is because agent c has a bad ethics score and the final solution
@@ -14,7 +17,6 @@ async def max_coverage_vs_best_ethics():
     first_interval = 0
     second_interval = 900
     third_interval = 1800
-    print("test")
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=5,
@@ -49,7 +51,7 @@ async def max_coverage_vs_best_ethics():
     await agent_a.start_negotiation(start_dates=[first_interval, second_interval, third_interval],
                                     values=[105, 150, 150])
     await agent_a.negotiation_done
-    print(agent_a.aid + str(agent_a.final))
+    # print(agent_a.aid + str(agent_a.final))
     assert agent_a.flex[first_interval] == [0, 0]
     assert agent_b.flex[first_interval] == [0, 3]
     assert agent_c.flex[first_interval] == [0, 0]
@@ -75,7 +77,8 @@ async def max_coverage_vs_best_ethics():
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
 
 
-async def get_correct_solution_through_restarts():
+@pytest.mark.asyncio
+async def test_get_correct_solution_through_restarts():
     """
      In this test case, agent a, agent b and agent c are negotiating for a solution over
      two intervals. Agent d, agent e and agent f possess the needed flexibility for a, b and c.
@@ -181,5 +184,4 @@ async def get_correct_solution_through_restarts():
     assert agent_e.flex[second_interval] == [0, 0]
     assert agent_f.flex[second_interval] == [0, 0]
 
-
-asyncio.run(max_coverage_vs_best_ethics())
+# asyncio.run(test_max_coverage_vs_best_ethics())

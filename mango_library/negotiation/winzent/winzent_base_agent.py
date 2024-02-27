@@ -546,8 +546,6 @@ class WinzentBaseAgent(Agent, ABC):
         else:
             logger.info(f"{self.aid}: Acceptance from {reply.sender} invalid.")
         logger.debug(f"{self.aid}: Sending withdrawal to {reply.sender}")
-        print(type(list(reply.time_span)))
-        print(reply.value)
         withdrawal = WinzentMessage(time_span=list(reply.time_span),
                                     is_answer=True, answer_to=reply.id,
                                     msg_type=xboole.MessageType.WithdrawalNotification,

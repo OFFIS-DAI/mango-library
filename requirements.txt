@@ -1,6 +1,6 @@
 evoalgos==1.1
 pytest==7.1.3
-pytest-asyncio==0.14.0
+pytest-asyncio==0.23.0
 virtualenv==20.0.31
 numpy==1.23.2
 mango-agents==1.1.3

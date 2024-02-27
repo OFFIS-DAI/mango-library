@@ -1,10 +1,13 @@
 import asyncio
 from typing import Dict
 
+import pytest
+
 from util_functions import shutdown, create_six_ethical_agents
 
 
-async def get_correct_solution_through_restarts():
+@pytest.mark.asyncio
+async def test_get_correct_solution_through_restarts():
     """
      In this test case, agent a, agent b and agent c are negotiating for a solution over
      two intervals. Agent d, agent e and agent f possess the needed flexibility for a, b and c.
@@ -102,5 +105,4 @@ async def get_correct_solution_through_restarts():
     assert agent_b.ethics_score == 3.08
     assert agent_c.ethics_score == 4.0
 
-
-asyncio.run(get_correct_solution_through_restarts())
+# asyncio.run(get_correct_solution_through_restarts())
