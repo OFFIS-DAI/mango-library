@@ -1,10 +1,8 @@
 import asyncio
-import math
-from datetime import datetime
-from typing import Optional, Dict, List, Tuple
-from itertools import combinations
+from typing import Dict
 
-from util_functions import shutdown, create_six_ethical_agents, create_six_base_agents
+from util_functions import shutdown, create_six_ethical_agents
+
 
 async def max_coverage_vs_best_ethics():
     """
@@ -16,6 +14,7 @@ async def max_coverage_vs_best_ethics():
     first_interval = 0
     second_interval = 900
     third_interval = 1800
+    print("test")
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=5,
@@ -47,7 +46,6 @@ async def max_coverage_vs_best_ethics():
     agent_d.update_flexibility(t_start=third_interval, min_p=0, max_p=50)
     agent_e.update_flexibility(t_start=third_interval, min_p=0, max_p=0)
     agent_f.update_flexibility(t_start=third_interval, min_p=0, max_p=50)
-
     await agent_a.start_negotiation(start_dates=[first_interval, second_interval, third_interval],
                                     values=[105, 150, 150])
     await agent_a.negotiation_done
@@ -100,7 +98,6 @@ async def get_correct_solution_through_restarts():
         agent_e_ethics_score=3,
         agent_f_ethics_score=4,
     )
-
 
     agent_a.update_flexibility(t_start=first_interval, min_p=0, max_p=0)
     agent_b.update_flexibility(t_start=first_interval, min_p=0, max_p=0)
@@ -184,5 +181,5 @@ async def get_correct_solution_through_restarts():
     assert agent_e.flex[second_interval] == [0, 0]
     assert agent_f.flex[second_interval] == [0, 0]
 
-asyncio.run(get_correct_solution_through_restarts())
 
+asyncio.run(max_coverage_vs_best_ethics())

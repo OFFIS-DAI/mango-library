@@ -251,7 +251,7 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                     print(e)
             if not all(value == 0 for value in specific_request_values):
                 reply = WinzentMessage(msg_type=msg_to_answer_with,
-                                       sender=self._aid,
+                                       sender=self.aid,
                                        is_answer=True,
                                        receiver=initial_request.sender,
                                        time_span=initial_request.time_span,

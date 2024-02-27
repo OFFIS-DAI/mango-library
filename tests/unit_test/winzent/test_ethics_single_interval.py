@@ -1,10 +1,8 @@
 import asyncio
-import math
-from datetime import datetime
-from typing import Optional, Dict, List, Tuple
-from itertools import combinations
+from typing import Dict
 
-from util_functions import shutdown, create_six_ethical_agents, create_six_base_agents
+from util_functions import shutdown, create_six_ethical_agents
+
 
 async def get_correct_solution_through_restarts():
     """
@@ -16,8 +14,7 @@ async def get_correct_solution_through_restarts():
     agents_with_started_negotiation = []
     rounded_load_values: Dict[str:int] = {}
     first_interval = 0
-    second_interval = 900
-    time_span = [first_interval, second_interval]
+    time_span = [first_interval]
     # this variable controls the amount of allowed restarts
     number_of_restarted_negotiations_allowed = 3
 
@@ -30,7 +27,6 @@ async def get_correct_solution_through_restarts():
         agent_f_ethics_score=4,
     )
 
-
     agent_a.update_flexibility(t_start=first_interval, min_p=0, max_p=0)
     agent_b.update_flexibility(t_start=first_interval, min_p=0, max_p=0)
     agent_c.update_flexibility(t_start=first_interval, min_p=0, max_p=0)
@@ -38,25 +34,18 @@ async def get_correct_solution_through_restarts():
     agent_e.update_flexibility(t_start=first_interval, min_p=0, max_p=100)
     agent_f.update_flexibility(t_start=first_interval, min_p=0, max_p=100)
 
-    agent_a.update_flexibility(t_start=second_interval, min_p=0, max_p=0)
-    agent_b.update_flexibility(t_start=second_interval, min_p=0, max_p=0)
-    agent_c.update_flexibility(t_start=second_interval, min_p=0, max_p=0)
-    agent_d.update_flexibility(t_start=second_interval, min_p=0, max_p=100)
-    agent_e.update_flexibility(t_start=second_interval, min_p=0, max_p=100)
-    agent_f.update_flexibility(t_start=second_interval, min_p=0, max_p=100)
-
-    agent_a_values = [100, 100]
-    await agent_a.start_negotiation(start_dates=[first_interval, second_interval], values=agent_a_values)
+    agent_a_values = [100]
+    await agent_a.start_negotiation(start_dates=[first_interval], values=agent_a_values)
     agents_with_started_negotiation.append(agent_a)
     rounded_load_values[agent_a.aid] = agent_a_values
 
-    agent_b_values = [100, 100]
-    await agent_b.start_negotiation(start_dates=[first_interval, second_interval], values=agent_b_values)
+    agent_b_values = [100]
+    await agent_b.start_negotiation(start_dates=[first_interval], values=agent_b_values)
     rounded_load_values[agent_b.aid] = agent_b_values
     agents_with_started_negotiation.append(agent_b)
 
-    agent_c_values = [100, 100]
-    await agent_c.start_negotiation(start_dates=[first_interval, second_interval], values=agent_c_values)
+    agent_c_values = [100]
+    await agent_c.start_negotiation(start_dates=[first_interval], values=agent_c_values)
     agents_with_started_negotiation.append(agent_c)
     rounded_load_values[agent_c.aid] = agent_c_values
 
@@ -69,9 +58,7 @@ async def get_correct_solution_through_restarts():
             agent.result = {}
         # restart unsuccessful negotiations
         # only allow a restricted number of restarts
-        agent_result_sum = []
-        for time_slot in time_span:
-            agent_result_sum.append(0)
+        agent_result_sum = [0 for _ in time_span]
         for key in agent.final:
             it = 0
             for sub_key in agent.final[key]:
@@ -79,22 +66,27 @@ async def get_correct_solution_through_restarts():
                 it += 1
         # check if negotiation fulfills requirements
 
-        if sum(agent_result_sum) < sum(rounded_load_values[agent.aid]):
+        negotiation_successful = sum(agent_result_sum) >= sum(rounded_load_values[agent.aid])
+        if not negotiation_successful:
             if number_of_restarted_negotiations_allowed > 0:
                 # get sum of already negotiated values for this agent
                 # negotiation was not fully successful, therefore restart
                 agents_with_started_negotiation.append(agent)
                 # restart the negotiation with the missing value
                 await agent.start_negotiation(
-                    start_dates=[first_interval, second_interval],
+                    start_dates=[first_interval],
                     values=[a - b for a, b in zip(rounded_load_values[agent.aid], agent_result_sum)],
                 )
                 print(
                     f"{agent.aid} restarted negotiation for value "
                     f"of {[a - b for a, b in zip(rounded_load_values[agent.aid], agent_result_sum)]}"
                 )
+                print(agent.calculate_new_ethics_score(negotiation_successful))
                 number_of_restarted_negotiations_allowed -= 1
+            else:
+                print(agent.calculate_new_ethics_score(negotiation_successful))
         else:
+            print(agent.calculate_new_ethics_score(negotiation_successful))
             print(f"Negotiation successful! {agent.aid} has the final solution: {agent.final}")
 
     await shutdown([agent_a, agent_b, agent_c, agent_d, agent_e, agent_f], [container])
@@ -106,12 +98,9 @@ async def get_correct_solution_through_restarts():
     assert agent_e.flex[first_interval] == [0, 0]
     assert agent_f.flex[first_interval] == [0, 0]
 
-    assert agent_a.flex[second_interval] == [0, 0]
-    assert agent_b.flex[second_interval] == [0, 0]
-    assert agent_c.flex[second_interval] == [0, 0]
-    assert agent_d.flex[second_interval] == [0, 0]
-    assert agent_e.flex[second_interval] == [0, 0]
-    assert agent_f.flex[second_interval] == [0, 0]
+    assert agent_a.ethics_score == 2.18
+    assert agent_b.ethics_score == 3.08
+    assert agent_c.ethics_score == 4.0
+
 
 asyncio.run(get_correct_solution_through_restarts())
-

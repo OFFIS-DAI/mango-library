@@ -6,7 +6,7 @@ from abc import ABC
 from datetime import datetime
 
 import numpy as np
-from mango.core.agent import Agent
+from mango.agent.core import Agent
 
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
@@ -151,9 +151,9 @@ class WinzentBaseAgent(Agent, ABC):
         requirement = xboole.Requirement(
             xboole.Forecast((start_dates, values)), ttl=self._current_ttl)
         requirement.from_target = True
-        requirement.message.sender = self._aid
+        requirement.message.sender = self.aid
         message = requirement.message
-        message.sender = self._aid
+        message.sender = self.aid
         self.governor.message_journal.add(message)
         self.governor.curr_requirement_values = values
         self.governor.solution_journal.clear()
@@ -174,7 +174,7 @@ class WinzentBaseAgent(Agent, ABC):
         The time_to_sleep needs to be set according to the network size of the
         agents.
         """
-        while not self.stopped.done():
+        while not self._stopped.done():
             await asyncio.sleep(0.1)
             if self._negotiation_running:
                 await asyncio.sleep(self._time_to_sleep)
@@ -195,7 +195,7 @@ class WinzentBaseAgent(Agent, ABC):
                 # Time for waiting for acknowledgements is done, therefore
                 # do not wait for acknowledgements anymore
                 logger.debug(
-                    f"*** {self._aid} did not receive all acknowledgements. Negotiation was not successful."
+                    f"*** {self.aid} did not receive all acknowledgements. Negotiation was not successful."
                 )
                 # self.final = {}
                 self._waiting_for_acknowledgements = False
@@ -206,7 +206,7 @@ class WinzentBaseAgent(Agent, ABC):
                                                 ttl=self._current_ttl, receiver=acc_msg.receiver,
                                                 value=[acc_msg.value[0]],
                                                 id=str(uuid.uuid4()),
-                                                sender=self._aid
+                                                sender=self.aid
                                                 )
                     if self.send_message_paths:
                         await self.send_message(withdrawal, msg_path=self.negotiation_connections[acc_msg.receiver])
@@ -284,7 +284,7 @@ class WinzentBaseAgent(Agent, ABC):
                                  value=message.value,
                                  id=message.id,
                                  time_span=requirement.time_span,
-                                 sender=self._aid,
+                                 sender=self.aid,
                                  ethics_score=self.ethics_score
                                  )
         # PGASC add logging
@@ -352,7 +352,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         reply = WinzentMessage(
             msg_type=msg_type,
-            sender=self._aid,
+            sender=self.aid,
             is_answer=True,
             receiver=message.sender,
             time_span=message.time_span,
@@ -531,7 +531,7 @@ class WinzentBaseAgent(Agent, ABC):
                 answer = WinzentMessage(
                     msg_type=xboole.MessageType.AcceptanceAcknowledgementNotification,
                     is_answer=True, answer_to=reply.id,
-                    sender=self._aid, receiver=reply.sender,
+                    sender=self.aid, receiver=reply.sender,
                     value=reply.value,
                     ttl=self._current_ttl, id=str(uuid.uuid4()))
                 await self.send_message(answer)
@@ -554,7 +554,7 @@ class WinzentBaseAgent(Agent, ABC):
                                     ttl=self._current_ttl, receiver=reply.sender,
                                     value=reply.value,
                                     id=str(uuid.uuid4()),
-                                    sender=self._aid
+                                    sender=self.aid
                                     )
         await self.send_message(withdrawal)
 
@@ -589,14 +589,14 @@ class WinzentBaseAgent(Agent, ABC):
                                         # because this message will be sent endlessly otherwise
                                         value=self._own_request.value,
                                         id=str(uuid.uuid4()),
-                                        sender=self._aid
+                                        sender=self.aid
                                         )
             await self.send_message(withdrawal)
         # if the solution journal is empty afterwards, the agent does not
         # wait for any further acknowledgments and can stop the negotiation
         if self.governor.solution_journal.is_empty():
             # PGASC changed logger.info to logging
-            logger.debug(f'\n*** {self._aid} received all Acknowledgements. ***')
+            logger.debug(f'\n*** {self.aid} received all Acknowledgements. ***')
             await self.reset()
 
     async def handle_withdrawal_reply(self, reply):
@@ -672,7 +672,7 @@ class WinzentBaseAgent(Agent, ABC):
 
         reply = requirement.message
         logger.debug(f"receiver of this reply is {reply.receiver}")
-        if reply.receiver != self._aid:
+        if reply.receiver != self.aid:
             await self.send_message(reply, msg_path=message_path, forwarding=True)
             return
 
@@ -882,10 +882,10 @@ class WinzentBaseAgent(Agent, ABC):
         if self.governor.solver_triggered or self._solution_found:
             return
         self.governor.solver_triggered = True
-        logger.debug(f'\n*** {self._aid} starts solver now. ***')
+        logger.debug(f'\n*** {self.aid} starts solver now. ***')
         final, afforded_values, initial_req = self.governor.try_balance()
         if final:
-            logger.debug(f'\n*** {self._aid} found solution. ***')
+            logger.debug(f'\n*** {self.aid} found solution. ***')
             await self.answer_requirements(final, afforded_values, initial_req)
             return
 
@@ -902,7 +902,7 @@ class WinzentBaseAgent(Agent, ABC):
             return
         # PGASC changed logger.info to logging
         logger.info(
-            f'*** {self._aid} has no solution after timeout. ***')
+            f'*** {self.aid} has no solution after timeout. ***')
         self.flex[self._own_request.time_span[0]] = self.original_flex[self._own_request.time_span[0]]
         self._negotiation_running = False
         self.governor.solver_triggered = False
@@ -928,11 +928,15 @@ class WinzentBaseAgent(Agent, ABC):
             if content.is_answer:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_reply(req, message_path=meta["ontology"]))
+                asyncio.create_task(self.handle_external_reply(req,
+                                                               # message_path=meta["ontology"]
+                                                               ))
             else:
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
-                asyncio.create_task(self.handle_external_request(req, message_path=meta["ontology"]))
+                asyncio.create_task(self.handle_external_request(req,
+                                                                 # message_path=meta["ontology"]
+                                                                 ))
 
     async def send_message(self, msg, receiver=None, msg_path=None, forwarding=False):
         """
@@ -982,11 +986,11 @@ class WinzentBaseAgent(Agent, ABC):
             # receiver is a neighbor
             message = copy_winzent_message(msg)
             self.messages_sent += 1
-            await self._container.send_message(
+            await super().send_message(
                 content=message, receiver_addr=self.neighbors[receiver],
                 receiver_id=receiver,
-                acl_metadata={'sender_addr': self._container.addr,
-                              'sender_id': self._aid,
+                acl_metadata={'sender_addr': super().addr,
+                              'sender_id': self.aid,
                               'ontology': msg_path.copy()}, create_acl=True)
         else:
             # send message to every neighbor
@@ -997,11 +1001,11 @@ class WinzentBaseAgent(Agent, ABC):
                 if message.receiver is None:
                     message.receiver = ''
                 self.messages_sent += 1
-                await self._container.send_message(
+                await super().send_message(
                     content=message, receiver_addr=self.neighbors[neighbor],
                     receiver_id=neighbor,
-                    acl_metadata={'sender_addr': self._container.addr,
-                                  'sender_id': self._aid,
+                    acl_metadata={'sender_addr': super().addr,
+                                  'sender_id': self.aid,
                                   'ontology': msg_path.copy()},
                     # copy to avoid neighbors working on the same object
                     create_acl=True
