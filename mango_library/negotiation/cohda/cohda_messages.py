@@ -1,5 +1,5 @@
-from uuid import UUID
 from fractions import Fraction
+from uuid import UUID
 
 from mango.messages.codecs import json_serializable
 
@@ -13,7 +13,8 @@ class StartCohdaNegotiationMessage:
         Contains the coalition_id of the associated coalition
         and the target parameters that are necessary for the agents to calculate the performance.
         """
-    def __init__(self, coalition_id, send_weight, target_params = None):
+
+    def __init__(self, coalition_id, send_weight, target_params=None):
         self.coalition_id = coalition_id
         self._send_weight = send_weight
         self._target_params = target_params
@@ -25,6 +26,7 @@ class StartCohdaNegotiationMessage:
     @property
     def target_params(self):
         return self._target_params
+
 
 @json_serializable
 class CohdaNegotiationMessage:
@@ -38,7 +40,7 @@ class CohdaNegotiationMessage:
         self._working_memory = working_memory
         self._negotiation_id = negotiation_id
         self._coalition_id = coalition_id
-        self._message_weight = message_weight   # for termination, can be set after initialization of the message
+        self._message_weight = message_weight  # for termination, can be set after initialization of the message
 
     @property
     def working_memory(self) -> WorkingMemory:
@@ -86,6 +88,7 @@ class StopNegotiationMessage:
     """
     Message that informs an agent that a negotiation should be stopped.
     """
+
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
 
@@ -103,6 +106,7 @@ class CohdaSolutionRequestMessage:
     """
     Message that asks the agent for its current SolutionCandidate regarding a specific negotiation
     """
+
     def __init__(self, negotiation_id: UUID) -> None:
         self._negotiation_id = negotiation_id
 

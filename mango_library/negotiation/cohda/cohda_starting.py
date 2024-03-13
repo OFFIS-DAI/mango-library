@@ -1,6 +1,9 @@
+import time
 import uuid
 from fractions import Fraction
 
+import h5py
+import numpy as np
 from mango import Role
 
 from mango_library.coalition.core import CoalitionModel, CoalitionBuildConfirm
@@ -22,11 +25,11 @@ class CohdaNegotiationInteractiveStarterRole(Role):
 
     # create an empty Working memory and send it together with the target params
     def __init__(
-        self,
-        target_params,
-        coalition_model_matcher=None,
-        coalition_uuid=None,
-        send_weight=True,
+            self,
+            target_params,
+            coalition_model_matcher=None,
+            coalition_uuid=None,
+            send_weight=True,
     ) -> None:
         """
 
@@ -140,11 +143,11 @@ class CohdaNegotiationDirectStarterRole(Role):
 
     # create an empty Working memory and send it together with the target params
     def __init__(
-        self,
-        target_params,
-        coalition_model_matcher=None,
-        coalition_uuid=None,
-        send_weight=True,
+            self,
+            target_params,
+            coalition_model_matcher=None,
+            coalition_uuid=None,
+            send_weight=True,
     ) -> None:
         """
 
@@ -190,8 +193,8 @@ class CohdaNegotiationDirectStarterRole(Role):
         # check if there is a coalition that can be used
         for assignment in coalition_model.assignments.values():
             if (
-                self._coalition_model_matcher(assignment)
-                and assignment.coalition_id in self._coalitions
+                    self._coalition_model_matcher(assignment)
+                    and assignment.coalition_id in self._coalitions
             ):
                 return True
 
@@ -245,3 +248,16 @@ class CohdaNegotiationDirectStarterRole(Role):
                     "sender_id": self.context.aid,
                 },
             )
+        hf = h5py.File(f'{self.context.aid}.h5', 'a')
+        current_time = time.time()
+        try:
+            general_group = hf.create_group(f'Update_{current_time}')
+        except ValueError:
+            raise ValueError(
+                'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
+        general_group.create_dataset('performance', data=-np.inf)
+        general_group.create_dataset('cluster_schedule', data=np.array(empty_wm.solution_candidate.cluster_schedule))
+        general_group.create_dataset('time', data=np.float64(current_time))
+        general_group.attrs["aid"] = self.context.aid
+        general_group.attrs['negotiation_id'] = str(negotiation_uuid)
+        hf.close()

@@ -2,10 +2,12 @@ import asyncio
 import inspect
 import logging
 import random
+import time
 from copy import deepcopy
 from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
 
+import h5py
 import numpy as np
 from mango import Role
 
@@ -37,8 +39,9 @@ class COHDANegotiationRole(Role):
             local_acceptable_func: Callable = None,
             perf_func: Callable = None,
             check_inbox_interval: float = 0.1,
-            attack_scenario=0,
-            manipulated_agent=None
+            attack_scenario: int = 0,
+            manipulated_agent: str = None,
+            store_updates_to_db: bool = False
     ):
         """
         Init of COHDANegotiationRole
@@ -74,6 +77,8 @@ class COHDANegotiationRole(Role):
         self.check_inbox_interval = check_inbox_interval
         self._attack_scenario = attack_scenario
         self._manipulated_agent = manipulated_agent
+        self._store_updates_to_db = store_updates_to_db
+        self._hf = None
 
     def setup(self) -> None:
         super().setup()
@@ -208,6 +213,9 @@ class COHDANegotiationRole(Role):
 
                 if wm_to_send is not None:
                     # send message to all neighbors
+                    if self._store_updates_to_db:
+                        self.store_update_to_db(wm_to_send, negotiation_id)
+
                     for neighbor in coalition_assignment.neighbors:
                         self.context.schedule_instant_acl_message(
                             content=CohdaNegotiationMessage(
@@ -228,6 +236,22 @@ class COHDANegotiationRole(Role):
                 cohda_negotiation.active = False
 
         return process_msg
+
+    def store_update_to_db(self, wm_to_send, negotiation_id):
+        current_time = time.time()
+        self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
+        try:
+            general_group = self._hf.create_group(f'Update_{current_time}')
+        except ValueError:
+            raise ValueError(
+                'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
+
+        general_group.create_dataset('performance', data=np.float64(wm_to_send.solution_candidate.perf))
+        general_group.create_dataset('cluster_schedule', data=np.array(wm_to_send.solution_candidate.cluster_schedule))
+        general_group.create_dataset('time', data=np.float64(current_time))
+        general_group.attrs["aid"] = self.context.aid
+        general_group.attrs['negotiation_id'] = str(negotiation_id)
+        self._hf.close()
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """Is called once a StopNegotiationMessage arrived"""
