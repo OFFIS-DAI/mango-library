@@ -6,7 +6,7 @@ from typing import Optional, Dict
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandapower as pp
-from mango.core.container import Container
+from mango.container.core import Container
 from mango_library.negotiation.winzent.winzent_base_agent import WinzentBaseAgent
 from mango_library.negotiation.winzent.winzent_ethical_agent import WinzentEthicalAgent
 
