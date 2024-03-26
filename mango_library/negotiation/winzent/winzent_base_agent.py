@@ -231,6 +231,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         message = requirement.message
         values = self.get_flexibility_for_interval(time_span=message.time_span, msg_type=message.msg_type)
+        print(message.time_span)
         print(message.value)
         print(values)
         # for each value to negotiate about, check whether the request could be fulfilled internally completely.
