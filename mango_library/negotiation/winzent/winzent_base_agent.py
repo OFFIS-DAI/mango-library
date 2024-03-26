@@ -302,6 +302,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         Returns the flexibility for the given time interval according
         to the msg type.
+
         :param time_span The time span the flexibility is looked up for
         :param msg_type The type of message the flexibility is looked up for. Possible
                         message type values or 5 for negative flexibility (min_p) and
