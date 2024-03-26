@@ -989,7 +989,7 @@ class WinzentBaseAgent(Agent, ABC):
             await super().send_message(
                 content=message, receiver_addr=self.neighbors[receiver],
                 receiver_id=receiver,
-                acl_metadata={'sender_addr': self._container.addr,
+                acl_metadata={'sender_addr': self._context._container.addr,
                               'sender_id': self.aid,
                               'ontology': msg_path.copy()}, create_acl=True)
         else:
@@ -1004,7 +1004,7 @@ class WinzentBaseAgent(Agent, ABC):
                 await super().send_message(
                     content=message, receiver_addr=self.neighbors[neighbor],
                     receiver_id=neighbor,
-                    acl_metadata={'sender_addr': self._container.addr,
+                    acl_metadata={'sender_addr': self._context._container.addr,
                                   'sender_id': self.aid,
                                   'ontology': msg_path.copy()},
                     # copy to avoid neighbors working on the same object
