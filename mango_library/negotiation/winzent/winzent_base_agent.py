@@ -940,7 +940,7 @@ class WinzentBaseAgent(Agent, ABC):
                                                                  # message_path=meta["ontology"]
                                                                  ))
         else:
-            print("this should be implemented")
+            a = 1+1
 
     async def send_message(self, msg, receiver=None, msg_path=None, forwarding=False):
         """
