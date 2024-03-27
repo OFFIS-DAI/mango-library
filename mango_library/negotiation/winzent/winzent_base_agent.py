@@ -919,6 +919,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         Handle message object (content) from other agents.
         """
+        print("is this the problem?")
         if content.msg_type == xboole.MessageType. \
                 WithdrawalNotification:
             # withdraw the message the content refers to
