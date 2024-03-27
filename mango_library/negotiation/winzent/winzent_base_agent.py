@@ -919,7 +919,6 @@ class WinzentBaseAgent(Agent, ABC):
         """
         Handle message object (content) from other agents.
         """
-        print("is this the problem?")
         if content.msg_type == xboole.MessageType. \
                 WithdrawalNotification:
             # withdraw the message the content refers to
@@ -940,6 +939,8 @@ class WinzentBaseAgent(Agent, ABC):
                 asyncio.create_task(self.handle_external_request(req,
                                                                  # message_path=meta["ontology"]
                                                                  ))
+        else:
+            print("this should be implemented")
 
     async def send_message(self, msg, receiver=None, msg_path=None, forwarding=False):
         """
