@@ -354,19 +354,22 @@ class WinzentBaseAgent(Agent, ABC):
         :param msg_type: The type of the answer sent.
         :return:
         """
-        reply = WinzentMessage(
-            msg_type=msg_type,
-            sender=self.aid,
-            is_answer=True,
-            receiver=message.sender,
-            time_span=message.time_span,
-            value=values,
-            ttl=self._current_ttl,
-            id=str(uuid.uuid4()),
-            ethics_score=self.ethics_score
-        )
-        self.governor.message_journal.add(reply)
-        self._current_inquiries_from_agents[reply.id] = reply
+        try:
+            reply = WinzentMessage(
+                msg_type=msg_type,
+                sender=self.aid,
+                is_answer=True,
+                receiver=message.sender,
+                time_span=message.time_span,
+                value=values,
+                ttl=self._current_ttl,
+                id=str(uuid.uuid4()),
+                ethics_score=self.ethics_score
+            )
+            self.governor.message_journal.add(reply)
+            self._current_inquiries_from_agents[reply.id] = reply
+        except Exception as exception:
+            logger.debug(f"ALERT!! EXCEPTION: {exception}")
         if self.send_message_paths:
             message_path_copy = message_path.copy()
             message_path_copy.append(self.aid)
@@ -412,7 +415,7 @@ class WinzentBaseAgent(Agent, ABC):
             message.time_span,
             msg_type=message.msg_type
         )
-        logger.debug(f"the value array is {value_array}.")
+        logger.debug(f"{self.aid}: The value array is {value_array}.")
         if not all(element == 0 for element in value_array):
             msg_type = xboole.MessageType.Null
             # send message reply
@@ -421,7 +424,7 @@ class WinzentBaseAgent(Agent, ABC):
             elif message.msg_type == xboole.MessageType. \
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
-            logger.debug("trying to answer request now..")
+            logger.debug(f"{self.aid}: Trying to answer request now..")
             await self.answer_external_request(message, message_path, value_array, msg_type)
             # if there are still values remaining, forward them to other agents
             remaining_values = np.array(list(message.value)) - np.array(value_array)
