@@ -402,6 +402,7 @@ class WinzentBaseAgent(Agent, ABC):
             f"{message.is_answer} "
         )
         if self._negotiation_running:
+            logger.debug(f"Agent {self.aid} already has a negotiation running. The request is forwarded.")
             await self.send_message(msg=message, forwarding=True)
             return
         # If the agent has flexibility for the requested time, it replies
@@ -410,7 +411,7 @@ class WinzentBaseAgent(Agent, ABC):
             message.time_span,
             msg_type=message.msg_type
         )
-
+        logger.debug(f"the value array is {value_array}.")
         if not all(element == 0 for element in value_array):
             msg_type = xboole.MessageType.Null
             # send message reply
@@ -419,6 +420,7 @@ class WinzentBaseAgent(Agent, ABC):
             elif message.msg_type == xboole.MessageType. \
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
+            logger.debug("trying to answer request now..")
             await self.answer_external_request(message, message_path, value_array, msg_type)
             # if there are still values remaining, forward them to other agents
             remaining_values = np.array(list(message.value)) - np.array(value_array)
