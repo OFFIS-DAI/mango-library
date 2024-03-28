@@ -377,11 +377,12 @@ class WinzentBaseAgent(Agent, ABC):
                 self.negotiation_connections[demander_index] = message_path_copy
                 # send offer and save established connection demander:[self.aid/supplier, ..., demander]
             else:
-                logger.error("message path is empty")
+                logger.error(f"{self.aid}: Message path is empty")
 
             logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver} on path: {message_path_copy}")
             await self.send_message(reply, msg_path=message_path_copy)
         else:
+            logger.debug(f"{self.aid} sends Reply to Request to {reply.receiver}.")
             await self.send_message(reply)
         return
 
