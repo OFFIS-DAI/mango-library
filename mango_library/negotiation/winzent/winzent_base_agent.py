@@ -222,7 +222,7 @@ class WinzentBaseAgent(Agent, ABC):
 
     async def handle_internal_request(self, requirement):
         """
-        The negotiation request is from this agents. Therefore, it handles an
+        The negotiation request is from this agent. Therefore, it handles an
         internal request and not a request from other agents. This is the
         beginning of a negotiation, because messages to the neighboring agents
         are sent regarding the negotiation information in the given
@@ -292,7 +292,7 @@ class WinzentBaseAgent(Agent, ABC):
                                  )
         # PGASC add logging
         logger.debug(
-            f"handle_internal_request: {self.aid} sends negotiation Request"
+            f"handle_internal_request: {self.aid} sends negotiation Request "
             f"with value: {neg_msg.value[0]} and type: {neg_msg.msg_type}"
         )
         self._own_request = requirement.message
@@ -928,19 +928,19 @@ class WinzentBaseAgent(Agent, ABC):
                 content.id):
             self.governor.message_journal.add(content)
             if content.is_answer:
+                print("is answer")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_reply(req,
                                                                # message_path=meta["ontology"]
                                                                ))
             else:
+                print("is request")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_request(req,
                                                                  # message_path=meta["ontology"]
                                                                  ))
-        else:
-            a = 1+1
 
     async def send_message(self, msg, receiver=None, msg_path=None, forwarding=False):
         """
