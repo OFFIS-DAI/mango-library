@@ -211,9 +211,12 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         print("solve inside ethical solver running")
         # in this case, the agent did not receive any offers and the only requirement in the power balance is
         # his own. Consequently, no solution can be created.
-        if len(power_balance.ledger[self.start_time]) < 2:
-            print("no offers received. Aborting solution process")
-            return {}, None, None
+        try:
+            if len(power_balance.ledger[self.start_time]) < 2:
+                print("no offers received. Aborting solution process")
+                return {}, None, None
+        except Exception as e:
+            print(e)
         self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
         print("initial requirement done")
         # if all the available offers cannot satisfy the need for this timeslot,
