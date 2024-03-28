@@ -895,7 +895,10 @@ class WinzentBaseAgent(Agent, ABC):
             return
         self.governor.solver_triggered = True
         logger.debug(f"{self.aid} starts solver now.")
-        final, afforded_values, initial_req = self.governor.try_balance()
+        try:
+            final, afforded_values, initial_req = self.governor.try_balance()
+        except Exception as e:
+            logger.debug(f"EXCEPTION: {e}")
         if final:
             logger.debug(f"{self.aid} found solution.")
             await self.answer_requirements(final, afforded_values, initial_req)

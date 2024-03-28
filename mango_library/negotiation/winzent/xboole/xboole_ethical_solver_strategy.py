@@ -215,12 +215,15 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             print("no offers received. Aborting solution process")
             return {}, None, None
         self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
+        print("initial requirement done")
         # if all the available offers cannot satisfy the need for this timeslot,
         # no special solving strategy is needed since all will be accepted anyway
         # in this case, there are more offers than needed to satisfy the initial requirement
         most_ethical_requirements = deepcopy(power_balance)
         most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
+        print("removed initial req")
         most_ethical_requirements.ledger[self.start_time].sort(key=get_ethics_score_from_req, reverse=True)
+        print("reqs sorted")
         time_span = self.initial_requirement.time_span
         print("checking if all offers are of same time span")
         if not are_all_offers_in_same_time_span(most_ethical_requirements):
