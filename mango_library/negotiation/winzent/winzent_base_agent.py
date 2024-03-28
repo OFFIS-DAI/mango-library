@@ -354,6 +354,7 @@ class WinzentBaseAgent(Agent, ABC):
         :param msg_type: The type of the answer sent.
         :return:
         """
+        print("create answer")
         try:
             print("create answer")
             reply = WinzentMessage(
