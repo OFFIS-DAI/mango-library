@@ -225,16 +225,15 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
         temp_flex = {}
         specific_request_values = []
         for initial_request in request_list:
+            flex_to_choose = 0
             if initial_request.msg_type == 5:
                 # If the request is of the type 5, meaning it offers power, the agent answers with
                 # his ability to consume power, which is a negative score.
                 msg_to_answer_with = 6
-                flex_to_choose = 0
             else:
                 # If the request is of the type 6, meaning it wants power, the agent answers with
                 # his ability to generate power, which is a positive score.
                 msg_to_answer_with = 5
-                flex_to_choose = 0
             for time_slot in initial_request.time_span:
                 if time_slot not in temp_flex:
                     temp_flex[time_slot] = self.get_flexibility_for_interval(time_slot)
@@ -250,6 +249,7 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 except Exception as e:
                     print(e)
             if not all(value == 0 for value in specific_request_values):
+                logger.debug(f"{self.aid}: sending reply with offered values to {initial_request.sender}")
                 reply = WinzentMessage(msg_type=msg_to_answer_with,
                                        sender=self.aid,
                                        is_answer=True,

@@ -354,28 +354,20 @@ class WinzentBaseAgent(Agent, ABC):
         :param msg_type: The type of the answer sent.
         :return:
         """
-        raise ValueError("An error occurred in async_method")
-        logger.debug("create answer")
-        try:
-            print("create answer")
-            reply = WinzentMessage(
-                msg_type=msg_type,
-                sender=self.aid,
-                is_answer=True,
-                receiver=message.sender,
-                time_span=message.time_span,
-                value=values,
-                ttl=self._current_ttl,
-                id=str(uuid.uuid4()),
-                ethics_score=self.ethics_score
-            )
-            print("answer created")
-            self.governor.message_journal.add(reply)
-            print("message added")
-            self._current_inquiries_from_agents[reply.id] = reply
-            print("inquiry added")
-        except Exception as exception:
-            logger.debug(f"ALERT!! EXCEPTION: {exception}")
+        reply = WinzentMessage(
+            msg_type=msg_type,
+            sender=self.aid,
+            is_answer=True,
+            receiver=message.sender,
+            time_span=message.time_span,
+            value=values,
+            ttl=self._current_ttl,
+            id=str(uuid.uuid4()),
+            ethics_score=self.ethics_score
+        )
+        self.governor.message_journal.add(reply)
+        self._current_inquiries_from_agents[reply.id] = reply
+
         if self.send_message_paths:
             message_path_copy = message_path.copy()
             message_path_copy.append(self.aid)
