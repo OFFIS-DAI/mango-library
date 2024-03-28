@@ -218,7 +218,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         except Exception as e:
             print(e)
         self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
-        print("initial requirement done")
+        print(f"initial requirement done: {self.initial_requirement.message.value}")
         # if all the available offers cannot satisfy the need for this timeslot,
         # no special solving strategy is needed since all will be accepted anyway
         # in this case, there are more offers than needed to satisfy the initial requirement

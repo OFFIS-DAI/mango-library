@@ -33,7 +33,7 @@ class PowerBalanceSolverStrategy:
            criteria from the power balance list.
 
            """
-        print(f"power balance is: {power_balance}")
+        print(f"power balance is: {power_balance.ledger}")
         print(f"initiator is: {initiator}")
         r = None
         if initiator == InitiatingParty.Local:
