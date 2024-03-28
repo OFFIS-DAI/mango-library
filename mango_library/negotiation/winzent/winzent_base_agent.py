@@ -354,7 +354,7 @@ class WinzentBaseAgent(Agent, ABC):
         :param msg_type: The type of the answer sent.
         :return:
         """
-        print("create answer")
+        logger.debug("create answer")
         try:
             print("create answer")
             reply = WinzentMessage(
@@ -430,7 +430,10 @@ class WinzentBaseAgent(Agent, ABC):
                     DemandNotification:
                 msg_type = xboole.MessageType.OfferNotification
             logger.debug(f"{self.aid}: Trying to answer request now..")
-            await self.answer_external_request(message, message_path, value_array, msg_type)
+            try:
+                await self.answer_external_request(message, message_path, value_array, msg_type)
+            except Exception as e:
+                print(e)
             # if there are still values remaining, forward them to other agents
             remaining_values = np.array(list(message.value)) - np.array(value_array)
             if not all(element <= 0 for element in remaining_values):
