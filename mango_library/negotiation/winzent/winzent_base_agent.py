@@ -182,7 +182,7 @@ class WinzentBaseAgent(Agent, ABC):
                 now = datetime.now()
 
                 current_time = now.strftime("%H:%M:%S")
-                logger.debug(f"{self.aid}: Timer ran out at =", current_time)
+                logger.debug(f"{self.aid}: Timer ran out at = {str(current_time)}")
                 # After sleeping, the solver is triggered. This is necessary
                 # in case when not the complete negotiation problem can be
                 # solved. The solver is triggered after the timeout to
@@ -891,10 +891,10 @@ class WinzentBaseAgent(Agent, ABC):
         if self.governor.solver_triggered or self._solution_found:
             return
         self.governor.solver_triggered = True
-        logger.debug(f'\n*** {self.aid} starts solver now. ***')
+        logger.debug(f"{self.aid} starts solver now.")
         final, afforded_values, initial_req = self.governor.try_balance()
         if final:
-            logger.debug(f'\n*** {self.aid} found solution. ***')
+            logger.debug(f"{self.aid} found solution.")
             await self.answer_requirements(final, afforded_values, initial_req)
             return
 

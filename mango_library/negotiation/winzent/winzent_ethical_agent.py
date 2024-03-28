@@ -130,13 +130,11 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 if not self.first_initial_reply_received:
                     self.first_initial_reply_received = True
                     await asyncio.sleep(self.reply_processing_waiting_time)
+                    logger.debug(f"{self.aid}: Solver triggered!")
                     await self.solve()
                     self.first_initial_reply_received = False
         else:
-            try:
-                await super().handle_initial_reply(requirement, message_path)
-            except Exception as e:
-                print(e)
+            await super().handle_initial_reply(requirement, message_path)
 
     async def reset(self):
         """
@@ -249,7 +247,8 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 except Exception as e:
                     print(e)
             if not all(value == 0 for value in specific_request_values):
-                logger.debug(f"{self.aid}: sending reply with offered values to {initial_request.sender}")
+                logger.debug(f"{self.aid}: sending reply with offered values ({specific_request_values}) "
+                             f"to {initial_request.sender}")
                 reply = WinzentMessage(msg_type=msg_to_answer_with,
                                        sender=self.aid,
                                        is_answer=True,
