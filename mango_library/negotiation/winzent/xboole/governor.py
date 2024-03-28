@@ -100,7 +100,9 @@ class Governor:
         self._power_balance_strategy = strategy
 
     def try_balance(self):
+        print("try_balance running")
         assert self._power_balance is not None
         assert self._power_balance_strategy is not None
+        print("assertions done")
         return self._power_balance_strategy.solve(
             self._power_balance, xboole.InitiatingParty.Local)

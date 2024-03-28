@@ -208,9 +208,11 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         :param power_balance: The replies for the negotiation.
         :param initiator: The initiator for the boolean solver
         """
+        print("solve inside ethical solver running")
         # in this case, the agent did not receive any offers and the only requirement in the power balance is
         # his own. Consequently, no solution can be created.
         if len(power_balance.ledger[self.start_time]) < 2:
+            print("no offers received. Aborting solution process")
             return {}, None, None
         self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
         # if all the available offers cannot satisfy the need for this timeslot,
@@ -220,6 +222,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
         most_ethical_requirements.ledger[self.start_time].sort(key=get_ethics_score_from_req, reverse=True)
         time_span = self.initial_requirement.time_span
+        print("checking if all offers are of same time span")
         if not are_all_offers_in_same_time_span(most_ethical_requirements):
             most_ethical_requirements.ledger[self.start_time].append(self.initial_requirement)
             return self.ethical_solution_algorithm(most_ethical_requirements, initiator)
