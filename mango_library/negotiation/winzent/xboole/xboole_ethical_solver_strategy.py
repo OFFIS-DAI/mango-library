@@ -146,6 +146,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         :param req_list: The replies for the negotiation.
         :param initiator: The initiator for the boolean solver
         """
+        print(f"ethical solution alg running!")
         final, afforded_values, initial_req = self.power_balance_strategy.solve(req_list, initiator)
         initial_values = initial_req.forecast.second
         initial_sol_score = self.calc_solution_quality(final, afforded_values, initial_values, req_list, req_list)
