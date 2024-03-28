@@ -102,6 +102,28 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
 
     @staticmethod
     def find_initial_requirement(power_balance, initiator):
+        """
+           Finds the initial requirement based on the given power balance and initiator.
+
+           Parameters: power_balance (list): A list of tuples representing the power balance. Each tuple consists of
+           two elements: - The first element is the power value. - The second element is an object containing
+           attributes related to the power source. initiator (InitiatingParty): An enum representing the initiator of
+           the process. It can be either InitiatingParty.Local or InitiatingParty.Remote.
+
+           Returns: Union[Requirement, ForecastRequirement]: The initial requirement extracted from the power
+           balance. If the initial requirement is represented as a tuple, it returns the second element of the tuple,
+           which is an instance of Requirement or ForecastRequirement depending on the input.
+
+           Raises:
+               AssertionError: If the extracted initial requirement is None.
+
+           Note: - For local initiators, the method searches for the first power balance item where the 'from_target'
+           attribute is True. - For remote initiators, the method selects the initial requirement based on certain
+           criteria from the power balance list.
+
+           """
+        print(power_balance)
+        print(initiator)
         r = None
         if initiator == xboole.InitiatingParty.Local:
             for i in power_balance:
