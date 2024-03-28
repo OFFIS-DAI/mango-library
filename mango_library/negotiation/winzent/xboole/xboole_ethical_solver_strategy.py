@@ -223,7 +223,10 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         # no special solving strategy is needed since all will be accepted anyway
         # in this case, there are more offers than needed to satisfy the initial requirement
         most_ethical_requirements = deepcopy(power_balance)
-        most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
+        try:
+            most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
+        except Exception as e:
+            print(e)
         print("removed initial req")
         most_ethical_requirements.ledger[self.start_time].sort(key=get_ethics_score_from_req, reverse=True)
         print("reqs sorted")
