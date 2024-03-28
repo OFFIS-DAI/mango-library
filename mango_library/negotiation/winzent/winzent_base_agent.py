@@ -354,6 +354,7 @@ class WinzentBaseAgent(Agent, ABC):
         :param msg_type: The type of the answer sent.
         :return:
         """
+        raise ValueError("An error occurred in async_method")
         logger.debug("create answer")
         try:
             print("create answer")
