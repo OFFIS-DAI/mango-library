@@ -227,6 +227,8 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
             most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
         except Exception as e:
             print("JUP; EXCEPTION TIME!")
+            print(f"start time: {self.start_time}")
+            print(f"most_ethical_requirements.ledger: {most_ethical_requirements.ledger}")
             print(e)
         print("removed initial req")
         most_ethical_requirements.ledger[self.start_time].sort(key=get_ethics_score_from_req, reverse=True)
