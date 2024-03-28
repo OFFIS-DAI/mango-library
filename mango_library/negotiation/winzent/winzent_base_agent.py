@@ -941,14 +941,14 @@ class WinzentBaseAgent(Agent, ABC):
                 content.id):
             self.governor.message_journal.add(content)
             if content.is_answer:
-                print("is answer")
+                # print("is answer")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_reply(req,
                                                                # message_path=meta["ontology"]
                                                                ))
             else:
-                print("is request")
+                # print("is request")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_request(req,
