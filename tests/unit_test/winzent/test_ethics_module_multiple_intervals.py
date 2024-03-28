@@ -14,9 +14,9 @@ async def test_max_coverage_vs_best_ethics():
     of agent a is within his own boundaries of the minimum coverage required, even without the offer
     from agent c.
     """
-    first_interval = 0
-    second_interval = 900
-    third_interval = 1800
+    first_interval = 900
+    second_interval = 1800
+    third_interval = 2700
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=5,

@@ -146,6 +146,7 @@ class WinzentBaseAgent(Agent, ABC):
         :param start_dates: timespan for the negotiation
         :param values: power value to negotiate about
         """
+        self.governor.power_balance_strategy.start_time = start_dates[0]
         values = [math.ceil(value) for value in values]
         print(values)
         self._solution_found = False
