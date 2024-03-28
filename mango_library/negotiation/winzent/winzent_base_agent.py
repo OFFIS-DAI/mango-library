@@ -355,7 +355,7 @@ class WinzentBaseAgent(Agent, ABC):
         :return:
         """
         try:
-            logger.debug("create answer")
+            print("create answer")
             reply = WinzentMessage(
                 msg_type=msg_type,
                 sender=self.aid,
@@ -367,11 +367,11 @@ class WinzentBaseAgent(Agent, ABC):
                 id=str(uuid.uuid4()),
                 ethics_score=self.ethics_score
             )
-            logger.debug("answer created")
+            print("answer created")
             self.governor.message_journal.add(reply)
-            logger.debug("message added")
+            print("message added")
             self._current_inquiries_from_agents[reply.id] = reply
-            logger.debug("inquiry added")
+            print("inquiry added")
         except Exception as exception:
             logger.debug(f"ALERT!! EXCEPTION: {exception}")
         if self.send_message_paths:
@@ -432,7 +432,7 @@ class WinzentBaseAgent(Agent, ABC):
             await self.answer_external_request(message, message_path, value_array, msg_type)
             # if there are still values remaining, forward them to other agents
             remaining_values = np.array(list(message.value)) - np.array(value_array)
-            if not all(element == 0 for element in remaining_values):
+            if not all(element <= 0 for element in remaining_values):
                 del message.value[:]
                 for value in remaining_values:
                     message.value.append(value)
