@@ -887,8 +887,11 @@ class WinzentBaseAgent(Agent, ABC):
         # First, check whether the solver is currently triggered and if there
         # is already a solution
         if not self._negotiation_running:
+            logger.debug(f"{self.aid}: negotiation_running is set to False.")
             return
         if self.governor.solver_triggered or self._solution_found:
+            logger.debug(f"{self.aid}: solver_triggered: {self.governor.solver_triggered}"
+                         f" _solution_found: {self._solution_found}.")
             return
         self.governor.solver_triggered = True
         logger.debug(f"{self.aid} starts solver now.")
