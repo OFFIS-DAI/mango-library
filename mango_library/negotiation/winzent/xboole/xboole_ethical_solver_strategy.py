@@ -146,7 +146,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         :param req_list: The replies for the negotiation.
         :param initiator: The initiator for the boolean solver
         """
-        print(f"ethical solution alg running!")
+        # print(f"ethical solution alg running!")
         final, afforded_values, initial_req = self.power_balance_strategy.solve(req_list, initiator)
         initial_values = initial_req.forecast.second
         initial_sol_score = self.calc_solution_quality(final, afforded_values, initial_values, req_list, req_list)
@@ -208,7 +208,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         :param power_balance: The replies for the negotiation.
         :param initiator: The initiator for the boolean solver
         """
-        print("solve inside ethical solver running")
+        #print("solve inside ethical solver running")
         # in this case, the agent did not receive any offers and the only requirement in the power balance is
         # his own. Consequently, no solution can be created.
         try:
@@ -218,7 +218,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         except Exception as e:
             print(e)
         self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
-        print(f"initial requirement done: {self.initial_requirement.message.value}")
+        #print(f"initial requirement done: {self.initial_requirement.message.value}")
         # if all the available offers cannot satisfy the need for this timeslot,
         # no special solving strategy is needed since all will be accepted anyway
         # in this case, there are more offers than needed to satisfy the initial requirement
@@ -226,15 +226,14 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         try:
             most_ethical_requirements.ledger[self.start_time].remove(self.initial_requirement)
         except Exception as e:
-            print("JUP; EXCEPTION TIME!")
             print(f"start time: {self.start_time}")
             print(f"most_ethical_requirements.ledger: {most_ethical_requirements.ledger}")
             print(e)
-        print("removed initial req")
+        #print("removed initial req")
         most_ethical_requirements.ledger[self.start_time].sort(key=get_ethics_score_from_req, reverse=True)
-        print("reqs sorted")
+        #print("reqs sorted")
         time_span = self.initial_requirement.time_span
-        print("checking if all offers are of same time span")
+        #print("checking if all offers are of same time span")
         if not are_all_offers_in_same_time_span(most_ethical_requirements):
             most_ethical_requirements.ledger[self.start_time].append(self.initial_requirement)
             return self.ethical_solution_algorithm(most_ethical_requirements, initiator)

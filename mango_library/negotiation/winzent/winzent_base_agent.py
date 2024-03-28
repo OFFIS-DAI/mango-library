@@ -148,7 +148,7 @@ class WinzentBaseAgent(Agent, ABC):
         """
         self.governor.power_balance_strategy.start_time = start_dates[0]
         values = [math.ceil(value) for value in values]
-        print(values)
+        # print(values)
         self._solution_found = False
         requirement = xboole.Requirement(
             xboole.Forecast((start_dates, values)), ttl=self._current_ttl)
@@ -232,9 +232,9 @@ class WinzentBaseAgent(Agent, ABC):
         """
         message = requirement.message
         values = self.get_flexibility_for_interval(time_span=message.time_span, msg_type=message.msg_type)
-        print(message.time_span)
-        print(message.value)
-        print(values)
+        #print(message.time_span)
+        #print(message.value)
+        #print(values)
         # for each value to negotiate about, check whether the request could be fulfilled internally completely.
         for idx in range(len(values)):
             if abs(message.value[idx]) - abs(values[idx]) <= 0:
