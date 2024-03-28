@@ -355,6 +355,7 @@ class WinzentBaseAgent(Agent, ABC):
         :return:
         """
         try:
+            logger.debug("create answer")
             reply = WinzentMessage(
                 msg_type=msg_type,
                 sender=self.aid,
@@ -366,8 +367,11 @@ class WinzentBaseAgent(Agent, ABC):
                 id=str(uuid.uuid4()),
                 ethics_score=self.ethics_score
             )
+            logger.debug("answer created")
             self.governor.message_journal.add(reply)
+            logger.debug("message added")
             self._current_inquiries_from_agents[reply.id] = reply
+            logger.debug("inquiry added")
         except Exception as exception:
             logger.debug(f"ALERT!! EXCEPTION: {exception}")
         if self.send_message_paths:
