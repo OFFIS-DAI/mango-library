@@ -456,9 +456,11 @@ class WinzentBaseAgent(Agent, ABC):
                  It is False when the flexibility is not valid anymore.
         """
         distributed_value = 0
+        print(len(self._list_of_acknowledgements_sent))
         for ack in self._list_of_acknowledgements_sent:
-            if self.aid == "agent18":
-                print(ack)
+            print(ack)
+            # if self.aid == "agent18":
+            #    print(ack)
             if reply.time_span[it] in ack.time_span:
                 value_index = ack.time_span.index(reply.time_span[it])
                 distributed_value += ack.value[value_index]
@@ -468,6 +470,11 @@ class WinzentBaseAgent(Agent, ABC):
             return True
         else:
             logger.info(
+                f"{self.aid}: Current flex is not consistent with the values already distributed."
+                f"Distributed value is {distributed_value} and original flex is "
+                f"{self.original_flex[reply.time_span[it]][flex_to_pick]}."
+                f"Current flex is {self.flex[reply.time_span[it]][flex_to_pick]}")
+            print(
                 f"{self.aid}: Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[it]][flex_to_pick]}."
@@ -547,7 +554,7 @@ class WinzentBaseAgent(Agent, ABC):
                     is_answer=True, answer_to=reply.id,
                     sender=self.aid, receiver=reply.sender,
                     value=reply.value,
-                    #time_span=list(reply.time_span),
+                    time_span=list(reply.time_span),
                     ttl=self._current_ttl, id=str(uuid.uuid4()))
                 await self.send_message(answer)
                 self._adapted_flex_according_to_msgs.append(reply.id)
