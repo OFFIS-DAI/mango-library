@@ -457,10 +457,12 @@ class WinzentBaseAgent(Agent, ABC):
         """
         distributed_value = 0
         for ack in self._list_of_acknowledgements_sent:
+            if self.aid == "agent18":
+                print(ack)
             if reply.time_span[it] in ack.time_span:
                 value_index = ack.time_span.index(reply.time_span[it])
                 distributed_value += ack.value[value_index]
-                logger.debug(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
+                logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
         if self.original_flex[reply.time_span[it]][flex_to_pick] - distributed_value == self.flex[reply.time_span[it]][
             flex_to_pick]:
             return True

@@ -122,8 +122,6 @@ class XboolePowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
            criteria from the power balance list.
 
            """
-        print(power_balance)
-        print(initiator)
         r = None
         if initiator == xboole.InitiatingParty.Local:
             for i in power_balance:
