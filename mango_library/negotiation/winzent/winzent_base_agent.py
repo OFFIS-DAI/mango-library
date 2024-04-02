@@ -547,6 +547,7 @@ class WinzentBaseAgent(Agent, ABC):
                     is_answer=True, answer_to=reply.id,
                     sender=self.aid, receiver=reply.sender,
                     value=reply.value,
+                    time_span=list(reply.time_span),
                     ttl=self._current_ttl, id=str(uuid.uuid4()))
                 await self.send_message(answer)
                 self._adapted_flex_according_to_msgs.append(reply.id)
