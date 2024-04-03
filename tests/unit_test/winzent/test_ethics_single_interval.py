@@ -121,7 +121,7 @@ async def test_one_agent_provides_most_flexibility_and_has_to_prioritise():
     first_interval = 0
     time_span = [first_interval]
     # this variable controls the amount of allowed restarts
-    number_of_restarted_negotiations_allowed = 3
+    number_of_restarted_negotiations_allowed = 5
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=2,

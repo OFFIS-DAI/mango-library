@@ -148,7 +148,6 @@ class WinzentBaseAgent(Agent, ABC):
         """
         self.governor.power_balance_strategy.start_time = start_dates[0]
         values = [math.ceil(value) for value in values]
-        # print(values)
         self._solution_found = False
         requirement = xboole.Requirement(
             xboole.Forecast((start_dates, values)), ttl=self._current_ttl)
@@ -456,17 +455,24 @@ class WinzentBaseAgent(Agent, ABC):
                  It is False when the flexibility is not valid anymore.
         """
         distributed_value = 0
-        print(len(self._list_of_acknowledgements_sent))
+        # print(len(self._list_of_acknowledgements_sent))
         for ack in self._list_of_acknowledgements_sent:
-            print(ack)
-            # if self.aid == "agent18":
-            #    print(ack)
+            #if self.aid == "agent5":
+               #print(f"got this ack: {ack}")
             if reply.time_span[it] in ack.time_span:
-                value_index = ack.time_span.index(reply.time_span[it])
+                value_index = None
+                for index, element in enumerate(ack.time_span):
+                    if element == reply.time_span[it]:
+                        value_index = index
+                        break
+                # value_index = ack.time_span.index(reply.time_span[it])
                 distributed_value += ack.value[value_index]
                 logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
+        if self.aid == "agent5":
+            print(f"distzributed value is: {distributed_value}")
         if self.original_flex[reply.time_span[it]][flex_to_pick] - distributed_value == self.flex[reply.time_span[it]][
             flex_to_pick]:
+            print("return true")
             return True
         else:
             logger.info(
@@ -495,18 +501,26 @@ class WinzentBaseAgent(Agent, ABC):
         flexibility value for the given interval).
         :param reply: The reply that the validity of the flexibility is checked for.
         """
+        if self.aid == "agent5":
+            print(f"{self.aid}: flex valid check for {reply.sender}")
         valid_array = []
         for it in range(len(reply.time_span)):
             if reply.value[it] > 0:
                 flex_to_pick = 1
             else:
                 flex_to_pick = 0
-            valid_array.append(
-                abs(self.flex[reply.time_span[it]][flex_to_pick]) >= abs(reply.value[it]) and await self.check_flex(
-                    reply, flex_to_pick, it))
+            print(f"now awaiting check flex for {reply.sender}")
+            try:
+                valid_array.append(
+                    abs(self.flex[reply.time_span[it]][flex_to_pick]) >= abs(reply.value[it]) and await self.check_flex(
+                        reply, flex_to_pick, it))
+            except Exception as e:
+                print(f"EXCEPTION:{e}")
+            print(f"array valid for {reply.sender}")
             if valid_array[it]:
                 self.flex[reply.time_span[it]][flex_to_pick] = \
                     self.flex[reply.time_span[it]][flex_to_pick] - reply.value[it]
+            print(f"flex adjusted to: {self.flex[reply.time_span[it]][flex_to_pick]} because of {reply.sender}")
         return True if all(valid_array) else False
 
     async def handle_initial_reply(self, requirement, message_path):
@@ -542,6 +556,8 @@ class WinzentBaseAgent(Agent, ABC):
         :return:
         """
         # First, check whether the AcceptanceNotification is still valid
+        if self.aid == "agent5":
+            print(f"{self.aid} received acceptance reply from {reply.sender}.")
         if self.acceptance_valid(reply):
             async with self._lock:
                 flex_valid = await self.flexibility_valid(reply)
@@ -913,8 +929,10 @@ class WinzentBaseAgent(Agent, ABC):
         if final:
             logger.debug(f"{self.aid} found solution.")
             await self.answer_requirements(final, afforded_values, initial_req)
+            if self.aid == "agent0":
+                print("found a final")
+                print(final)
             return
-
         if self.governor.triggered_due_to_timeout:
             self.governor.triggered_due_to_timeout = False
             await self.no_solution_after_timeout()

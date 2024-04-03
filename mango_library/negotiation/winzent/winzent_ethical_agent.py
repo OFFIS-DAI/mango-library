@@ -119,6 +119,7 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
+            # TODO: make this to len(ledger)==1
             if self.governor.power_balance.empty():
                 return
             # If there is no solution found already, the reply is considered
@@ -130,6 +131,10 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 if not self.first_initial_reply_received:
                     self.first_initial_reply_received = True
                     await asyncio.sleep(self.reply_processing_waiting_time)
+                    if self.aid == "agent0":
+                        print(f"{self.aid}: Solver triggered with following offers:")
+                        for req in self.governor.power_balance._ledger[0]:
+                            print(req.message.values)
                     logger.debug(f"{self.aid}: Solver triggered!")
                     await self.solve()
                     self.first_initial_reply_received = False
@@ -235,6 +240,8 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
             for time_slot in initial_request.time_span:
                 if time_slot not in temp_flex:
                     temp_flex[time_slot] = self.get_flexibility_for_interval(time_slot)
+                    if self.aid == "agent5":
+                        print(f"{self.aid} has flex of {temp_flex[time_slot]}")
                 try:
                     if abs(initial_request.value[len(specific_request_values)]) >= abs(
                             temp_flex[time_slot][flex_to_choose]):
@@ -257,6 +264,8 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                                        value=specific_request_values, ttl=self._current_ttl,
                                        id=str(uuid.uuid4()),
                                        ethics_score=self.ethics_score)
+                if self.aid == "agent5":
+                    print(f"{self.aid} sending offer over {specific_request_values[0]} to {initial_request.sender}")
                 self._current_inquiries_from_agents[reply.id] = reply
                 await self.send_message(reply)
             specific_request_values.clear()
