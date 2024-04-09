@@ -124,6 +124,9 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 return
             # If there is no solution found already, the reply is considered
             # to find a new solution. Therefore, trigger solver.
+            if self.aid == "agent0":
+                print(f"{self.aid}: received reply from {requirement.message.sender} over {requirement.message.value}")
+                print(f"{self._solution_found}")
             if not self._solution_found:
                 self.governor.power_balance.add(requirement)
                 if not self.governor.solver_triggered:
@@ -131,10 +134,6 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
                 if not self.first_initial_reply_received:
                     self.first_initial_reply_received = True
                     await asyncio.sleep(self.reply_processing_waiting_time)
-                    if self.aid == "agent0":
-                        print(f"{self.aid}: Solver triggered with following offers:")
-                        for req in self.governor.power_balance._ledger[0]:
-                            print(req.message.values)
                     logger.debug(f"{self.aid}: Solver triggered!")
                     await self.solve()
                     self.first_initial_reply_received = False

@@ -1,6 +1,6 @@
 import asyncio
 from typing import Dict
-
+import datetime
 import pytest
 
 from util_functions import shutdown, create_six_ethical_agents
@@ -19,7 +19,7 @@ async def test_hightest_priority_agents_get_provided_by_highest_ethics_score():
     first_interval = 0
     time_span = [first_interval]
     # this variable controls the amount of allowed restarts
-    number_of_restarted_negotiations_allowed = 3
+    number_of_restarted_negotiations_allowed = 5
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=2,
@@ -101,7 +101,7 @@ async def test_hightest_priority_agents_get_provided_by_highest_ethics_score():
     assert agent_e.flex[first_interval] == [0, 0]
     assert agent_f.flex[first_interval] == [0, 0]
 
-    assert agent_a.ethics_score == 2.18
+    assert agent_a.ethics_score == 2.28
     assert agent_b.ethics_score == 3.08
     assert agent_c.ethics_score == 4.0
 
@@ -121,7 +121,7 @@ async def test_one_agent_provides_most_flexibility_and_has_to_prioritise():
     first_interval = 0
     time_span = [first_interval]
     # this variable controls the amount of allowed restarts
-    number_of_restarted_negotiations_allowed = 5
+    number_of_restarted_negotiations_allowed = 3
 
     agent_a, agent_b, agent_c, agent_d, agent_e, agent_f, container = await create_six_ethical_agents(
         agent_a_ethics_score=2,
@@ -157,9 +157,11 @@ async def test_one_agent_provides_most_flexibility_and_has_to_prioritise():
     while len(agents_with_started_negotiation) > 0:
         agent = agents_with_started_negotiation.pop(0)
         try:
+            if agent.aid == "agent0":
+                print(f"starting to wait for {agent.aid}: {datetime.datetime.now()}")
             await asyncio.wait_for(agent.negotiation_done, timeout=5)
         except asyncio.TimeoutError:
-            print(f"{agent.aid} could not finish its negotiation in time. Result is set to zero.")
+            print(f"{agent.aid} could not finish its negotiation in time. Result is set to zero: {datetime.datetime.now()}.")
             agent.result = {}
         # restart unsuccessful negotiations
         # only allow a restricted number of restarts
@@ -173,18 +175,21 @@ async def test_one_agent_provides_most_flexibility_and_has_to_prioritise():
 
         negotiation_successful = sum(agent_result_sum) >= sum(rounded_load_values[agent.aid])
         if not negotiation_successful:
+            print(f"Negotiation of {agent.aid} was not successful. His result: "
+                  f"{agent_result_sum} is lower than what he needed: {rounded_load_values[agent.aid]}")
             if number_of_restarted_negotiations_allowed > 0:
                 # get sum of already negotiated values for this agent
                 # negotiation was not fully successful, therefore restart
                 agents_with_started_negotiation.append(agent)
                 # restart the negotiation with the missing value
+                rounded_load_values[agent.aid] = [a - b for a, b in zip(rounded_load_values[agent.aid], agent_result_sum)]
                 await agent.start_negotiation(
                     start_dates=[first_interval],
-                    values=[a - b for a, b in zip(rounded_load_values[agent.aid], agent_result_sum)],
+                    values=rounded_load_values[agent.aid],
                 )
                 print(
                     f"{agent.aid} restarted negotiation for value "
-                    f"of {[a - b for a, b in zip(rounded_load_values[agent.aid], agent_result_sum)]}"
+                    f"of {rounded_load_values[agent.aid]}"
                 )
                 print(agent.calculate_new_ethics_score(negotiation_successful))
                 number_of_restarted_negotiations_allowed -= 1

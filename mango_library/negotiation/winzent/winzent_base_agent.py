@@ -61,6 +61,10 @@ class WinzentBaseAgent(Agent, ABC):
         # store other agents as neighbors in a list
         self.neighbors = {}
 
+        #TODO:Test events
+        self._acknowledgment_event = asyncio.Event()
+        self._solution_found_event = asyncio.Event()
+
         # some parameters necessary for a negotiation
         self._solution_found = False  # True if there is already a solution for the current problem
         self._negotiation_running = False  # is currently a negotiation running
@@ -69,20 +73,13 @@ class WinzentBaseAgent(Agent, ABC):
         self._acknowledgements_sent = []  # the id of the acceptance notifications to with an acknowledgement was sent
         self._list_of_acknowledgements_sent = []
         self._waiting_for_acknowledgements = False  # True if the agent is still waiting for acknowledgements
-        self.negotiation_done = None  # True if the negotiation is done
+        self.negotiation_done = asyncio.Future()  # True if the negotiation is done
         self._own_request = None  # the agent stores its own request when it starts a negotiation
         self._current_ttl = ttl  # the current time to live for messages, indicates how far messages will be forwarded
         self._time_to_sleep = time_to_sleep  # time to sleep between regular tasks
         self._lock = asyncio.Lock()
         # tasks which should be triggered regularly
         self.tasks = []
-        task_settings = [
-            (self.trigger_solver),
-        ]
-        for trigger_fkt in task_settings:
-            t = asyncio.create_task(trigger_fkt())
-            t.add_done_callback(self.raise_exceptions)
-            self.tasks.append(t)
 
     @property
     def solution_found(self):
@@ -146,6 +143,8 @@ class WinzentBaseAgent(Agent, ABC):
         :param start_dates: timespan for the negotiation
         :param values: power value to negotiate about
         """
+        if self.aid == "agent0":
+            print(f"start neg for {self.aid}")
         self.governor.power_balance_strategy.start_time = start_dates[0]
         values = [math.ceil(value) for value in values]
         self._solution_found = False
@@ -175,50 +174,53 @@ class WinzentBaseAgent(Agent, ABC):
         The time_to_sleep needs to be set according to the network size of the
         agents.
         """
-        while not self._stopped.done():
-            await asyncio.sleep(0.1)
-            if self._negotiation_running:
-                await asyncio.sleep(self._time_to_sleep)
-                now = datetime.now()
+        await asyncio.sleep(0.1)
+        try:
+            await asyncio.wait_for(self._solution_found_event.wait(), timeout=self._time_to_sleep)
+        except asyncio.TimeoutError:
+            now = datetime.now()
 
-                current_time = now.strftime("%H:%M:%S")
-                logger.debug(f"{self.aid}: Timer ran out at = {str(current_time)}")
-                # After sleeping, the solver is triggered. This is necessary
-                # in case when not the complete negotiation problem can be
-                # solved. The solver is triggered after the timeout to
-                # determine the solution according to the power that
-                # is available.
-                self.governor.triggered_due_to_timeout = True
-                await self.solve()
-                self._negotiation_running = False
-            if self._waiting_for_acknowledgements:
-                await asyncio.sleep(self._time_to_sleep)
-                # Time for waiting for acknowledgements is done, therefore
-                # do not wait for acknowledgements anymore
-                logger.debug(
-                    f"*** {self.aid} did not receive all acknowledgements. Negotiation was not successful."
-                )
-                # self.final = {}
-                self._waiting_for_acknowledgements = False
-                for acc_msg in self._curr_sent_acceptances:
-                    withdrawal = WinzentMessage(time_span=acc_msg.time_span,
-                                                is_answer=True, answer_to=acc_msg.id,
-                                                msg_type=xboole.MessageType.WithdrawalNotification,
-                                                ttl=self._current_ttl, receiver=acc_msg.receiver,
-                                                value=[acc_msg.value[0]],
-                                                id=str(uuid.uuid4()),
-                                                sender=self.aid
-                                                )
-                    if self.send_message_paths:
-                        await self.send_message(withdrawal, msg_path=self.negotiation_connections[acc_msg.receiver])
-                    else:
-                        await self.send_message(withdrawal, receiver=acc_msg.receiver)
-                logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
-                            f" is over.")
-                for acc in self._curr_sent_acceptances:
-                    logger.info(f"{self.aid}: {acc.value[0]} from {acc.receiver} not received.")
-                self._curr_sent_acceptances = []
-                await self.reset()
+            current_time = now.strftime("%H:%M:%S")
+            logger.debug(f"{self.aid}: Timer ran out at = {str(current_time)}")
+            # After sleeping, the solver is triggered. This is necessary
+            # in case when not the complete negotiation problem can be
+            # solved. The solver is triggered after the timeout to
+            # determine the solution according to the power that
+            # is available.
+            self.governor.triggered_due_to_timeout = True
+            await self.solve()
+            self._negotiation_running = False
+        try:
+            await asyncio.wait_for(self._acknowledgment_event.wait(), timeout=self._time_to_sleep)
+        except asyncio.TimeoutError:
+            # Time for waiting for acknowledgements is done, therefore
+            # do not wait for acknowledgements anymore
+            logger.debug(
+                f"*** {self.aid} did not receive all acknowledgements. Negotiation was not successful."
+            )
+            # self.final = {}
+            self._waiting_for_acknowledgements = False
+            for acc_msg in self._curr_sent_acceptances:
+                withdrawal = WinzentMessage(time_span=acc_msg.time_span,
+                                            is_answer=True, answer_to=acc_msg.id,
+                                            msg_type=xboole.MessageType.WithdrawalNotification,
+                                            ttl=self._current_ttl, receiver=acc_msg.receiver,
+                                            value=[acc_msg.value[0]],
+                                            id=str(uuid.uuid4()),
+                                            sender=self.aid
+                                            )
+                if self.send_message_paths:
+                    await self.send_message(withdrawal, msg_path=self.negotiation_connections[acc_msg.receiver])
+                else:
+                    await self.send_message(withdrawal, receiver=acc_msg.receiver)
+            logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
+                        f" is over.")
+            print(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
+                        f" is over.")
+            for acc in self._curr_sent_acceptances:
+                logger.info(f"{self.aid}: {acc.value[0]} from {acc.receiver} not received.")
+            self._curr_sent_acceptances = []
+            await self.reset()
 
     async def handle_internal_request(self, requirement):
         """
@@ -231,9 +233,6 @@ class WinzentBaseAgent(Agent, ABC):
         """
         message = requirement.message
         values = self.get_flexibility_for_interval(time_span=message.time_span, msg_type=message.msg_type)
-        #print(message.time_span)
-        #print(message.value)
-        #print(values)
         # for each value to negotiate about, check whether the request could be fulfilled internally completely.
         for idx in range(len(values)):
             if abs(message.value[idx]) - abs(values[idx]) <= 0:
@@ -297,7 +296,17 @@ class WinzentBaseAgent(Agent, ABC):
         )
         self._own_request = requirement.message
         self._negotiation_running = True
+
+        task_settings = [
+            (self.trigger_solver),
+        ]
+        for trigger_fkt in task_settings:
+            t = asyncio.create_task(trigger_fkt())
+            t.add_done_callback(self.raise_exceptions)
+            self.tasks.append(t)
+
         logger.debug(f"{self.aid} sends negotiation start notification")
+        print(f"{self.aid} sends negotiation start notification")
         await self.send_message(neg_msg)
 
     def get_flexibility_for_interval(self, time_span, msg_type=6):
@@ -539,6 +548,8 @@ class WinzentBaseAgent(Agent, ABC):
         # to find a new solution. Therefore, trigger solver.
         if not self._solution_found:
             self.governor.power_balance.add(requirement)
+            if self.aid == "agent0":
+                print(f"{self.aid}: added {requirement.message.value} to power balance")
             if not self.governor.solver_triggered:
                 self.governor.triggered_due_to_timeout = False
             # Save the established connection
@@ -613,6 +624,8 @@ class WinzentBaseAgent(Agent, ABC):
         self.governor.solution_journal.remove_message(reply.answer_to)
         if self.acknowledgement_valid(reply):
             self.save_accepted_values(reply)
+            if self.aid == "agent0":
+                print(f"{self.aid}: Ack received from {reply.sender} over {reply.value}")
         else:
             logger.debug(
                 f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
@@ -633,6 +646,9 @@ class WinzentBaseAgent(Agent, ABC):
         if self.governor.solution_journal.is_empty():
             # PGASC changed logger.info to logging
             logger.debug(f'\n*** {self.aid} received all Acknowledgements. ***')
+            print(f'\n*** {self.aid} received all Acknowledgements. ***')
+            self._waiting_for_acknowledgements = False
+            self._acknowledgment_event.set()
             await self.reset()
 
     async def handle_withdrawal_reply(self, reply):
@@ -826,7 +842,7 @@ class WinzentBaseAgent(Agent, ABC):
                         await self.no_solution_after_timeout()
                         self.governor.triggered_due_to_timeout = False
                         return
-
+        self._solution_found_event.set()
         i = 0
         zero_indeces = []
         for k, idx_v in self.final.items():
@@ -885,6 +901,8 @@ class WinzentBaseAgent(Agent, ABC):
 
             # store acceptance message
             self.governor.solution_journal.add(msg)
+            if self.aid == "agent0":
+                print(f"{self.aid}: sending acceptance to {msg.receiver}")
             await self.send_message(msg)
             for key in zero_indeces:
                 del self.final[key]
@@ -924,6 +942,9 @@ class WinzentBaseAgent(Agent, ABC):
         logger.debug(f"{self.aid} starts solver now.")
         try:
             final, afforded_values, initial_req = self.governor.try_balance()
+            print(f"afforded_values: {list(afforded_values.values())}")
+            print(f"initial req: {initial_req.message.value}")
+            print(initial_req.message.value == list(afforded_values.values()))
         except Exception as e:
             logger.debug(f"EXCEPTION: {e}")
         if final:
