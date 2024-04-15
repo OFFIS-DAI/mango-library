@@ -119,14 +119,10 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
             # The agent received an offer or demand notification as reply.
             # If the power_balance is empty, the reply is not considered
             # because the negotiation is already done.
-            # TODO: make this to len(ledger)==1
             if self.governor.power_balance.empty():
                 return
             # If there is no solution found already, the reply is considered
             # to find a new solution. Therefore, trigger solver.
-            if self.aid == "agent0":
-                print(f"{self.aid}: received reply from {requirement.message.sender} over {requirement.message.value}")
-                print(f"{self._solution_found}")
             if not self._solution_found:
                 self.governor.power_balance.add(requirement)
                 if not self.governor.solver_triggered:
@@ -239,8 +235,6 @@ class WinzentEthicalAgent(WinzentBaseAgent, ABC):
             for time_slot in initial_request.time_span:
                 if time_slot not in temp_flex:
                     temp_flex[time_slot] = self.get_flexibility_for_interval(time_slot)
-                    if self.aid == "agent5":
-                        print(f"{self.aid} has flex of {temp_flex[time_slot]}")
                 try:
                     if abs(initial_request.value[len(specific_request_values)]) >= abs(
                             temp_flex[time_slot][flex_to_choose]):

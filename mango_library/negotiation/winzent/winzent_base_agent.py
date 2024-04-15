@@ -11,7 +11,6 @@ from mango.agent.core import Agent
 from mango_library.negotiation.winzent import xboole
 from mango_library.negotiation.winzent.winzent_message_pb2 import WinzentMessage
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -26,6 +25,7 @@ class WinzentBaseAgent(Agent, ABC):
     :param elem_type The type of grid component the agent manages
     :param index The index of the agent used for identification inside the agent network
     """
+
     def __init__(self, container, ttl, time_to_sleep=3, send_message_paths=False, ethics_score=1.0,
                  elem_type=None, index=-1):
         super().__init__(container)
@@ -61,7 +61,6 @@ class WinzentBaseAgent(Agent, ABC):
         # store other agents as neighbors in a list
         self.neighbors = {}
 
-        #TODO:Test events
         self._acknowledgment_event = asyncio.Event()
         self._solution_found_event = asyncio.Event()
 
@@ -143,8 +142,6 @@ class WinzentBaseAgent(Agent, ABC):
         :param start_dates: timespan for the negotiation
         :param values: power value to negotiate about
         """
-        if self.aid == "agent0":
-            print(f"start neg for {self.aid}")
         self.governor.power_balance_strategy.start_time = start_dates[0]
         values = [math.ceil(value) for value in values]
         self._solution_found = False
@@ -214,8 +211,6 @@ class WinzentBaseAgent(Agent, ABC):
                 else:
                     await self.send_message(withdrawal, receiver=acc_msg.receiver)
             logger.info(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
-                        f" is over.")
-            print(f"{self.aid} reset because the waiting time for the remaining acknowledgements"
                         f" is over.")
             for acc in self._curr_sent_acceptances:
                 logger.info(f"{self.aid}: {acc.value[0]} from {acc.receiver} not received.")
@@ -306,7 +301,6 @@ class WinzentBaseAgent(Agent, ABC):
             self.tasks.append(t)
 
         logger.debug(f"{self.aid} sends negotiation start notification")
-        print(f"{self.aid} sends negotiation start notification")
         await self.send_message(neg_msg)
 
     def get_flexibility_for_interval(self, time_span, msg_type=6):
@@ -435,7 +429,7 @@ class WinzentBaseAgent(Agent, ABC):
             try:
                 await self.answer_external_request(message, message_path, value_array, msg_type)
             except Exception as e:
-                print(e)
+                logger.info(f'Exception occurred while answering external requests: {e}')
             # if there are still values remaining, forward them to other agents
             remaining_values = np.array(list(message.value)) - np.array(value_array)
             if not all(element <= 0 for element in remaining_values):
@@ -464,32 +458,20 @@ class WinzentBaseAgent(Agent, ABC):
                  It is False when the flexibility is not valid anymore.
         """
         distributed_value = 0
-        # print(len(self._list_of_acknowledgements_sent))
         for ack in self._list_of_acknowledgements_sent:
-            #if self.aid == "agent5":
-               #print(f"got this ack: {ack}")
             if reply.time_span[it] in ack.time_span:
                 value_index = None
                 for index, element in enumerate(ack.time_span):
                     if element == reply.time_span[it]:
                         value_index = index
                         break
-                # value_index = ack.time_span.index(reply.time_span[it])
                 distributed_value += ack.value[value_index]
                 logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
-        if self.aid == "agent5":
-            print(f"distzributed value is: {distributed_value}")
         if self.original_flex[reply.time_span[it]][flex_to_pick] - distributed_value == self.flex[reply.time_span[it]][
             flex_to_pick]:
-            print("return true")
             return True
         else:
             logger.info(
-                f"{self.aid}: Current flex is not consistent with the values already distributed."
-                f"Distributed value is {distributed_value} and original flex is "
-                f"{self.original_flex[reply.time_span[it]][flex_to_pick]}."
-                f"Current flex is {self.flex[reply.time_span[it]][flex_to_pick]}")
-            print(
                 f"{self.aid}: Current flex is not consistent with the values already distributed."
                 f"Distributed value is {distributed_value} and original flex is "
                 f"{self.original_flex[reply.time_span[it]][flex_to_pick]}."
@@ -510,26 +492,23 @@ class WinzentBaseAgent(Agent, ABC):
         flexibility value for the given interval).
         :param reply: The reply that the validity of the flexibility is checked for.
         """
-        if self.aid == "agent5":
-            print(f"{self.aid}: flex valid check for {reply.sender}")
         valid_array = []
         for it in range(len(reply.time_span)):
             if reply.value[it] > 0:
                 flex_to_pick = 1
             else:
                 flex_to_pick = 0
-            print(f"now awaiting check flex for {reply.sender}")
             try:
                 valid_array.append(
                     abs(self.flex[reply.time_span[it]][flex_to_pick]) >= abs(reply.value[it]) and await self.check_flex(
                         reply, flex_to_pick, it))
             except Exception as e:
-                print(f"EXCEPTION:{e}")
-            print(f"array valid for {reply.sender}")
+                logger.info(f"Exception occurred in flexibility validity check: {e}")
             if valid_array[it]:
                 self.flex[reply.time_span[it]][flex_to_pick] = \
                     self.flex[reply.time_span[it]][flex_to_pick] - reply.value[it]
-            print(f"flex adjusted to: {self.flex[reply.time_span[it]][flex_to_pick]} because of {reply.sender}")
+            logger.info(f"{self.aid}: Flex adjusted to: {self.flex[reply.time_span[it]][flex_to_pick]} because of "
+                        f"reply from {reply.sender}")
         return True if all(valid_array) else False
 
     async def handle_initial_reply(self, requirement, message_path):
@@ -548,8 +527,6 @@ class WinzentBaseAgent(Agent, ABC):
         # to find a new solution. Therefore, trigger solver.
         if not self._solution_found:
             self.governor.power_balance.add(requirement)
-            if self.aid == "agent0":
-                print(f"{self.aid}: added {requirement.message.value} to power balance")
             if not self.governor.solver_triggered:
                 self.governor.triggered_due_to_timeout = False
             # Save the established connection
@@ -567,8 +544,6 @@ class WinzentBaseAgent(Agent, ABC):
         :return:
         """
         # First, check whether the AcceptanceNotification is still valid
-        if self.aid == "agent5":
-            print(f"{self.aid} received acceptance reply from {reply.sender}.")
         if self.acceptance_valid(reply):
             async with self._lock:
                 flex_valid = await self.flexibility_valid(reply)
@@ -624,8 +599,6 @@ class WinzentBaseAgent(Agent, ABC):
         self.governor.solution_journal.remove_message(reply.answer_to)
         if self.acknowledgement_valid(reply):
             self.save_accepted_values(reply)
-            if self.aid == "agent0":
-                print(f"{self.aid}: Ack received from {reply.sender} over {reply.value}")
         else:
             logger.debug(
                 f"{self.aid} received an AcceptanceAcknowledgement (from {reply.sender} with value {reply.value}) "
@@ -644,9 +617,7 @@ class WinzentBaseAgent(Agent, ABC):
         # if the solution journal is empty afterwards, the agent does not
         # wait for any further acknowledgments and can stop the negotiation
         if self.governor.solution_journal.is_empty():
-            # PGASC changed logger.info to logging
             logger.debug(f'\n*** {self.aid} received all Acknowledgements. ***')
-            print(f'\n*** {self.aid} received all Acknowledgements. ***')
             self._waiting_for_acknowledgements = False
             self._acknowledgment_event.set()
             await self.reset()
@@ -777,7 +748,6 @@ class WinzentBaseAgent(Agent, ABC):
         After a negotiation, reset the negotiation parameters and the negotiation_done - Future to True.
         """
         logger.debug("the result for " + self.aid + " is " + str(self.result))
-        # print("the result for " + self.aid + " is " + str(self.result))
         self._negotiation_running = False
         self._solution_found = False
         self._waiting_for_acknowledgements = False
@@ -826,8 +796,9 @@ class WinzentBaseAgent(Agent, ABC):
                 # problem couldn't be solved, but the timer is still running:
                 # we didn't receive the flexibility from every
                 # agent
-                print(
-                    f'*** {self.aid} has not enough flexibility. Timeout? '
+                logger.debug(
+                    f'{self.aid} could not collect enough flexibility.'
+                    f'He collected {afforded_values[k]} and would have needed {initial_values[k]}'
                     f'{self.governor.triggered_due_to_timeout} ***')
                 if not self.governor.triggered_due_to_timeout:
                     # Solver is not triggered currently and can be triggered again
@@ -901,8 +872,6 @@ class WinzentBaseAgent(Agent, ABC):
 
             # store acceptance message
             self.governor.solution_journal.add(msg)
-            if self.aid == "agent0":
-                print(f"{self.aid}: sending acceptance to {msg.receiver}")
             await self.send_message(msg)
             for key in zero_indeces:
                 del self.final[key]
@@ -942,17 +911,11 @@ class WinzentBaseAgent(Agent, ABC):
         logger.debug(f"{self.aid} starts solver now.")
         try:
             final, afforded_values, initial_req = self.governor.try_balance()
-            print(f"afforded_values: {list(afforded_values.values())}")
-            print(f"initial req: {initial_req.message.value}")
-            print(initial_req.message.value == list(afforded_values.values()))
         except Exception as e:
-            logger.debug(f"EXCEPTION: {e}")
+            logger.info(f"Exception occurred in solving process: {e}")
         if final:
             logger.debug(f"{self.aid} found solution.")
             await self.answer_requirements(final, afforded_values, initial_req)
-            if self.aid == "agent0":
-                print("found a final")
-                print(final)
             return
         if self.governor.triggered_due_to_timeout:
             self.governor.triggered_due_to_timeout = False
@@ -991,14 +954,12 @@ class WinzentBaseAgent(Agent, ABC):
                 content.id):
             self.governor.message_journal.add(content)
             if content.is_answer:
-                # print("is answer")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_reply(req,
                                                                # message_path=meta["ontology"]
                                                                ))
             else:
-                # print("is request")
                 req = xboole.Requirement(content,
                                          content.sender, ttl=self._current_ttl)
                 asyncio.create_task(self.handle_external_request(req,
