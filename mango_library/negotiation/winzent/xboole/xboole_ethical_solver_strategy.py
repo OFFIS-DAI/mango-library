@@ -215,7 +215,6 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
         """
         # in this case, the agent did not receive any offers and the only requirement in the power balance is
         # his own. Consequently, no solution can be created.
-        self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
         try:
             if len(power_balance.ledger[self.start_time]) < 2:
                 logger.debug(f"{self.initial_requirement.message.sender}: "
@@ -223,6 +222,7 @@ class XbooleEthicalPowerBalanceSolverStrategy(PowerBalanceSolverStrategy):
                 return {}, None, None
         except Exception as e:
             logger.info(e)
+        self.initial_requirement = PowerBalanceSolverStrategy.find_initial_requirement(power_balance, initiator)
         # if all the available offers cannot satisfy the need for this timeslot,
         # no special solving strategy is needed since all will be accepted anyway
         # in this case, there are more offers than needed to satisfy the initial requirement
