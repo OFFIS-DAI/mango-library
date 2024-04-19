@@ -466,7 +466,7 @@ class WinzentBaseAgent(Agent, ABC):
                         value_index = index
                         break
                 distributed_value += ack.value[value_index]
-                logger.info(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
+                logger.debug(f"{self.aid} promised {ack.value[0]} to {ack.receiver}")
         if self.original_flex[reply.time_span[it]][flex_to_pick] - distributed_value == self.flex[reply.time_span[it]][
             flex_to_pick]:
             return True
