@@ -406,7 +406,7 @@ class COHDANegotiation:
         else:
             self._perf_func = perf_func
         self._attack_scenario = attack_scenario
-        self._last_perf = 100
+        self._last_perf = 0
         self._additional_agent_id = 500
         self._manipulated_agent = manipulated_agent
 
@@ -551,8 +551,8 @@ class COHDANegotiation:
                         current_candidate.cluster_schedule, self._memory.target_params
                     )
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                        self._last_perf = current_candidate.perf * 5
                         current_candidate.perf = self._last_perf
-                        self._last_perf *= 5
                 else:
                     current_candidate = self._memory.solution_candidate
 
@@ -571,8 +571,8 @@ class COHDANegotiation:
                 target_params=self._memory.target_params,
             )
             if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                self._last_perf = current_candidate.perf * 5
                 current_candidate.perf = self._last_perf
-                self._last_perf *= 5
         if self._part_id == self._manipulated_agent and self._attack_scenario == 4:
             # manipulation: in each iteration, add another agent to candidate
             schedules = current_candidate.schedules
@@ -626,8 +626,8 @@ class COHDANegotiation:
                     new_candidate.cluster_schedule, self._memory.target_params
                 )
                 if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                    self._last_perf = new_performance * 5
                     new_performance = self._last_perf
-                    self._last_perf *= 5
 
                 # only keep new candidates that perform better than the current one
                 if new_performance > current_best_candidate.perf:
