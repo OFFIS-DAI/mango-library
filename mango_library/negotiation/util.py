@@ -7,7 +7,7 @@ from mango_library.coalition.core import CoalitionInvite, CoaltitionResponse, Co
 from mango_library.negotiation.cohda.data_classes import ScheduleSelection, \
     SystemConfig, SolutionCandidate, WorkingMemory
 from mango_library.negotiation.cohda.cohda_messages import CohdaNegotiationMessage, CohdaProposedSolutionMessage, \
-    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage
+    CohdaSolutionRequestMessage, CohdaFinalSolutionMessage, ConfirmCohdaSolutionMessage, StartCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import ScheduleSelections, \
     SystemConfig as SystemConfig_m, SolutionCandidate as SolutionCandidate_m, WorkingMemory as WorkingMemory_m
@@ -81,6 +81,7 @@ cohda_serializers = [
     InformAboutTerminationMessage.__serializer__,
     CohdaFinalSolutionMessage.__serializer__,
     ConfirmCohdaSolutionMessage.__serializer__,
+    StartCohdaNegotiationMessage.__serializer__,
 ]
 
 multi_objective_serializers = [
