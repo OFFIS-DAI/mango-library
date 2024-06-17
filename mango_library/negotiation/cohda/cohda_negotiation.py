@@ -41,7 +41,8 @@ class COHDANegotiationRole(Role):
             check_inbox_interval: float = 0.1,
             attack_scenario: int = 0,
             manipulated_agent: str = None,
-            store_updates_to_db: bool = False
+            store_updates_to_db: bool = False,
+            penalty=None
     ):
         """
         Init of COHDANegotiationRole
@@ -61,6 +62,7 @@ class COHDANegotiationRole(Role):
             if perf_func is not None
             else COHDANegotiation.deviation_to_target_schedule
         )
+        self._penalty_func = penalty
 
         if local_acceptable_func is None:
             # accept all schedules if not function is provided
@@ -155,7 +157,8 @@ class COHDANegotiationRole(Role):
                     is_local_acceptable=self._is_local_acceptable,
                     perf_func=self._perf_func,
                     attack_scenario=self._attack_scenario,
-                    manipulated_agent=self._manipulated_agent
+                    manipulated_agent=self._manipulated_agent,
+                    penalty=self._penalty_func
                 ),
             )
         cohda_negotiation = cohda_negotiation_model.by_id(
@@ -342,7 +345,7 @@ class COHDANegotiationRole(Role):
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
         # reply with a confirmation
         self.context.schedule_instant_acl_message(
-            content=ConfirmCohdaSolutionMessage(neg_id),
+            content=ConfirmCohdaSolutionMessage(neg_id, final_candidate),
             receiver_addr=meta["sender_addr"],
             receiver_id=meta["sender_id"],
             acl_metadata={"sender_id": self.context.aid},
@@ -359,7 +362,8 @@ class COHDANegotiation:
             part_id: str,
             perf_func=None,
             attack_scenario=0,
-            manipulated_agent=None
+            manipulated_agent=None,
+            penalty=None
     ):
         """
         Init of the CohdaNegotiation
@@ -372,9 +376,10 @@ class COHDANegotiation:
         as input and returns a float
         """
         self._part_id = part_id
+        self._penalty_func = penalty
 
         def complete_schedule_provider(
-                system_config: SystemConfig, candidate: SolutionCandidate
+                system_config: SystemConfig, candidate: SolutionCandidate, target_params: Dict
         ):
             schedule_provider_args = inspect.signature(
                 schedule_provider
@@ -384,6 +389,8 @@ class COHDANegotiation:
                 args["candidate"] = candidate
             if "system_config" in schedule_provider_args:
                 args["system_config"] = system_config
+            if "target_params" in schedule_provider_args:
+                args["target_params"] = target_params
             return schedule_provider(**args)
 
         self._schedule_provider = complete_schedule_provider
@@ -513,6 +520,7 @@ class COHDANegotiation:
                             self._schedule_provider(
                                 candidate=self._memory.solution_candidate,
                                 system_config=self._memory.system_config,
+                                target_params=new_wm.target_params
                             )[0]
                         ),
                         self._counter + 1,
@@ -535,6 +543,7 @@ class COHDANegotiation:
                     schedules[self._part_id] = self._schedule_provider(
                         candidate=self._memory.solution_candidate,
                         system_config=self._memory.system_config,
+                        target_params=self._memory.target_params
                     )[0]
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
                         chosen_schedule = schedules[self._part_id]
@@ -547,6 +556,10 @@ class COHDANegotiation:
                     current_candidate = SolutionCandidate(
                         agent_id=self._part_id, schedules=schedules, perf=None
                     )
+                    if self._penalty_func is not None:
+                        schedule = schedules[self._part_id]
+                        penalty = self._penalty_func(self._memory.target_params, schedule)
+                        self._memory.target_params.update({'penalty': penalty})
                     current_candidate.perf = self._perf_func(
                         current_candidate.cluster_schedule, self._memory.target_params
                     )
@@ -605,7 +618,7 @@ class COHDANegotiation:
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
         possible_schedules = self._schedule_provider(
-            candidate=candidate, system_config=sysconfig
+            candidate=candidate, system_config=sysconfig, target_params=self._memory.target_params
         )
         if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
             chosen_schedule = possible_schedules[random.choice([0, len(possible_schedules) - 1])]
@@ -622,6 +635,9 @@ class COHDANegotiation:
                     sysconfig=sysconfig,
                     new_schedule=np.array(schedule),
                 )
+                if self._penalty_func is not None:
+                    penalty = self._penalty_func(self._memory.target_params, schedule)
+                    self._memory.target_params.update({'penalty': penalty})
                 new_performance = self._perf_func(
                     new_candidate.cluster_schedule, self._memory.target_params
                 )

@@ -181,8 +181,9 @@ class ConfirmCohdaSolutionMessage:
     Message that is sent by unit Agents to the Aggregator Agent to confirm that they have received the final solution.
     """
 
-    def __init__(self, negotiation_id: UUID):
+    def __init__(self, negotiation_id: UUID, final_candidate):
         self._negotiation_id = negotiation_id
+        self._solution_candidate = final_candidate
 
     @property
     def negotiation_id(self) -> UUID:
@@ -191,3 +192,7 @@ class ConfirmCohdaSolutionMessage:
         :return: the negotiation_id
         """
         return self._negotiation_id
+
+    @property
+    def final_candidate(self) -> SolutionCandidate:
+        return self._solution_candidate
