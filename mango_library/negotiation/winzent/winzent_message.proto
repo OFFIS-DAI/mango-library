@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message WinzentMessage {
+  int32 msg_type = 1;
+  int32 ttl = 2;
+  repeated int64 time_span = 3;
+  string id = 4;
+  string sender = 5;
+  bool is_answer = 6;
+  repeated int32 value = 7;
+  string answer_to = 8;
+  string receiver = 9;
+  float ethics_score = 10;
+}
