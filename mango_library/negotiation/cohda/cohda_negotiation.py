@@ -2,6 +2,8 @@ import asyncio
 import inspect
 import logging
 import random
+import uuid
+
 import time
 from copy import deepcopy
 from typing import List, Dict, Optional, Tuple, Callable
@@ -211,13 +213,13 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-
+                start = time.time()
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-
+                duration = time.time()-start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
-                        self.store_update_to_db(wm_to_send, negotiation_id)
+                        self.store_update_to_db(wm_to_send, negotiation_id, duration)
 
                     for neighbor in coalition_assignment.neighbors:
                         self.context.schedule_instant_acl_message(
@@ -231,6 +233,7 @@ class COHDANegotiationRole(Role):
                             acl_metadata={
                                 "sender_addr": self.context.addr,
                                 "sender_id": self.context.aid,
+                                "conversation_id": str(uuid.uuid4())
                             },
                         )
 
@@ -240,7 +243,7 @@ class COHDANegotiationRole(Role):
 
         return process_msg
 
-    def store_update_to_db(self, wm_to_send, negotiation_id):
+    def store_update_to_db(self, wm_to_send, negotiation_id, duration):
         current_time = time.time()
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
@@ -252,6 +255,7 @@ class COHDANegotiationRole(Role):
         general_group.create_dataset('performance', data=np.float64(wm_to_send.solution_candidate.perf))
         general_group.create_dataset('cluster_schedule', data=np.array(wm_to_send.solution_candidate.cluster_schedule))
         general_group.create_dataset('time', data=np.float64(current_time))
+        general_group.create_dataset('duration', data=np.float64(duration))
         general_group.attrs["aid"] = self.context.aid
         general_group.attrs['negotiation_id'] = str(negotiation_id)
         self._hf.close()
@@ -321,7 +325,8 @@ class COHDANegotiationRole(Role):
             ),
             receiver_addr=meta["sender_addr"],
             receiver_id=meta["sender_id"],
-            acl_metadata={"sender_id": self.context.aid},
+            acl_metadata={"sender_id": self.context.aid, "conversation_id": str(uuid.uuid4())
+                          },
         )
 
     def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, meta):
@@ -348,7 +353,8 @@ class COHDANegotiationRole(Role):
             content=ConfirmCohdaSolutionMessage(neg_id, final_candidate),
             receiver_addr=meta["sender_addr"],
             receiver_id=meta["sender_id"],
-            acl_metadata={"sender_id": self.context.aid},
+            acl_metadata={"sender_id": self.context.aid, "conversation_id": str(uuid.uuid4())
+                          },
         )
 
 

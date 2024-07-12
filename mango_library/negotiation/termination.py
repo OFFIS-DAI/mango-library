@@ -13,6 +13,7 @@ Messages:
 considers itself as inactive.
 """
 import asyncio
+import uuid
 from fractions import Fraction
 from typing import Dict, Any, Union, Optional, Set, Tuple, Callable, List
 from uuid import UUID
@@ -253,6 +254,7 @@ class NegotiationTerminationDetectorRole(Role):
                 acl_metadata={
                     "sender_addr": self.context.addr,
                     "sender_id": self.context.aid,
+                    "conversation_id": str(uuid.uuid4()),
                 },
             )
 
@@ -268,6 +270,7 @@ class NegotiationTerminationDetectorRole(Role):
                 acl_metadata={
                     "sender_addr": self.context.addr,
                     "sender_id": self.context.aid,
+                    "conversation_id": str(uuid.uuid4())
                 },
             )
 

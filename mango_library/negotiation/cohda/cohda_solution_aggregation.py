@@ -1,4 +1,5 @@
 import logging
+import uuid
 from uuid import UUID
 from typing import Dict, Tuple, Optional, List
 
@@ -100,7 +101,7 @@ class CohdaSolutionAggregationRole(Role):
                 ),
                 receiver_addr=agent_addr,
                 receiver_id=agent_id,
-                acl_metadata={"sender_id": self.context.aid},
+                acl_metadata={"sender_id": self.context.aid, "conversation_id": str(uuid.uuid4())},
             )
 
     def handle_cohda_solution(self, content: CohdaProposedSolutionMessage, meta):
@@ -163,7 +164,8 @@ class CohdaSolutionAggregationRole(Role):
                     ),
                     receiver_addr=agent_addr,
                     receiver_id=agent_id,
-                    acl_metadata={"sender_id": self.context.aid},
+                    acl_metadata={"sender_id": self.context.aid, "conversation_id": str(uuid.uuid4())
+                                  },
                 )
 
             # delete negotiation_id from open requests dict

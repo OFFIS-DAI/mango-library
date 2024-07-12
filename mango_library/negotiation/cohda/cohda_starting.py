@@ -132,6 +132,7 @@ class CohdaNegotiationInteractiveStarterRole(Role):
                 acl_metadata={
                     "sender_addr": self.context.addr,
                     "sender_id": self.context.aid,
+                    "conversation_id": str(uuid.uuid4())
                 },
             )
 
@@ -246,6 +247,7 @@ class CohdaNegotiationDirectStarterRole(Role):
                 acl_metadata={
                     "sender_addr": self.context.addr,
                     "sender_id": self.context.aid,
+                    "conversation_id": str(uuid.uuid4())
                 },
             )
         hf = h5py.File(f'{self.context.aid}.h5', 'a')
