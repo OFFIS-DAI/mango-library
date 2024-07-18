@@ -213,15 +213,19 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-                start = time.time()
+                start = self.context._scheduler.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-                duration = time.time()-start
+                duration = self.context._scheduler.clock.time - start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
-                        self.store_update_to_db(wm_to_send, negotiation_id, duration)
+                        await self.store_update_to_db(wm_to_send, negotiation_id, duration,
+                                                      cohda_negotiation.currently_manipulating)
+                        cohda_negotiation.currently_manipulating = False
 
                     for neighbor in coalition_assignment.neighbors:
+                        if self.context.addr == 'generation_agent_1':
+                            print('neighor', neighbor)
                         self.context.schedule_instant_acl_message(
                             content=CohdaNegotiationMessage(
                                 negotiation_id=negotiation_id,
@@ -243,8 +247,9 @@ class COHDANegotiationRole(Role):
 
         return process_msg
 
-    def store_update_to_db(self, wm_to_send, negotiation_id, duration):
-        current_time = time.time()
+    async def store_update_to_db(self, wm_to_send, negotiation_id, duration, manipulation=False):
+        print('manipulation?', manipulation)
+        current_time = self.context._scheduler.clock.time
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
             general_group = self._hf.create_group(f'Update_{current_time}')
@@ -258,6 +263,8 @@ class COHDANegotiationRole(Role):
         general_group.create_dataset('duration', data=np.float64(duration))
         general_group.attrs["aid"] = self.context.aid
         general_group.attrs['negotiation_id'] = str(negotiation_id)
+        general_group.attrs["manipulation"] = manipulation
+        general_group.attrs['manipulation'] = str(manipulation)
         self._hf.close()
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
@@ -422,6 +429,7 @@ class COHDANegotiation:
         self._last_perf = 0
         self._additional_agent_id = 500
         self._manipulated_agent = manipulated_agent
+        self.currently_manipulating = False
 
     @staticmethod
     def deviation_to_target_schedule(
@@ -538,6 +546,15 @@ class COHDANegotiation:
                         for value in chosen_schedule:
                             manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
                         schedule_choices[self._part_id]._schedule = manipulated_schedule
+                    if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0,
+                                                                                                                  1) > 0.2:
+                        print('manipulation')
+                        self.currently_manipulating = True
+                        chosen_schedule = schedule_choices[self._part_id]._schedule
+                        manipulated_schedule = []
+                        for value in chosen_schedule:
+                            manipulated_schedule.append(value * random.randint(5, 50))
+                        schedule_choices[self._part_id]._schedule = manipulated_schedule
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
                 else:
                     current_sysconfig = self._memory.system_config
@@ -556,6 +573,15 @@ class COHDANegotiation:
                         manipulated_schedule = []
                         for value in chosen_schedule:
                             manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
+                        schedules[self._part_id] = manipulated_schedule
+                    if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0,
+                                                                                                                  1) > 0.2:
+                        print('MANIPULATION')
+                        self.currently_manipulating = True
+                        chosen_schedule = schedules[self._part_id]
+                        manipulated_schedule = []
+                        for value in chosen_schedule:
+                            manipulated_schedule.append(value * random.randint(5, 50))
                         schedules[self._part_id] = manipulated_schedule
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
@@ -631,6 +657,14 @@ class COHDANegotiation:
             manipulated_schedule = []
             for value in chosen_schedule:
                 manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
+            possible_schedules = [manipulated_schedule]
+        if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0, 1) > 0.2:
+            print('MANIPULATION')
+            self.currently_manipulating = True
+            chosen_schedule = possible_schedules[random.choice([0, len(possible_schedules) - 1])]
+            manipulated_schedule = []
+            for value in chosen_schedule:
+                manipulated_schedule.append(value * random.randint(5, 50))
             possible_schedules = [manipulated_schedule]
         current_best_candidate = candidate
         for schedule in possible_schedules:

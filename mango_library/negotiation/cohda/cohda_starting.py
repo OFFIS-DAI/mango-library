@@ -251,7 +251,7 @@ class CohdaNegotiationDirectStarterRole(Role):
                 },
             )
         hf = h5py.File(f'{self.context.aid}.h5', 'a')
-        current_time = time.time()
+        current_time = self.context._scheduler.clock.time
         try:
             general_group = hf.create_group(f'Update_{current_time}')
         except ValueError:

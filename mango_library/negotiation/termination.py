@@ -212,6 +212,7 @@ class NegotiationTerminationParticipantRole(Role):
                 acl_metadata={
                     "sender_addr": self.context.addr,
                     "sender_id": self.context.aid,
+                    "conversation_id": str(uuid.uuid4())
                 },
             )
         )
@@ -246,6 +247,7 @@ class NegotiationTerminationDetectorRole(Role):
 
     async def _send_stop_and_inform(self, negotiation_id):
         # send stopNegotiationMessage first
+        print('SEND STOP AND INFORM!!!')
         for agent_addr, agent_id in self._participant_map[negotiation_id]:
             await self.context.send_acl_message(
                 content=StopNegotiationMessage(negotiation_id=negotiation_id),

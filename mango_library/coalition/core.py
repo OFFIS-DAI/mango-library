@@ -507,6 +507,8 @@ class CoalitionParticipantRole(Role):
         :param content: the assignment
         :param meta: the meta data
         """
+        if self.context.addr == 'generation_agent_1':
+            print('Coalition!', content)
         assignment = self.context.get_or_create_model(CoalitionModel)
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)
