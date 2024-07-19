@@ -44,7 +44,8 @@ class COHDANegotiationRole(Role):
             attack_scenario: int = 0,
             manipulated_agent: str = None,
             store_updates_to_db: bool = False,
-            penalty=None
+            penalty=None,
+            container=None
     ):
         """
         Init of COHDANegotiationRole
@@ -57,6 +58,8 @@ class COHDANegotiationRole(Role):
         :param check_inbox_interval: Duration of buffering the CohdaNegotiationMessages [s]
         """
         super().__init__()
+
+        self.container = container
 
         self._schedules_provider = schedules_provider
         self._perf_func = (
@@ -213,9 +216,9 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-                start = self.context._scheduler.clock.time
+                start = self.container.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-                duration = self.context._scheduler.clock.time - start
+                duration = self.container.clock.time - start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
@@ -249,7 +252,7 @@ class COHDANegotiationRole(Role):
 
     async def store_update_to_db(self, wm_to_send, negotiation_id, duration, manipulation=False):
         print('manipulation?', manipulation)
-        current_time = self.context._scheduler.clock.time
+        current_time = self.container.clock.time
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
             general_group = self._hf.create_group(f'Update_{current_time}')
