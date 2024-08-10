@@ -30,6 +30,7 @@ class CohdaNegotiationInteractiveStarterRole(Role):
             coalition_model_matcher=None,
             coalition_uuid=None,
             send_weight=True,
+            container=None
     ) -> None:
         """
 
@@ -42,6 +43,7 @@ class CohdaNegotiationInteractiveStarterRole(Role):
         super().__init__()
         self._target_params = target_params
         self._send_weight = send_weight
+        self._container = container
 
         if coalition_uuid is not None:
             # if id is provided create matcher matching this id when the coalition is looked up
@@ -90,7 +92,6 @@ class CohdaNegotiationInteractiveStarterRole(Role):
 
     async def start(self, start_msg: StartCohdaNegotiationMessage = None):
         """Start a negotiation. Send all neighbors a starting negotiation message."""
-
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment

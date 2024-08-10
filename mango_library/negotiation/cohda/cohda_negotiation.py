@@ -551,12 +551,15 @@ class COHDANegotiation:
                         schedule_choices[self._part_id]._schedule = manipulated_schedule
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0,
                                                                                                                   1) > 0.2:
-                        print('manipulation')
+
                         self.currently_manipulating = True
+                        print('MANIPULATION!1 8')
                         chosen_schedule = schedule_choices[self._part_id]._schedule
                         manipulated_schedule = []
                         for value in chosen_schedule:
-                            manipulated_schedule.append(value * random.randint(5, 50))
+                            if value == 0:
+                                value = value + 0.001
+                            manipulated_schedule.append(value * random.randint(40, 60))
                         schedule_choices[self._part_id]._schedule = manipulated_schedule
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
                 else:
@@ -579,12 +582,14 @@ class COHDANegotiation:
                         schedules[self._part_id] = manipulated_schedule
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0,
                                                                                                                   1) > 0.2:
-                        print('MANIPULATION')
+                        print('MANIPULATION 8')
                         self.currently_manipulating = True
                         chosen_schedule = schedules[self._part_id]
                         manipulated_schedule = []
                         for value in chosen_schedule:
-                            manipulated_schedule.append(value * random.randint(5, 50))
+                            if value == 0:
+                                value = value + 0.001
+                            manipulated_schedule.append(value * random.randint(40, 60))
                         schedules[self._part_id] = manipulated_schedule
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
@@ -662,12 +667,14 @@ class COHDANegotiation:
                 manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
             possible_schedules = [manipulated_schedule]
         if self._part_id == self._manipulated_agent and self._attack_scenario == 8 and random.uniform(0, 1) > 0.2:
-            print('MANIPULATION')
+            print('MANIPULATION 8')
             self.currently_manipulating = True
             chosen_schedule = possible_schedules[random.choice([0, len(possible_schedules) - 1])]
             manipulated_schedule = []
             for value in chosen_schedule:
-                manipulated_schedule.append(value * random.randint(5, 50))
+                if value == 0:
+                    value = value + 0.001
+                manipulated_schedule.append(value * random.randint(40, 60))
             possible_schedules = [manipulated_schedule]
         current_best_candidate = candidate
         for schedule in possible_schedules:
