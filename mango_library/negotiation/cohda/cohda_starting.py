@@ -251,16 +251,16 @@ class CohdaNegotiationDirectStarterRole(Role):
                     "conversation_id": str(uuid.uuid4())
                 },
             )
-        hf = h5py.File(f'{self.context.aid}.h5', 'a')
-        current_time = self.context._scheduler.clock.time
-        try:
-            general_group = hf.create_group(f'Update_{current_time}')
-        except ValueError:
-            raise ValueError(
-                'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
-        general_group.create_dataset('performance', data=-np.inf)
-        general_group.create_dataset('cluster_schedule', data=np.array(empty_wm.solution_candidate.cluster_schedule))
-        general_group.create_dataset('time', data=np.float64(current_time))
-        general_group.attrs["aid"] = self.context.aid
-        general_group.attrs['negotiation_id'] = str(negotiation_uuid)
-        hf.close()
+        # hf = h5py.File(f'{self.context.aid}.h5', 'a')
+        # current_time = self.context._scheduler.clock.time
+        # try:
+        #     general_group = hf.create_group(f'Update_{current_time}')
+        # except ValueError:
+        #     raise ValueError(
+        #         'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
+        # general_group.create_dataset('performance', data=-np.inf)
+        # general_group.create_dataset('cluster_schedule', data=np.array(empty_wm.solution_candidate.cluster_schedule))
+        # general_group.create_dataset('time', data=np.float64(current_time))
+        # general_group.attrs["aid"] = self.context.aid
+        # general_group.attrs['negotiation_id'] = str(negotiation_uuid)
+        # hf.close()

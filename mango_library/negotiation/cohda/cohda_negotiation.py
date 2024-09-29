@@ -216,9 +216,9 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-                start = self.container.clock.time
+                start = time.time()# self.container.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-                duration = self.container.clock.time - start
+                duration = time.time()- start#self.container.clock.time - start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
@@ -252,7 +252,7 @@ class COHDANegotiationRole(Role):
 
     async def store_update_to_db(self, wm_to_send, negotiation_id, duration, manipulation=False):
         print('manipulation?', manipulation)
-        current_time = self.container.clock.time
+        current_time = time.time()#self.container.clock.time
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
             general_group = self._hf.create_group(f'Update_{current_time}')
@@ -628,7 +628,7 @@ class COHDANegotiation:
                 current_candidate.perf = self._last_perf
         if self._part_id == self._manipulated_agent and self._attack_scenario == 4:
             # manipulation: in each iteration, add another agent to candidate
-            schedules = current_candidate.schedules
+            schedules = deepcopy(current_candidate.schedules)
             schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
 
             current_candidate = SolutionCandidate(
@@ -639,7 +639,7 @@ class COHDANegotiation:
             )
 
             # also add new agent to system config
-            schedule_choices = current_sysconfig.schedule_choices
+            schedule_choices = deepcopy(current_sysconfig.schedule_choices)
             schedule_choices[str(self._additional_agent_id)] = deepcopy(schedule_choices[self._part_id])
             current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
 
