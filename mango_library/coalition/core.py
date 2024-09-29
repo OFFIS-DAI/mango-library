@@ -370,7 +370,6 @@ class CoalitionInitiatorRole(Role):
         sender_addr: ContainerAddress
 
         self._part_to_state[(sender_addr, sender_id)] = content.accept
-        print('coalition response', len(self._part_to_state), len(self._participants))
 
         if (
                 len(self._part_to_state) == len(self._participants)
@@ -418,7 +417,6 @@ class CoalitionInitiatorRole(Role):
         )
 
     async def _send_coalition_build_confirms(self, agent_context, accepted_participants):
-        print('send build confirms, all assignments received')
         for part in accepted_participants:
             agent_context.schedule_instant_acl_message(
                 content=CoalitionBuildConfirm(coalition_id=self._coal_id),
@@ -507,8 +505,6 @@ class CoalitionParticipantRole(Role):
         :param content: the assignment
         :param meta: the meta data
         """
-        if self.context.addr == 'generation_agent_1':
-            print('Coalition!', content)
         assignment = self.context.get_or_create_model(CoalitionModel)
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)
