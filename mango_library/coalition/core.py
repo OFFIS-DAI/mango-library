@@ -397,7 +397,6 @@ class CoalitionInitiatorRole(Role):
         )
         for part in accepted_participants:
             neighbors = part_to_neighbors[part]
-            # TODO
             neighbors.append((self._controller_addr[0], self._controller_addr, self._controller_id))
             agent_context.schedule_instant_acl_message(
                 content=CoalitionAssignment(
