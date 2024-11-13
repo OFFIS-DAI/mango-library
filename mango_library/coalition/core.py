@@ -300,8 +300,6 @@ class CoalitionInitiatorRole(Role):
             details: str,
             topology_creator=small_world_creator,
             topology_creator_kwargs: dict = None,
-            controller_addr: Tuple[str, int] = None,
-            controller_id: str = None,
     ):
         super().__init__()
         self._participants = participants
