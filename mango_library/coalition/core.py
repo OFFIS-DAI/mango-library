@@ -300,8 +300,6 @@ class CoalitionInitiatorRole(Role):
             details: str,
             topology_creator=small_world_creator,
             topology_creator_kwargs: dict = None,
-            controller_addr: Tuple[str, int] = None,
-            controller_id: str = None,
     ):
         super().__init__()
         self._participants = participants
@@ -315,8 +313,6 @@ class CoalitionInitiatorRole(Role):
         self._assignments_sent = False
         self._coal_id = None
         self._assignments_confirmed = {}
-        self._controller_addr = controller_addr
-        self._controller_id = controller_id
 
     def setup(self):
 
@@ -396,12 +392,10 @@ class CoalitionInitiatorRole(Role):
             accepted_participants, **self._topology_creator_kwargs
         )
         for part in accepted_participants:
-            neighbors = part_to_neighbors[part]
-            neighbors.append((self._controller_addr[0], self._controller_addr, self._controller_id))
             agent_context.schedule_instant_acl_message(
                 content=CoalitionAssignment(
                     self._coal_id,
-                    neighbors,
+                    part_to_neighbors[part],
                     self._topic,
                     part[0],
                     agent_context.aid,
