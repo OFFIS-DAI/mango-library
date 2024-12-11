@@ -2,12 +2,10 @@ import asyncio
 import inspect
 import logging
 import random
-import time
 from copy import deepcopy
 from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
 
-import h5py
 import numpy as np
 from mango import Role
 
@@ -39,9 +37,8 @@ class COHDANegotiationRole(Role):
             local_acceptable_func: Callable = None,
             perf_func: Callable = None,
             check_inbox_interval: float = 0.1,
-            attack_scenario: int = 0,
-            manipulated_agent: str = None,
-            store_updates_to_db: bool = False
+            attack_scenario=0,
+            manipulated_agent=None
     ):
         """
         Init of COHDANegotiationRole
@@ -77,8 +74,8 @@ class COHDANegotiationRole(Role):
         self.check_inbox_interval = check_inbox_interval
         self._attack_scenario = attack_scenario
         self._manipulated_agent = manipulated_agent
-        self._store_updates_to_db = store_updates_to_db
-        self._hf = None
+        self.timestamp = 0
+        # self.fwriter= open ('working_mem_log_.txt', 'a')
 
     def setup(self) -> None:
         super().setup()
@@ -213,9 +210,6 @@ class COHDANegotiationRole(Role):
 
                 if wm_to_send is not None:
                     # send message to all neighbors
-                    if self._store_updates_to_db:
-                        self.store_update_to_db(wm_to_send, negotiation_id)
-
                     for neighbor in coalition_assignment.neighbors:
                         self.context.schedule_instant_acl_message(
                             content=CohdaNegotiationMessage(
@@ -230,28 +224,22 @@ class COHDANegotiationRole(Role):
                                 "sender_id": self.context.aid,
                             },
                         )
+                    # negid_wm_dict={'time':str(self.timestamp), 'neg_id': str(negotiation_id), 'w_mem': wm_to_send}
+                    # if(self.timestamp == 0):
+                    #     #print('w mode opening')
+                    #     fwriter= open ('working_mem_log_agent_'+str(self.context.aid)+'.txt', 'w')
+                    # else: fwriter= open ('working_mem_log_agent_'+str(self.context.aid)+'.txt', 'a')
+                    # #fwriter.write(negid_wm_dict['time']+" "+np.array2string(negid_wm_dict['w_mem'].solution_candidate.cluster_schedule)+"\n")
+                    # fwriter.write('\n'+negid_wm_dict['time']+" "+np.array2string(negid_wm_dict['w_mem']._system_config.cluster_schedule)+"\n")
+                    # self.timestamp += 1
+                    # print('WrITTEN...')
+
 
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
 
         return process_msg
-
-    def store_update_to_db(self, wm_to_send, negotiation_id):
-        current_time = time.time()
-        self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
-        try:
-            general_group = self._hf.create_group(f'Update_{current_time}')
-        except ValueError:
-            raise ValueError(
-                'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
-
-        general_group.create_dataset('performance', data=np.float64(wm_to_send.solution_candidate.perf))
-        general_group.create_dataset('cluster_schedule', data=np.array(wm_to_send.solution_candidate.cluster_schedule))
-        general_group.create_dataset('time', data=np.float64(current_time))
-        general_group.attrs["aid"] = self.context.aid
-        general_group.attrs['negotiation_id'] = str(negotiation_id)
-        self._hf.close()
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """Is called once a StopNegotiationMessage arrived"""
@@ -342,10 +330,10 @@ class COHDANegotiationRole(Role):
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
         # reply with a confirmation
         self.context.schedule_instant_acl_message(
-            content=ConfirmCohdaSolutionMessage(neg_id),
+            content=ConfirmCohdaSolutionMessage(neg_id, final_candidate),
             receiver_addr=meta["sender_addr"],
             receiver_id=meta["sender_id"],
-            acl_metadata={"sender_id": self.context.aid},
+            acl_metadata={"sender_id": self.context.aid}
         )
 
 
@@ -406,7 +394,7 @@ class COHDANegotiation:
         else:
             self._perf_func = perf_func
         self._attack_scenario = attack_scenario
-        self._last_perf = 0
+        self._last_perf = 100
         self._additional_agent_id = 500
         self._manipulated_agent = manipulated_agent
 
@@ -551,13 +539,25 @@ class COHDANegotiation:
                         current_candidate.cluster_schedule, self._memory.target_params
                     )
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
-                        self._last_perf = current_candidate.perf * 5
                         current_candidate.perf = self._last_perf
+                        self._last_perf *= 5
                 else:
                     current_candidate = self._memory.solution_candidate
 
             new_sysconf = new_wm.system_config
             new_candidate = new_wm.solution_candidate
+
+            # sanity check for attack scenario 2,3-- starts
+            true_perf = self._perf_func(new_candidate.cluster_schedule, self._memory.target_params)
+
+            if (true_perf != float("-inf") and true_perf != new_candidate.perf):
+                print(
+                    f'---Malicious Agent detected---\nMalicious Agent ID:{new_candidate.agent_id}\nDetected by Agent:{self._part_id}\nProble: Target function mismatch')
+            # sanity check for attack scenario 2,3-- ends
+
+            # new agent added?--> below code doesn't work. neighbours of malicious agents also get detected as mal.
+            # if(len(new_sysconf.schedule_choices) > len(current_sysconfig.schedule_choices)):
+            #    print(f'New agent added by agent: {new_candidate.agent_id}')
 
             # Merge new information into current_sysconfig and current_candidate
             current_sysconfig = self._merge_sysconfigs(
@@ -571,11 +571,11 @@ class COHDANegotiation:
                 target_params=self._memory.target_params,
             )
             if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
-                self._last_perf = current_candidate.perf * 5
                 current_candidate.perf = self._last_perf
+                self._last_perf *= 5
         if self._part_id == self._manipulated_agent and self._attack_scenario == 4:
             # manipulation: in each iteration, add another agent to candidate
-            schedules = current_candidate.schedules
+            schedules = current_candidate.schedules  # .copy()
             schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
 
             current_candidate = SolutionCandidate(
@@ -586,7 +586,7 @@ class COHDANegotiation:
             )
 
             # also add new agent to system config
-            schedule_choices = current_sysconfig.schedule_choices
+            schedule_choices = current_sysconfig.schedule_choices  # .copy()
             schedule_choices[str(self._additional_agent_id)] = deepcopy(schedule_choices[self._part_id])
             current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
 
@@ -604,6 +604,7 @@ class COHDANegotiation:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
+
         possible_schedules = self._schedule_provider(
             candidate=candidate, system_config=sysconfig
         )
@@ -614,6 +615,17 @@ class COHDANegotiation:
                 manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
             possible_schedules = [manipulated_schedule]
         current_best_candidate = candidate
+        # #sanity check for attack scenario 2,3
+        # true_perf= self._perf_func(current_best_candidate.cluster_schedule,self._memory.target_params)
+        # flagChangeCurrentBestCandidate = 0
+        # if (true_perf != current_best_candidate.perf):
+        #     flagChangeCurrentBestCandidate= 1
+        #     if(current_best_candidate.agent_id != '15'):
+        #         #print(f'{true_perf},,,,,,{current_best_candidate.perf}')
+        #         print(f'---Malicious Agent detected---\nMalicious Agent ID:{current_best_candidate.agent_id}\nDetected by Agent:{self._part_id}\nAttack: Misleading Performance (increased value)')
+
+        # #sanity check for attack scenario 2,3
+
         for schedule in possible_schedules:
             if self._is_local_acceptable(schedule):
                 # create new candidate from sysconfig
@@ -626,9 +638,17 @@ class COHDANegotiation:
                     new_candidate.cluster_schedule, self._memory.target_params
                 )
                 if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
-                    self._last_perf = new_performance * 5
                     new_performance = self._last_perf
+                    self._last_perf *= 5
 
+                # sanity check action
+                # if (flagChangeCurrentBestCandidate == 1):
+                #     #forget the current best candidate cause it's suspicious.
+                #     flagChangeCurrentBestCandidate = 0
+                #     new_candidate.perf = new_performance
+                #     current_best_candidate = new_candidate
+
+                # sanity check action
                 # only keep new candidates that perform better than the current one
                 if new_performance > current_best_candidate.perf:
                     new_candidate.perf = new_performance
