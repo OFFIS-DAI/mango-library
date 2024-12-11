@@ -45,7 +45,8 @@ class COHDANegotiationRole(Role):
             manipulated_agent: str = None,
             store_updates_to_db: bool = False,
             penalty=None,
-            container=None
+            container=None,
+            agent=None
     ):
         """
         Init of COHDANegotiationRole
@@ -60,6 +61,8 @@ class COHDANegotiationRole(Role):
         super().__init__()
 
         self.container = container
+
+        self.agent = agent
 
         self._schedules_provider = schedules_provider
         self._perf_func = (
@@ -163,7 +166,8 @@ class COHDANegotiationRole(Role):
                     perf_func=self._perf_func,
                     attack_scenario=self._attack_scenario,
                     manipulated_agent=self._manipulated_agent,
-                    penalty=self._penalty_func
+                    penalty=self._penalty_func,
+                    agent=self.agent
                 ),
             )
         cohda_negotiation = cohda_negotiation_model.by_id(
@@ -216,9 +220,9 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-                start = time.time()# self.container.clock.time
+                start = time.time()  # self.container.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-                duration = time.time()- start#self.container.clock.time - start
+                duration = time.time() - start  # self.container.clock.time - start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
@@ -252,7 +256,7 @@ class COHDANegotiationRole(Role):
 
     async def store_update_to_db(self, wm_to_send, negotiation_id, duration, manipulation=False):
         print('manipulation?', manipulation)
-        current_time = time.time()#self.container.clock.time
+        current_time = self.container.clock.time  # self.container.clock.time
         self._hf = h5py.File(f'{self.context.aid}.h5', 'a')
         try:
             general_group = self._hf.create_group(f'Update_{current_time}')
@@ -379,7 +383,8 @@ class COHDANegotiation:
             perf_func=None,
             attack_scenario=0,
             manipulated_agent=None,
-            penalty=None
+            penalty=None,
+            agent=None
     ):
         """
         Init of the CohdaNegotiation
@@ -391,6 +396,7 @@ class COHDANegotiation:
         :param perf_func: The performance function, that takes one numpy array and target_params
         as input and returns a float
         """
+        print('agent and part id', agent, part_id)
         self._part_id = part_id
         self._penalty_func = penalty
 
@@ -559,7 +565,7 @@ class COHDANegotiation:
                         for value in chosen_schedule:
                             if value == 0:
                                 value = value + 0.001
-                            manipulated_schedule.append(value * random.randint(40, 60))
+                            manipulated_schedule.append(value * random.randint(1, 20))
                         schedule_choices[self._part_id]._schedule = manipulated_schedule
                     current_sysconfig = SystemConfig(schedule_choices=schedule_choices)
                 else:
@@ -589,7 +595,7 @@ class COHDANegotiation:
                         for value in chosen_schedule:
                             if value == 0:
                                 value = value + 0.001
-                            manipulated_schedule.append(value * random.randint(40, 60))
+                            manipulated_schedule.append(value * random.randint(1, 20))
                         schedules[self._part_id] = manipulated_schedule
                     # we need to create a new class of SolutionCandidate so the updates are
                     # recognized in handle_cohda_msgs()
@@ -674,7 +680,7 @@ class COHDANegotiation:
             for value in chosen_schedule:
                 if value == 0:
                     value = value + 0.001
-                manipulated_schedule.append(value * random.randint(40, 60))
+                manipulated_schedule.append(value * random.randint(1, 20))
             possible_schedules = [manipulated_schedule]
         current_best_candidate = candidate
         for schedule in possible_schedules:
