@@ -60,42 +60,43 @@ async def test_minimize_scenario():
     options were considered.
     """
     c = create_tcp_container(addr=("127.0.0.2", 5555))
+    agents = []
+    addrs = []
 
-    async with activate(c) as c:
-        agents = []
-        addrs = []
+    for i in range(NUM_AGENTS):
+        a = c.register(RoleAgent())
 
-        for i in range(NUM_AGENTS):
-            a = c.register(RoleAgent())
+        def provide_schedules(index):
+            return lambda: SCHEDULES_FOR_AGENTS_SIMPEL[index]
 
-            def provide_schedules(index):
-                return lambda: SCHEDULES_FOR_AGENTS_SIMPEL[index]
-
-            cohda_role = MultiObjectiveCOHDARole(
-                schedule_provider=provide_schedules(i % len(SCHEDULES_FOR_AGENTS_SIMPEL)),
-                targets=MINIMIZE_TARGETS,
-                local_acceptable_func=lambda s: True,
-                num_solution_points=NUM_CANDIDATES,
-                num_iterations=NUM_ITERATIONS,
-                check_inbox_interval=CHECK_MSG_QUEUE_INTERVAL,
-                pick_func=PICK_FKT,
-                mutate_func=MUTATE_FKT,
-                use_fixed_ref_point=True,
-                offsets=None,
+        cohda_role = MultiObjectiveCOHDARole(
+            schedule_provider=provide_schedules(i % len(SCHEDULES_FOR_AGENTS_SIMPEL)),
+            targets=MINIMIZE_TARGETS,
+            local_acceptable_func=lambda s: True,
+            num_solution_points=NUM_CANDIDATES,
+            num_iterations=NUM_ITERATIONS,
+            check_inbox_interval=CHECK_MSG_QUEUE_INTERVAL,
+            pick_func=PICK_FKT,
+            mutate_func=MUTATE_FKT,
+            use_fixed_ref_point=True,
+            offsets=None,
+        )
+        a.add_role(cohda_role)
+        a.add_role(CoalitionParticipantRole())
+        a.add_role(
+            NegotiationTerminationParticipantRole(
+                negotiation_model_class=MoCohdaNegotiationModel,
+                negotiation_message_class=MoCohdaNegotiationMessage,
             )
-            a.add_role(cohda_role)
-            a.add_role(CoalitionParticipantRole())
-            a.add_role(
-                NegotiationTerminationParticipantRole(
-                    negotiation_model_class=MoCohdaNegotiationModel,
-                    negotiation_message_class=MoCohdaNegotiationMessage,
-                )
-            )
-            agents.append(a)
-            addrs.append((c.addr, a.aid))
+        )
+        agents.append(a)
+        addrs.append((c.addr, a.aid))
 
-        controller_agent = c.register(RoleAgent())
-        controller_agent.add_role(NegotiationTerminationDetectorRole())
+    controller_agent = c.register(RoleAgent())
+    controller_agent.add_role(NegotiationTerminationDetectorRole())
+
+    async with activate(c):
+
         controller_agent.add_role(
             CoalitionInitiatorRole(participants=addrs, details="", topic="")
         )
@@ -330,7 +331,7 @@ async def test_complex_scenario():
     mutate_fkt = MoCohdaNegotiation.mutate_with_all_possible
     # mutate_fkt = COHDA.mutate_with_one_random
 
-    async with activate(c_1) as c:
+    async with activate(c_1):
         agents, addrs, controller_agent = await create_agents(
             container=c_1,
             targets=[target_first, target_second],
