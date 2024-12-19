@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
-from mango import create_container
+from mango import create_tcp_container, AgentAddress, activate
 from mango import RoleAgent
 
 from mango_library.coalition.core import (
@@ -77,14 +77,14 @@ MAXIMIZE_TARGETS = [
 @pytest.mark.asyncio
 async def test_coalition_to_mocohda_with_termination():
     # create container
-    c = await create_container(addr=("127.0.0.3", 5555))
+    c = create_tcp_container(addr=("127.0.0.3", 5555))
 
     # create cohda_agents
     cohda_agents = []
     addrs = []
-    controller_agent = RoleAgent(c)
+    controller_agent = c.register(RoleAgent())
     termination_detector_role = NegotiationTerminationDetectorRole(
-        aggregator_addr=c.addr, aggregator_id=controller_agent.aid
+        aggregator_addr=AgentAddress(c.addr, controller_agent.aid)
     )
     controller_agent.add_role(termination_detector_role)
     aggregation_role = MoCohdaSolutionAggregationRole(
@@ -98,10 +98,10 @@ async def test_coalition_to_mocohda_with_termination():
         if not schedules_all_equal:
             return deepcopy(lambda: SCHEDULES_FOR_AGENTS_SIMPEL[index])
         else:
-            return lambda: SCHEDULES_FOR_AGENTS_SIMPEL
+            return lambda: SCHEDULES_FOR_AGENTS_SIMPEL[index]
 
     for i in range(NUM_AGENTS):
-        a = RoleAgent(c)
+        a = c.register(RoleAgent())
         cohda_role = MultiObjectiveCOHDARole(
             schedule_provider=provide_schedules(i % len(SCHEDULES_FOR_AGENTS_SIMPEL)),
             targets=MAXIMIZE_TARGETS,
@@ -123,34 +123,30 @@ async def test_coalition_to_mocohda_with_termination():
         addrs.append((c.addr, a.aid))
         cohda_agents.append(a)
 
-    coalition_initiator_role = CoalitionInitiatorRole(
-        addrs, "mocohda", "mocohda-negotiation"
-    )
-    controller_agent.add_role(coalition_initiator_role)
-
-    await wait_for_assignments_sent(coalition_initiator_role)
-    print("Starts negotiations")
-    await asyncio.sleep(0.5)
-
-    cohda_agents[0].add_role(
-        MoCohdaNegotiationDirectStarterRole(
-            target_params=None, num_solution_points=NUM_CANDIDATES
+    async with activate(c):
+        coalition_initiator_role = CoalitionInitiatorRole(
+            addrs, "mocohda", "mocohda-negotiation"
         )
-    )
+        controller_agent.add_role(coalition_initiator_role)
 
-    for a in cohda_agents + [controller_agent]:
-        if a._check_inbox_task.done():
-            if a._check_inbox_task.exception() is not None:
-                raise a._check_inbox_task.exception()
-            else:
-                assert False, f"check_inbox terminated unexpectedly."
+        await wait_for_assignments_sent(coalition_initiator_role)
+        print("Starts negotiations")
+        await asyncio.sleep(0.5)
 
-    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=10)
+        cohda_agents[0].add_role(
+            MoCohdaNegotiationDirectStarterRole(
+                target_params=None, num_solution_points=NUM_CANDIDATES
+            )
+        )
 
-    # gracefully shutdown
-    for a in cohda_agents + [controller_agent]:
-        await a.shutdown()
-    await c.shutdown()
+        for a in cohda_agents + [controller_agent]:
+            if a._check_inbox_task.done():
+                if a._check_inbox_task.exception() is not None:
+                    raise a._check_inbox_task.exception()
+                else:
+                    assert False, f"check_inbox terminated unexpectedly."
+
+        await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=10)
 
     # TODO: in windows this ==2
     # assert len(asyncio.all_tasks()) == 1, f'Too many Tasks are running{asyncio.all_tasks()}'

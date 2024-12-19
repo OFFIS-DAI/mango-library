@@ -1,7 +1,7 @@
 import uuid
 from fractions import Fraction
 
-from mango import Role
+from mango import Role, AgentAddress
 
 from mango_library.coalition.core import CoalitionModel, CoalitionBuildConfirm
 from mango_library.negotiation.cohda.cohda_messages import (
@@ -22,11 +22,11 @@ class CohdaNegotiationInteractiveStarterRole(Role):
 
     # create an empty Working memory and send it together with the target params
     def __init__(
-        self,
-        target_params,
-        coalition_model_matcher=None,
-        coalition_uuid=None,
-        send_weight=True,
+            self,
+            target_params,
+            coalition_model_matcher=None,
+            coalition_uuid=None,
+            send_weight=True,
     ) -> None:
         """
 
@@ -122,14 +122,9 @@ class CohdaNegotiationInteractiveStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 content=neg_msg,
-                receiver_addr=neighbor[1],
-                receiver_id=neighbor[2],
-                acl_metadata={
-                    "sender_addr": self.context.addr,
-                    "sender_id": self.context.aid,
-                },
+                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
             )
 
 
@@ -140,11 +135,11 @@ class CohdaNegotiationDirectStarterRole(Role):
 
     # create an empty Working memory and send it together with the target params
     def __init__(
-        self,
-        target_params,
-        coalition_model_matcher=None,
-        coalition_uuid=None,
-        send_weight=True,
+            self,
+            target_params,
+            coalition_model_matcher=None,
+            coalition_uuid=None,
+            send_weight=True,
     ) -> None:
         """
 
@@ -190,8 +185,8 @@ class CohdaNegotiationDirectStarterRole(Role):
         # check if there is a coalition that can be used
         for assignment in coalition_model.assignments.values():
             if (
-                self._coalition_model_matcher(assignment)
-                and assignment.coalition_id in self._coalitions
+                    self._coalition_model_matcher(assignment)
+                    and assignment.coalition_id in self._coalitions
             ):
                 return True
 
@@ -207,7 +202,6 @@ class CohdaNegotiationDirectStarterRole(Role):
 
     async def start(self):
         """Start a negotiation. Send all neighbors a starting negotiation message."""
-
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
@@ -236,12 +230,8 @@ class CohdaNegotiationDirectStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_acl_message(
+            print('send out first neg msg', neighbor[1], neighbor[2])
+            self.context.schedule_instant_message(
                 content=neg_msg,
-                receiver_addr=neighbor[1],
-                receiver_id=neighbor[2],
-                acl_metadata={
-                    "sender_addr": self.context.addr,
-                    "sender_id": self.context.aid,
-                },
+                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
             )
