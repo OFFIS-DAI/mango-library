@@ -1,7 +1,7 @@
 import asyncio
 import pytest
 import numpy as np
-from mango import create_container
+from mango import create_tcp_container
 from mango import RoleAgent
 import mango.messages.codecs
 from mango_library.negotiation.cohda.cohda_negotiation import (

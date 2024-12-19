@@ -4,7 +4,7 @@ import uuid
 import random
 
 import mango.messages.codecs
-from mango import create_container
+from mango import create_tcp_container
 from mango import RoleAgent
 from mango_library.coalition.core import (
     CoalitionInvite,

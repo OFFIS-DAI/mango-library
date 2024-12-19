@@ -2,7 +2,7 @@ import asyncio
 
 import numpy as np
 import pytest
-from mango import create_container
+from mango import create_tcp_container
 from mango.messages.codecs import JSON
 
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target

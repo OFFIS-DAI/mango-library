@@ -8,7 +8,7 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
     MoCohdaNegotiation,
 )
 from util import create_agents, get_solution
-from mango import create_container
+from mango import create_tcp_container
 
 A = 10
 NUM_AGENTS = 10

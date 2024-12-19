@@ -4,7 +4,7 @@ from typing import List
 from mango_library.coalition.core import CoalitionModel, CoalitionAssignment
 import pytest
 import uuid
-from mango import create_container
+from mango import create_tcp_container
 from mango import RoleAgent
 
 from mango_library.negotiation.cohda.cohda_negotiation import (

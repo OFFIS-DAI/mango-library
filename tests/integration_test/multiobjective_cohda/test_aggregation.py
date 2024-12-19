@@ -3,7 +3,7 @@ from copy import deepcopy
 
 import numpy as np
 import pytest
-from mango import create_container
+from mango import create_tcp_container
 from mango import RoleAgent
 
 from mango_library.coalition.core import (
