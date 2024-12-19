@@ -26,9 +26,7 @@ class SolutionPoint:
         return self.performance
 
     def __hash__(self):
-        #print('cs', self.cluster_schedule)
         cs = (self.cluster_schedule[0][0])
-        #print('cs2', cs)
         idx = json.dumps(self.idx)
         return hash((cs, self.performance, idx))
 

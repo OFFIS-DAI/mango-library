@@ -130,7 +130,6 @@ async def test_coalition_to_mocohda_with_termination():
         controller_agent.add_role(coalition_initiator_role)
 
         await wait_for_assignments_sent(coalition_initiator_role)
-        print("Starts negotiations")
         await asyncio.sleep(0.5)
 
         cohda_agents[0].add_role(
@@ -187,7 +186,6 @@ async def test_coalition_to_mocohda_with_termination():
 async def wait_for_solution_confirmed(aggregation_role):
     while len(aggregation_role._confirmed_cohda_solutions) == 0:
         await asyncio.sleep(0.05)
-    print("Solution confirmed")
 
 
 async def wait_for_assignments_sent(coalition_initiator_role):

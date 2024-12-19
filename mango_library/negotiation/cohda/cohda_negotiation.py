@@ -116,7 +116,6 @@ class COHDANegotiationRole(Role):
         :param _: meta dict
         """
         # check if there is a Coalition with the coalition_ID
-        print('neg msg received! Start now')
         if not self.context.get_or_create_model(CoalitionModel).exists(
             content.coalition_id
         ):

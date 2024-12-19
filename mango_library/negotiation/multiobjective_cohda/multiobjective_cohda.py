@@ -195,9 +195,7 @@ class MoCohdaNegotiation:
                 while new_schedule == schedule_before:
                     new_schedule = random.choice(schedules)
                 new_cs = np.copy(solution_point.cluster_schedule)
-                print('old cs 1', new_cs)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('old cs 2', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
             return new_solution_points
 
@@ -222,9 +220,7 @@ class MoCohdaNegotiation:
                                              target_params=target_params)
             new_cs = np.copy(solution_point.cluster_schedule)
             for new_schedule in new_schedules:
-                print('old cs 3', new_cs)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('new cs 3', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                          idx=solution_point.idx))
         return new_solution_points
@@ -247,9 +243,7 @@ class MoCohdaNegotiation:
         for solution_point in solution_points:
             for new_schedule in possible_schedules:
                 new_cs = np.copy(solution_point.cluster_schedule)
-                print('old cs', new_cs)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('new cs', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                          idx=solution_point.idx))
         return new_solution_points

@@ -113,14 +113,11 @@ async def create_agents(
     )
 
     await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-    print("Coalition build done")
     agents[0].add_role(
         MoCohdaNegotiationDirectStarterRole(
             num_solution_points=num_candidates, target_params=None
         )
     )
-
-    print("Negotiation started")
 
     return agents, addrs, controller_agent
 

@@ -117,7 +117,6 @@ async def test_minimize_scenario():
         # sum and deviations are minimized
         chosen_schedule = chosen_schedules[0]
         idx = int(aid[-1]) - 1
-        print(f"[{aid}] chosen schedule: {chosen_schedule}. {type(chosen_schedule)} {SCHEDULES_FOR_AGENTS_SIMPEL[idx][1]}")
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
 
 
