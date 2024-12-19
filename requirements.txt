@@ -5,4 +5,3 @@ virtualenv==20.0.31
 numpy==1.23.2
 mango-agents==1.0.0
 h5py==3.7.0
-pymoo

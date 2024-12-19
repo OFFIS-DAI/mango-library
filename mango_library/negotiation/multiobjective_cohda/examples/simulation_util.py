@@ -7,8 +7,8 @@ from typing import List, Callable, Dict, Any
 
 import h5py
 import numpy as np
-from mango import RoleAgent, activate
-from mango import create_tcp_container
+from mango import RoleAgent
+from mango import create_container
 from mango.messages.codecs import JSON
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import Problem
@@ -300,7 +300,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
         topology_creator = build_small_world_ring_topology
     for simulation_idx in range(num_simulations):
         port = 5555
-        container = create_tcp_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
+        container = await create_container(addr=("127.0.0.2", port), codec=CODEC, copy_internal_messages=False)
         db_file = sim_name + '_simulation_idx_' + str(simulation_idx)
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
@@ -312,7 +312,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
         # create agents for negotiation
         for i in range(num_agents):
-            a = container.register(RoleAgent(suggested_aid=f"UnitAgent_{i}"))
+            a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(solution_point=None, agent_id=None, candidate=None):
                 diff_to_lower_limit = 0
@@ -435,44 +435,43 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
             agents.append(a)
             addrs.append((container.addr, a.aid))
-            schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
+            schedules_per_agent[a.aid] = provide_schedules(agent_id=i+1)
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        controller_agent = container.register(RoleAgent())
+        controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
-        async with activate(container) as c:
-            controller_agent.add_role(
-                CoalitionInitiatorRole(
-                    participants=addrs,
-                    details="",
-                    topic="",
-                    topology_creator=topology_creator,
+        controller_agent.add_role(
+            CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            )
+        )
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        print("Done building a coalition.")
+
+        # fill the overlay dictionary
+        for a in agents:
+            assignment = next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(CoalitionModel)
+                    ._assignments.values()
                 )
             )
-            await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-            print("Done building a coalition.")
+            overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
 
-            # fill the overlay dictionary
-            for a in agents:
-                assignment = next(
-                    iter(
-                        a.roles[0]
-                        .context.get_or_create_model(CoalitionModel)
-                        ._assignments.values()
-                    )
-                )
-                overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
-
-            # start the negotiation
-            start_time = time.time()
-            agents[0].add_role(
-                MoCohdaNegotiationDirectStarterRole(
-                    num_solution_points=num_solution_points, target_params=None
-                )
+        # start the negotiation
+        start_time = time.time()
+        agents[0].add_role(
+            MoCohdaNegotiationDirectStarterRole(
+                num_solution_points=num_solution_points, target_params=None
             )
-            await wait_for_term(controller_agent)
-            end_time = time.time()
-            print("Negotiation terminated.")
+        )
+        await wait_for_term(controller_agent)
+        end_time = time.time()
+        print("Negotiation terminated.")
 
         # get final memory of first agent
         final_memory = next(
@@ -498,6 +497,8 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             ), "Working memories of different agents are not equal."
 
         print("All working memories are equal!")
+        # shutdown container
+        await container.shutdown()
 
         # append results
         results.append(
@@ -588,7 +589,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
     for simulation_idx in range(num_simulations):
         port = 5555
-        container = create_tcp_container(addr=('127.0.0.2', port), codec=CODEC, copy_internal_messages=False)
+        container = await create_container(addr=('127.0.0.2', port), codec=CODEC, copy_internal_messages=False)
         db_file = sim_name + '_simulation_idx_' + str(simulation_idx) + '.hdf5'
         agents = []  # Instance of agents
         addrs = []  # Tuples of addr, aid
@@ -597,7 +598,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         overlay = {}  # # will be filled and returned (for storing in database)
         # create agents for negotiation
         for i in range(num_agents):
-            a = container.register(RoleAgent(suggested_aid=f"UnitAgent_{i}"))
+            a = RoleAgent(container, suggested_aid=f"UnitAgent_{i}")
 
             def provide_schedules(index):
                 # we need an inline function here, otherwise to let the lamda functions actually point to
@@ -632,43 +633,40 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
 
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        controller_agent = container.register(RoleAgent())
+        controller_agent = RoleAgent(container)
         controller_agent.add_role(NegotiationTerminationDetectorRole())
+        controller_agent.add_role(
+            CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            )
+        )
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        print("Done building a coalition.")
 
-        async with activate(container) as c:
-
-            controller_agent.add_role(
-                CoalitionInitiatorRole(
-                    participants=addrs,
-                    details="",
-                    topic="",
-                    topology_creator=topology_creator,
+        # fill the overlay dictionary
+        for a in agents:
+            assignment = next(
+                iter(
+                    a.roles[0]
+                    .context.get_or_create_model(CoalitionModel)
+                    ._assignments.values()
                 )
             )
-            await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-            print("Done building a coalition.")
+            overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
 
-            # fill the overlay dictionary
-            for a in agents:
-                assignment = next(
-                    iter(
-                        a.roles[0]
-                        .context.get_or_create_model(CoalitionModel)
-                        ._assignments.values()
-                    )
-                )
-                overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
-
-            # start the negotiation
-            start_time = time.time()
-            agents[0].add_role(
-                MoCohdaNegotiationDirectStarterRole(
-                    num_solution_points=num_solution_points, target_params=None
-                )
+        # start the negotiation
+        start_time = time.time()
+        agents[0].add_role(
+            MoCohdaNegotiationDirectStarterRole(
+                num_solution_points=num_solution_points, target_params=None
             )
-            await wait_for_term(controller_agent)
-            end_time = time.time()
-            print("Negotiation terminated.")
+        )
+        await wait_for_term(controller_agent)
+        end_time = time.time()
+        print("Negotiation terminated.")
 
         # get final memory of first agent
         final_memory = next(
@@ -694,6 +692,8 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
             ), "Working memories of different agents are not equal."
 
         print("All working memories are equal!")
+        # shutdown container
+        await container.shutdown()
 
         # append results
         results.append(

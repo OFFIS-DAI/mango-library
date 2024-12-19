@@ -72,7 +72,7 @@ async def create_agents(
             this_container = container[i % len(container)]
         else:
             this_container = container
-        a = this_container.register(RoleAgent())
+        a = RoleAgent(this_container)
 
         def provide_schedules(index):
             if not schedules_all_equal:
@@ -104,9 +104,9 @@ async def create_agents(
         addrs.append((this_container.addr, a.aid))
 
     if isinstance(container, list):
-        controller_agent = container[-1].register(RoleAgent())
+        controller_agent = RoleAgent(container[-1])
     else:
-        controller_agent = container.register(RoleAgent())
+        controller_agent = RoleAgent(container)
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     controller_agent.add_role(
         CoalitionInitiatorRole(participants=addrs, details="", topic="")

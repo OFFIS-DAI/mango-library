@@ -2,7 +2,7 @@ import logging
 import uuid
 from fractions import Fraction
 
-from mango import Role, AgentAddress
+from mango import Role
 
 from mango_library.coalition.core import CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
@@ -24,12 +24,12 @@ class MoCohdaNegotiationInteractiveStarterRole(Role):
     """
 
     def __init__(
-            self,
-            target_params,
-            num_solution_points,
-            coalition_model_matcher=None,
-            coalition_uuid=None,
-            send_weight=True,
+        self,
+        target_params,
+        num_solution_points,
+        coalition_model_matcher=None,
+        coalition_uuid=None,
+        send_weight=True,
     ) -> None:
         """
 
@@ -130,9 +130,14 @@ class MoCohdaNegotiationInteractiveStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_message(
+            self.context.schedule_instant_acl_message(
                 content=neg_msg,
-                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
+                receiver_addr=neighbor[1],
+                receiver_id=neighbor[2],
+                acl_metadata={
+                    "sender_addr": self.context.addr,
+                    "sender_id": self.context.aid,
+                },
             )
 
 
@@ -142,12 +147,12 @@ class MoCohdaNegotiationDirectStarterRole(Role):
     """
 
     def __init__(
-            self,
-            target_params,
-            num_solution_points,
-            coalition_model_matcher=None,
-            coalition_uuid=None,
-            send_weight=True,
+        self,
+        target_params,
+        num_solution_points,
+        coalition_model_matcher=None,
+        coalition_uuid=None,
+        send_weight=True,
     ) -> None:
         """
 
@@ -232,7 +237,12 @@ class MoCohdaNegotiationDirectStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_message(
+            self.context.schedule_instant_acl_message(
                 content=neg_msg,
-                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
+                receiver_addr=neighbor[1],
+                receiver_id=neighbor[2],
+                acl_metadata={
+                    "sender_addr": self.context.addr,
+                    "sender_id": self.context.aid,
+                },
             )

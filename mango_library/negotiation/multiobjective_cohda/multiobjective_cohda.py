@@ -11,7 +11,7 @@ from uuid import UUID
 import h5py
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-from mango import Role, sender_addr, AgentAddress
+from mango import Role
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
@@ -195,9 +195,7 @@ class MoCohdaNegotiation:
                 while new_schedule == schedule_before:
                     new_schedule = random.choice(schedules)
                 new_cs = np.copy(solution_point.cluster_schedule)
-                print('old cs 1', new_cs)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('old cs 2', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs, idx=solution_point.idx))
             return new_solution_points
 
@@ -220,11 +218,9 @@ class MoCohdaNegotiation:
                                              system_config=None,
                                              candidate=None,
                                              target_params=target_params)
-            new_cs = np.copy(solution_point.cluster_schedule)
             for new_schedule in new_schedules:
-                print('old cs 3', new_cs)
+                new_cs = np.copy(solution_point.cluster_schedule)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('new cs 3', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                          idx=solution_point.idx))
         return new_solution_points
@@ -247,9 +243,7 @@ class MoCohdaNegotiation:
         for solution_point in solution_points:
             for new_schedule in possible_schedules:
                 new_cs = np.copy(solution_point.cluster_schedule)
-                print('old cs', new_cs)
                 new_cs[solution_point.idx[agent_id]] = new_schedule
-                print('new cs', new_cs)
                 new_solution_points.append(SolutionPoint(cluster_schedule=new_cs,
                                                          idx=solution_point.idx))
         return new_solution_points
@@ -647,7 +641,7 @@ class MultiObjectiveCOHDARole(Role):
 
     async def on_stop(self) -> None:
         """
-        Will be called once the agent is stopped
+        Will be called once the agent is shutdown
         """
         # cancel all cohda tasks
         for task in self._cohda_tasks.values():
@@ -717,14 +711,14 @@ class MultiObjectiveCOHDARole(Role):
                         self.store_update_in_db(wm_to_send)
 
                     for neighbor in coalition_assignment.neighbors:
-                        self.context.schedule_instant_task(self.context.send_message(
+                        self.context.schedule_instant_task(self.context.send_acl_message(
                             content=MoCohdaNegotiationMessage(
                                 negotiation_id=negotiation_id,
                                 coalition_id=coalition_assignment.coalition_id,
                                 working_memory=wm_to_send,
                             ),
-                            receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
-                            ))
+                            receiver_addr=neighbor[1], receiver_id=neighbor[2],
+                            acl_metadata={'sender_addr': self.context.addr, 'sender_id': self.context.aid}))
 
             else:
                 # set the negotiation as inactive as no message has arrived
@@ -823,11 +817,13 @@ class MultiObjectiveCOHDARole(Role):
         final_solution = mocohda_negotiation._memory.solution_candidate
         # send CohdaProposedSolutionMessage
         self.context.schedule_instant_task(
-            self.context.send_message(content=MoCohdaProposedSolutionMessage(
+            self.context.send_acl_message(content=MoCohdaProposedSolutionMessage(
                 solution_candidate=final_solution, negotiation_id=content.negotiation_id
             ),
-                receiver_addr=sender_addr(meta),
-            ))
+                receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                acl_metadata={'sender_id': self.context.aid}
+            ),
+        )
 
     def handle_cohda_solution_msg(self, content: MoCohdaFinalSolutionMessage, meta):
         """
@@ -849,10 +845,10 @@ class MultiObjectiveCOHDARole(Role):
         self.context.update(model)
         # reply with a confirmation
         self.context.schedule_instant_task(
-            self.context.send_message(
+            self.context.send_acl_message(
                 content=ConfirmMoCohdaSolutionMessage(negotiation_id=neg_id, solution_point=final_candidate),
-                receiver_addr=sender_addr(meta),
-            )
+                receiver_addr=meta['sender_addr'], receiver_id=meta['sender_id'],
+                acl_metadata={'sender_id': self.context.aid})
         )
 
 

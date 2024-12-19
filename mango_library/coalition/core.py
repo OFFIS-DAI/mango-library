@@ -11,7 +11,7 @@ There are mainly two roles involved in this:
 The messages defined in this module:
 * :class:`CoalitionAssignment`: sent by the initiator when the accepted coalition really got created
 * :class:`CoalitionInvite`: sent by the initiator to start the coalition creation
-* :class:`CoalitionResponse`: sent by any participant as answer to an CoalitionInvite
+* :class:`CoaltitionResponse`: sent by any participant as answer to an CoalitionInvite
 
 The role models defined in this module:
 * :class:`CoalitionModel`: contains all information for all coalitions an agent participates in
@@ -23,8 +23,8 @@ import uuid
 from typing import Dict, Any, List, Tuple, Union
 from uuid import UUID
 
-from mango import Role, RoleContext, sender_addr, AgentAddress
 from mango.messages.codecs import json_serializable
+from mango import Role, RoleContext
 from mango.util.scheduling import InstantScheduledTask
 
 logger = logging.getLogger(__name__)
@@ -43,17 +43,19 @@ class CoalitionAssignment:
     """
 
     def __init__(
-            self,
-            coalition_id: UUID,
-            neighbors: List[ParticipantKey],
-            topic: str,
-            part_id: str,
-            controller_agent_addr: AgentAddress,
+        self,
+        coalition_id: UUID,
+        neighbors: List[ParticipantKey],
+        topic: str,
+        part_id: str,
+        controller_agent_id: str,
+        controller_agent_addr,
     ):
         self._coalition_id = coalition_id
         self._neighbors = neighbors
         self._topic = topic
         self._part_id = part_id
+        self._controller_agent_id = controller_agent_id
         self._controller_agent_addr = controller_agent_addr
 
     @property
@@ -90,7 +92,15 @@ class CoalitionAssignment:
         return self._part_id
 
     @property
-    def controller_agent_addr(self) -> AgentAddress:
+    def controller_agent_id(self):
+        """Id of the controller agent
+
+        :return: agent_id
+        """
+        return self._controller_agent_id
+
+    @property
+    def controller_agent_addr(self) -> ContainerAddress:
         """Adress of the controller agent
 
         :return: adress as tuple
@@ -117,7 +127,6 @@ class CoalitionModel:
 
         :param coalition_id: uuid of the coalition you want to add
             assignment (CoalitionAssignment): new assignment
-        :param assignment: new coalition assignment
         """
         self._assignments[coalition_id] = assignment
 
@@ -175,7 +184,7 @@ class CoalitionInvite:
 
 
 @json_serializable
-class CoalitionResponse:
+class CoaltitionResponse:
     """Message for responding to a coalition invite."""
 
     def __init__(self, accept: bool):
@@ -211,7 +220,7 @@ class CoalitionBuildConfirm:
 
 
 def clique_creator(
-        participants: List[ParticipantKey],
+    participants: List[ParticipantKey],
 ) -> Dict[ParticipantKey, List[ParticipantKey]]:
     """
     Create a clique topology
@@ -229,7 +238,7 @@ def clique_creator(
 
 
 def small_world_creator(
-        participants: List[ParticipantKey], k=2, w=0.0
+    participants: List[ParticipantKey], k=2, w=0.0
 ) -> Dict[ParticipantKey, List[ParticipantKey]]:
     """
     Builds a small world ring topology with neighbors in a distance of k and with random neighbors with the
@@ -249,19 +258,19 @@ def small_world_creator(
         for distance in range(1, k + 1):
             left_neighbor = participants[
                 (index - distance) % n_particpants
-                ]  # left neighbor
+            ]  # left neighbor
             right_neighbor = participants[
                 (index + distance) % n_particpants
-                ]  # right neighbor
+            ]  # right neighbor
 
             if (
-                    participant != left_neighbor
-                    and left_neighbor not in neighborhood[participant]
+                participant != left_neighbor
+                and left_neighbor not in neighborhood[participant]
             ):
                 neighborhood[participant].append(left_neighbor)
             if (
-                    participant != right_neighbor
-                    and right_neighbor not in neighborhood[participant]
+                participant != right_neighbor
+                and right_neighbor not in neighborhood[participant]
             ):
                 neighborhood[participant].append(right_neighbor)
 
@@ -270,8 +279,8 @@ def small_world_creator(
         if random.random() < w:
             random_agent = random.choice(participants)
             if (
-                    random_agent != participant
-                    and random_agent not in neighborhood[participant]
+                random_agent != participant
+                and random_agent not in neighborhood[participant]
             ):
                 neighborhood[participant].append(random_agent)
                 neighborhood[random_agent].append(participant)
@@ -285,12 +294,12 @@ class CoalitionInitiatorRole(Role):
     """
 
     def __init__(
-            self,
-            participants: List[Tuple[ContainerAddress, str]],
-            topic: str,
-            details: str,
-            topology_creator=small_world_creator,
-            topology_creator_kwargs: dict = None,
+        self,
+        participants: List[Tuple[ContainerAddress, str]],
+        topic: str,
+        details: str,
+        topology_creator=small_world_creator,
+        topology_creator_kwargs: dict = None,
     ):
         super().__init__()
         self._participants = participants
@@ -311,7 +320,7 @@ class CoalitionInitiatorRole(Role):
         self.context.subscribe_message(
             self,
             self.handle_coalition_response_msg,
-            lambda c, m: isinstance(c, CoalitionResponse),
+            lambda c, m: isinstance(c, CoaltitionResponse),
         )
 
         # coalition assignment confirms
@@ -334,17 +343,24 @@ class CoalitionInitiatorRole(Role):
         self._coal_id = uuid.uuid1()
 
         for participant in self._participants:
-            await agent_context.send_message(
+            await agent_context.send_acl_message(
                 content=CoalitionInvite(self._coal_id, self._topic),
-                receiver_addr=AgentAddress(protocol_addr=participant[0], aid=participant[1]))
+                receiver_addr=participant[0],
+                receiver_id=participant[1],
+                acl_metadata={
+                    "sender_addr": agent_context.addr,
+                    "sender_id": agent_context.aid,
+                },
+            )
 
     def handle_coalition_response_msg(
-            self, content: CoalitionResponse, meta: Dict[str, Any]
+        self, content: CoaltitionResponse, meta: Dict[str, Any]
     ) -> None:
         """Handle the responses to the invites.
         :param content: the invite response
         :param meta: meta data
         """
+
         sender_addr = meta["sender_addr"]
         sender_id = meta["sender_id"]
         if isinstance(sender_addr, list):
@@ -355,8 +371,8 @@ class CoalitionInitiatorRole(Role):
         self._part_to_state[(sender_addr, sender_id)] = content.accept
 
         if (
-                len(self._part_to_state) == len(self._participants)
-                and not self._assignments_sent
+            len(self._part_to_state) == len(self._participants)
+            and not self._assignments_sent
         ):
             self.context.schedule_instant_task(self._send_assignments(self.context))
             self._assignments_sent = True
@@ -374,16 +390,23 @@ class CoalitionInitiatorRole(Role):
         part_to_neighbors = self._topology_creator(
             accepted_participants, **self._topology_creator_kwargs
         )
-        controller_addr = agent_context.addr
         for part in accepted_participants:
-            agent_context.schedule_instant_message(
+            agent_context.schedule_instant_acl_message(
                 content=CoalitionAssignment(
-                    coalition_id=self._coal_id,
-                    neighbors=part_to_neighbors[part],
-                    topic=self._topic,
-                    part_id=part[0],
-                    controller_agent_addr=controller_addr,
-                ), receiver_addr=AgentAddress(part[1], part[2]))
+                    self._coal_id,
+                    part_to_neighbors[part],
+                    self._topic,
+                    part[0],
+                    agent_context.aid,
+                    agent_context.addr,
+                ),
+                receiver_addr=part[1],
+                receiver_id=part[2],
+                acl_metadata={
+                    "sender_addr": agent_context.addr,
+                    "sender_id": agent_context.aid,
+                },
+            )
             self._assignments_confirmed[(part[1], part[2])] = asyncio.Future()
 
         self.context.schedule_conditional_task(
@@ -393,16 +416,21 @@ class CoalitionInitiatorRole(Role):
 
     async def _send_coalition_build_confirms(self, agent_context, accepted_participants):
         for part in accepted_participants:
-            agent_context.schedule_instant_message(
+            agent_context.schedule_instant_acl_message(
                 content=CoalitionBuildConfirm(coalition_id=self._coal_id),
-                receiver_addr=AgentAddress(part[1], part[2])
+                receiver_addr=part[1],
+                receiver_id=part[2],
+                acl_metadata={
+                    "sender_addr": agent_context.addr,
+                    "sender_id": agent_context.aid,
+                },
             )
 
     def _all_assignment_confirms_received(self):
         return all([fut.done() for fut in self._assignments_confirmed.values()])
 
     def handle_assignment_confirms(
-            self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]
+        self, content: CoalitionAssignmentConfirm, meta: Dict[str, Any]
     ) -> None:
         """Handle the responses to the invites.
         :param content: the invite response
@@ -455,13 +483,18 @@ class CoalitionParticipantRole(Role):
         :param content: the invite
         :param meta: meta data
         """
-        self.context.schedule_instant_message(
-            content=CoalitionResponse(self._join_decider(content)),
-            receiver_addr=sender_addr(meta)
+        self.context.schedule_instant_acl_message(
+            content=CoaltitionResponse(self._join_decider(content)),
+            receiver_addr=meta["sender_addr"],
+            receiver_id=meta["sender_id"],
+            acl_metadata={
+                "sender_addr": self.context.addr,
+                "sender_id": self.context.aid,
+            },
         )
 
     def handle_assignment(
-            self, content: CoalitionAssignment, meta: Dict[str, Any]
+        self, content: CoalitionAssignment, meta: Dict[str, Any]
     ) -> None:
         """Handle an incoming assignment to a coalition. Store the information in a CoalitionModel.
 
@@ -472,7 +505,12 @@ class CoalitionParticipantRole(Role):
         assignment.add(content.coalition_id, content)
         self.context.update(assignment)
 
-        self.context.schedule_instant_message(
+        self.context.schedule_instant_acl_message(
             content=CoalitionAssignmentConfirm(coalition_id=content.coalition_id),
-            receiver_addr=sender_addr(meta)
+            receiver_addr=meta["sender_addr"],
+            receiver_id=meta["sender_id"],
+            acl_metadata={
+                "sender_addr": self.context.addr,
+                "sender_id": self.context.aid,
+            },
         )
