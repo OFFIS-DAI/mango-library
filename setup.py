@@ -17,11 +17,11 @@ DESCRIPTION = "Library for the Modular Python Agent Framework MANGO"
 URL = "https://github.com/OFFIS-DAI/mango-library"
 EMAIL = "mango@offis.de"
 AUTHOR = "Mango Team"
-REQUIRES_PYTHON = ">=3.7.0"
+REQUIRES_PYTHON = ">=3.10"
 VERSION = "1.1.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["numpy", "mango-agents==1.0.0"]
+REQUIRED = ["numpy", "mango-agents==2.1.3"]
 
 # What packages are optional?
 EXTRAS = {

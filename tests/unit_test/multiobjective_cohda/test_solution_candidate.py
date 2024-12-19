@@ -45,7 +45,6 @@ def perf_fkt(cluster_schedules: List[np.array], target_params=None) -> List[Tupl
 def perf_fkt_min(solution_points: List[SolutionPoint], target_params=None) -> List[Tuple[float, ...]]:
     perf_list = []
     for solution_point in solution_points:
-        print('cluster_schedule', solution_point.cluster_schedule)
         minimas = np.min(solution_point.cluster_schedule, axis=0)
         current_perf = []
         for minimum in minimas:
@@ -92,8 +91,6 @@ def test_merge_dummy():
                                                              '3': schedule_3_3}, num_solution_points=2)
     candidate_3.perf = perf_fkt(candidate_3.cluster_schedules)
     candidate_3.hypervolume = cohda.get_hypervolume(candidate_3.perf)
-
-    print(candidate_1.perf)
     merge_result = cohda._merge_candidates(
         candidate_i=candidate_1, candidate_j=candidate_2, agent_id='1',
         perf_func=perf_fkt, get_hypervolume=cohda.get_hypervolume)
