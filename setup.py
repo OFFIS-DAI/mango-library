@@ -17,7 +17,7 @@ DESCRIPTION = "Library for the Modular Python Agent Framework MANGO"
 URL = "https://github.com/OFFIS-DAI/mango-library"
 EMAIL = "mango@offis.de"
 AUTHOR = "Mango Team"
-REQUIRES_PYTHON = ">=3.10"
+REQUIRES_PYTHON = ">=3.7.0"
 VERSION = "1.1.0"
 
 # What packages are required for this module to be executed?
