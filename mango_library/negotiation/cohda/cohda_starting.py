@@ -230,6 +230,7 @@ class CohdaNegotiationDirectStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
+            print('send out first neg msg', neighbor[1], neighbor[2])
             self.context.schedule_instant_message(
                 content=neg_msg,
                 receiver_addr=AgentAddress(neighbor[1], neighbor[2]),

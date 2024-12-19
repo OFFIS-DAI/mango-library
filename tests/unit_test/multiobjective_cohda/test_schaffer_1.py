@@ -72,3 +72,4 @@ async def wait_for_term(controller_agent):
             or list(controller_agent.roles[0]._weight_map.values())[0] != 1
     ):
         await asyncio.sleep(0.1)
+    print("Terminated!")

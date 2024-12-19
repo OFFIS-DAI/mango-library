@@ -76,9 +76,10 @@ def store_in_db(
 
     # open the file
     with h5py.File(db_file, "w") as f:
-        if os.path.isfile("agent0.h5"):
+
+        if os.path.isfile("UnitAgent_0.h5"):
             # open updates from agents, if those are stored
-            agent_updates = [f"agent{i}.h5" for i in range(n_agents)]
+            agent_updates = [f"UnitAgent_{i}.h5" for i in range(n_agents)]
 
             for agent_name in agent_updates:
                 file = h5py.File(agent_name, "a")
@@ -311,7 +312,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
 
         # create agents for negotiation
         for i in range(num_agents):
-            a = container.register(RoleAgent())
+            a = container.register(RoleAgent(suggested_aid=f"UnitAgent_{i}"))
 
             def provide_schedules(solution_point=None, agent_id=None, candidate=None):
                 diff_to_lower_limit = 0
@@ -596,7 +597,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
         overlay = {}  # # will be filled and returned (for storing in database)
         # create agents for negotiation
         for i in range(num_agents):
-            a = container.register(RoleAgent())
+            a = container.register(RoleAgent(suggested_aid=f"UnitAgent_{i}"))
 
             def provide_schedules(index):
                 # we need an inline function here, otherwise to let the lamda functions actually point to
@@ -669,49 +670,49 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
             end_time = time.time()
             print("Negotiation terminated.")
 
-            # get final memory of first agent
-            final_memory = next(
+        # get final memory of first agent
+        final_memory = next(
+            iter(
+                agents[0]
+                .roles[0]
+                .context.get_or_create_model(MoCohdaNegotiationModel)
+                ._negotiations.values()
+            )
+        )._memory
+
+        # make sure all working memories are equal
+        for a in agents:
+            assert (
+                    final_memory
+                    == next(
                 iter(
-                    agents[0]
-                    .roles[0]
+                    a.roles[0]
                     .context.get_or_create_model(MoCohdaNegotiationModel)
                     ._negotiations.values()
                 )
             )._memory
+            ), "Working memories of different agents are not equal."
 
-            # make sure all working memories are equal
-            for a in agents:
-                assert (
-                        final_memory
-                        == next(
-                    iter(
-                        a.roles[0]
-                        .context.get_or_create_model(MoCohdaNegotiationModel)
-                        ._negotiations.values()
-                    )
-                )._memory
-                ), "Working memories of different agents are not equal."
+        print("All working memories are equal!")
 
-            print("All working memories are equal!")
+        # append results
+        results.append(
+            {
+                "final_memory": final_memory,
+                "duration": end_time - start_time,
+                "schedules": schedules_per_agent,
+                "overlay": overlay,
+            }
+        )
 
-            # append results
-            results.append(
-                {
-                    "final_memory": final_memory,
-                    "duration": end_time - start_time,
-                    "schedules": schedules_per_agent,
-                    "overlay": overlay,
-                }
-            )
-
-            # store to db
-            store_in_db(
-                db_file=db_file, sim_name=sim_name, n_agents=num_agents, targets=targets,
-                n_solution_points=num_solution_points, n_iterations=num_iterations,
-                check_inbox_interval=check_inbox_interval,
-                mutate_func=mutate_func, pick_func=pick_func, results=results
-            )
-            results = []
+        # store to db
+        store_in_db(
+            db_file=db_file, sim_name=sim_name, n_agents=num_agents, targets=targets,
+            n_solution_points=num_solution_points, n_iterations=num_iterations,
+            check_inbox_interval=check_inbox_interval,
+            mutate_func=mutate_func, pick_func=pick_func, results=results
+        )
+        results = []
 
 
 async def wait_for_term(controller_agent):

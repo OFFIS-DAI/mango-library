@@ -236,7 +236,9 @@ class NegotiationTerminationDetectorRole(Role):
 
     async def _send_stop_and_inform(self, negotiation_id):
         # send stopNegotiationMessage first
+        print('on termination!!')
         for agent_addr, agent_id in self._participant_map[negotiation_id]:
+            print('send to', agent_addr)
             await self.context.send_message(
                 content=StopNegotiationMessage(negotiation_id=negotiation_id),
                 receiver_addr=AgentAddress(agent_addr, agent_id),
@@ -244,6 +246,7 @@ class NegotiationTerminationDetectorRole(Role):
 
         # now send message to aggregator
         if self._aggregator_addr is not None:
+            print('inform aggre', self._aggregator_addr)
             await self.context.send_message(
                 content=InformAboutTerminationMessage(
                     negotiation_id=negotiation_id,
@@ -260,6 +263,7 @@ class NegotiationTerminationDetectorRole(Role):
         :param content: the message
         :param meta: meta data
         """
+        print('handle term msg')
         neg_id = content.negotiation_id
         if "sender_addr" in meta and "sender_id" in meta:
             sender_addr = meta["sender_addr"]
@@ -274,5 +278,6 @@ class NegotiationTerminationDetectorRole(Role):
             self._weight_map[neg_id] = content.weight
         else:
             self._weight_map[neg_id] += content.weight
+        print('weight map', round(self._weight_map[neg_id]))
         if self._weight_map[neg_id] == 1:
             self.context.schedule_instant_task(self._on_termination(neg_id))

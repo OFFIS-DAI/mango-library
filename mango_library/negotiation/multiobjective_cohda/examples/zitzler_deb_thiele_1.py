@@ -67,7 +67,7 @@ async def simulate_zitzler_1(name):
         possible_schedules=POSSIBLE_SCHEDULES, schedules_all_equal=False,
         targets=TARGETS, num_solution_points=NUM_SOLUTION_POINTS, num_iterations=NUM_ITERATIONS,
         check_inbox_interval=CHECK_INBOX_INTERVAL, pick_func=PICK_FKT, mutate_func=MUTATE_FKT,
-        sim_name=name, store_updates_to_db=True
+        sim_name=name
     )
 
 
