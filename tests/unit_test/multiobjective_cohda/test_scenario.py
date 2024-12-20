@@ -2,7 +2,7 @@ import asyncio
 
 import numpy as np
 import pytest
-from mango import create_tcp_container, activate, RoleAgent
+from mango import create_tcp_container, activate, RoleAgent, AgentAddress
 from mango.messages.codecs import JSON
 
 from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
@@ -90,7 +90,7 @@ async def test_minimize_scenario():
             )
         )
         agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
 
     controller_agent = c.register(RoleAgent())
     controller_agent.add_role(NegotiationTerminationDetectorRole())

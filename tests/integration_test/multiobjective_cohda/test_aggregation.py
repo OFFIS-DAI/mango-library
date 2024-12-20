@@ -120,7 +120,7 @@ async def test_coalition_to_mocohda_with_termination():
                 negotiation_message_class=MoCohdaNegotiationMessage,
             )
         )
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
 
     async with activate(c):

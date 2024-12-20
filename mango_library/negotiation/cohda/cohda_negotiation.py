@@ -30,11 +30,11 @@ class COHDANegotiationRole(Role):
     """Negotiation role for COHDA."""
 
     def __init__(
-        self,
-        schedules_provider: Callable,
-        local_acceptable_func: Callable = None,
-        perf_func: Callable = None,
-        check_inbox_interval: float = 0.1,
+            self,
+            schedules_provider: Callable,
+            local_acceptable_func: Callable = None,
+            perf_func: Callable = None,
+            check_inbox_interval: float = 0.1,
     ):
         """
         Init of COHDANegotiationRole
@@ -117,7 +117,7 @@ class COHDANegotiationRole(Role):
         """
         # check if there is a Coalition with the coalition_ID
         if not self.context.get_or_create_model(CoalitionModel).exists(
-            content.coalition_id
+                content.coalition_id
         ):
             logger.warning(
                 f"Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}"
@@ -172,10 +172,10 @@ class COHDANegotiationRole(Role):
                 )
 
     def get_process_msg_queue_coro(
-        self,
-        cohda_negotiation,
-        coalition_assignment: CoalitionAssignment,
-        negotiation_id: UUID,
+            self,
+            cohda_negotiation,
+            coalition_assignment: CoalitionAssignment,
+            negotiation_id: UUID,
     ):
         """
         Method that returns a coroutine that process a message queue of a specific COHDA negotiation.
@@ -187,8 +187,8 @@ class COHDANegotiationRole(Role):
 
         async def process_msg():
             if (
-                len(self._cohda_msg_queues[negotiation_id]) > 0
-                and not cohda_negotiation.stopped
+                    len(self._cohda_msg_queues[negotiation_id]) > 0
+                    and not cohda_negotiation.stopped
             ):
                 # get queue
                 cohda_message_queue, self._cohda_msg_queues[negotiation_id] = (
@@ -207,9 +207,8 @@ class COHDANegotiationRole(Role):
                                 coalition_id=coalition_assignment.coalition_id,
                                 working_memory=wm_to_send,
                             ),
-                            receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
+                            receiver_addr=neighbor,
                         )
-
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
@@ -312,11 +311,11 @@ class COHDANegotiation:
     """COHDA-decider"""
 
     def __init__(
-        self,
-        schedule_provider: Callable,
-        is_local_acceptable: Callable,
-        part_id: str,
-        perf_func=None,
+            self,
+            schedule_provider: Callable,
+            is_local_acceptable: Callable,
+            part_id: str,
+            perf_func=None,
     ):
         """
         Init of the CohdaNegotiation
@@ -331,7 +330,7 @@ class COHDANegotiation:
         self._part_id = part_id
 
         def complete_schedule_provider(
-            system_config: SystemConfig, candidate: SolutionCandidate
+                system_config: SystemConfig, candidate: SolutionCandidate
         ):
             schedule_provider_args = inspect.signature(
                 schedule_provider
@@ -365,7 +364,7 @@ class COHDANegotiation:
 
     @staticmethod
     def deviation_to_target_schedule(
-        cluster_schedule: np.array, target_parameters
+            cluster_schedule: np.array, target_parameters
     ) -> float:
         """Default Performance function for a cohda negotiation
         :param cluster_schedule: The cluster schedule to be evaluated
@@ -417,7 +416,7 @@ class COHDANegotiation:
         self._stopped = is_stopped
 
     def handle_cohda_msgs(
-        self, messages: List[WorkingMemory]
+            self, messages: List[WorkingMemory]
     ) -> Optional[WorkingMemory]:
         """
         This is called by the COHDARole.
@@ -444,7 +443,7 @@ class COHDANegotiation:
             return None
 
     def _perceive(
-        self, working_memories: List[WorkingMemory]
+            self, working_memories: List[WorkingMemory]
     ) -> Tuple[SystemConfig, SolutionCandidate]:
         """
         Updates the current knowledge
@@ -514,7 +513,7 @@ class COHDANegotiation:
         return current_sysconfig, current_candidate
 
     def _decide(
-        self, sysconfig: SystemConfig, candidate: SolutionCandidate
+            self, sysconfig: SystemConfig, candidate: SolutionCandidate
     ) -> Tuple[SystemConfig, SolutionCandidate]:
         """
         Check whether a better SolutionCandidate can be created based on the current state of the negotiation
@@ -551,7 +550,7 @@ class COHDANegotiation:
         )
 
         if schedule_choice_in_sysconfig is None or not np.array_equal(
-            schedule_in_candidate, schedule_choice_in_sysconfig.schedule
+                schedule_in_candidate, schedule_choice_in_sysconfig.schedule
         ):
             # update Sysconfig if your schedule in the current sysconf is different to the one in the candidate
             sysconfig.schedule_choices[self._part_id] = ScheduleSelection(
@@ -563,7 +562,7 @@ class COHDANegotiation:
         return sysconfig, current_best_candidate
 
     def _act(
-        self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate
+            self, new_sysconfig: SystemConfig, new_candidate: SolutionCandidate
     ) -> WorkingMemory:
         """
         Stores the new SystemConfig and SolutionCandidate in Memory and returns the new working Memory
@@ -601,8 +600,8 @@ class COHDANegotiation:
         for i, a in enumerate(sorted(key_set_i | key_set_j)):
             # An "a" might be in key_set_i, key_set_j or in both!
             if a in key_set_i and (
-                a not in key_set_j
-                or sysconfig_i_schedules[a].counter >= sysconfig_j_schedules[a].counter
+                    a not in key_set_j
+                    or sysconfig_i_schedules[a].counter >= sysconfig_j_schedules[a].counter
             ):
                 # Use data of sysconfig_i
                 schedule_selection = sysconfig_i_schedules[a]
@@ -622,11 +621,11 @@ class COHDANegotiation:
 
     @staticmethod
     def _merge_candidates(
-        candidate_i: SolutionCandidate,
-        candidate_j: SolutionCandidate,
-        agent_id: str,
-        perf_func: Callable,
-        target_params,
+            candidate_i: SolutionCandidate,
+            candidate_j: SolutionCandidate,
+            agent_id: str,
+            perf_func: Callable,
+            target_params,
     ):
         """
         Returns a merged Candidate. If the candidate_i remains unchanged, the same instance of candidate_i is

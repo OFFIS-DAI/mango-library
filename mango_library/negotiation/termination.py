@@ -123,20 +123,16 @@ class NegotiationTerminationParticipantRole(Role):
     def on_send(
             self,
             content,
-            receiver_addr: Union[str, Tuple[str, int]],
-            *,
-            receiver_id: Optional[str] = None,
+            receiver_addr:AgentAddress,
             **kwargs
     ):
         """Add the weight to every coalition related message
 
         :param content: content of the message
-        :param receiver_addr: address
-        :param receiver_id: id of the receiver. Defaults to None.
+        :param receiver_addr: address of the receiver
         :param kwargs: additional parameters
         """
         if isinstance(content, self._negotiation_message_class):
-
             if content.negotiation_id not in self._weight_map:
                 self._weight_map[content.negotiation_id] = Fraction(0, 1)
             if not hasattr(content, "message_weight") or content.message_weight is None:

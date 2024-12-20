@@ -232,5 +232,5 @@ class CohdaNegotiationDirectStarterRole(Role):
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
             self.context.schedule_instant_message(
                 content=neg_msg,
-                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
+                receiver_addr=neighbor,
             )

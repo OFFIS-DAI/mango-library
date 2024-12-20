@@ -11,7 +11,7 @@ from uuid import UUID
 import h5py
 import numpy as np
 from evoalgos.selection import HyperVolumeContributionSelection
-from mango import Role, sender_addr, AgentAddress
+from mango import Role, sender_addr
 
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
@@ -717,8 +717,8 @@ class MultiObjectiveCOHDARole(Role):
                                 coalition_id=coalition_assignment.coalition_id,
                                 working_memory=wm_to_send,
                             ),
-                            receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
-                            ))
+                            receiver_addr=neighbor,
+                        ))
 
             else:
                 # set the negotiation as inactive as no message has arrived

@@ -7,7 +7,7 @@ from typing import List, Callable, Dict, Any
 
 import h5py
 import numpy as np
-from mango import RoleAgent, activate
+from mango import RoleAgent, activate, AgentAddress, agent_composed_of
 from mango import create_tcp_container
 from mango.messages.codecs import JSON
 from pymoo.algorithms.moo.nsga2 import NSGA2
@@ -433,21 +433,21 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
             )
 
             agents.append(a)
-            addrs.append((container.addr, a.aid))
+            addrs.append(AgentAddress(container.addr, a.aid))
             schedules_per_agent[a.aid] = provide_schedules(agent_id=i + 1)
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        controller_agent = container.register(RoleAgent())
-        controller_agent.add_role(NegotiationTerminationDetectorRole())
-        async with activate(container) as c:
-            controller_agent.add_role(
-                CoalitionInitiatorRole(
-                    participants=addrs,
-                    details="",
-                    topic="",
-                    topology_creator=topology_creator,
-                )
-            )
+        controller_agent = agent_composed_of(
+            NegotiationTerminationDetectorRole(), CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            ),
+            register_in=container
+        )
+
+        async with activate(container):
             await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
             print("Done building a coalition.")
 
@@ -460,7 +460,7 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                         ._assignments.values()
                     )
                 )
-                overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
+                overlay[assignment.part_id] = [n.aid for n in assignment.neighbors]
 
             # start the negotiation
             start_time = time.time()
@@ -482,7 +482,6 @@ async def simulate_mo_cohda_NSGA2(*, possible_interval: float, num_agents: int, 
                 ._negotiations.values()
             )
         )._memory
-
         # make sure all working memories are equal
         for a in agents:
             assert (
@@ -627,26 +626,21 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                 )
             )
             agents.append(a)
-            addrs.append((container.addr, a.aid))
+            addrs.append(AgentAddress(container.addr, a.aid))
 
         # Controller agent will be a different agent, that is not part of the negotiation
         # Its tasks are creating a coalition and detecting the termination
-        controller_agent = container.register(RoleAgent())
-        controller_agent.add_role(NegotiationTerminationDetectorRole())
-
-        async with activate(container) as c:
-
-            controller_agent.add_role(
-                CoalitionInitiatorRole(
-                    participants=addrs,
-                    details="",
-                    topic="",
-                    topology_creator=topology_creator,
-                )
-            )
+        controller_agent = agent_composed_of(
+            NegotiationTerminationDetectorRole(), CoalitionInitiatorRole(
+                participants=addrs,
+                details="",
+                topic="",
+                topology_creator=topology_creator,
+            ),
+            register_in=container
+        )
+        async with activate(container):
             await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-            print("Done building a coalition.")
-
             # fill the overlay dictionary
             for a in agents:
                 assignment = next(
@@ -656,7 +650,7 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                         ._assignments.values()
                     )
                 )
-                overlay[assignment.part_id] = [n[0] for n in assignment.neighbors]
+                overlay[assignment.part_id] = [n.aid for n in assignment.neighbors]
 
             # start the negotiation
             start_time = time.time()
@@ -665,7 +659,9 @@ async def simulate_mo_cohda(*, num_agents: int, possible_schedules: List, schedu
                     num_solution_points=num_solution_points, target_params=None
                 )
             )
+
             await wait_for_term(controller_agent)
+
             end_time = time.time()
             print("Negotiation terminated.")
 

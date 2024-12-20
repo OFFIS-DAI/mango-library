@@ -202,7 +202,7 @@ async def test_build_coalition(num_part):
         a = c.register(RoleAgent())
         a.add_role(CoalitionParticipantRole())
         agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
 
     controller_agent = c.register(RoleAgent())
     controller_agent.add_role(
@@ -246,7 +246,7 @@ async def test_build_coalition_with_negotiation_starter(num_part):
         a = c.register(RoleAgent())
         a.add_role(CoalitionParticipantRole())
         agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
 
     agents[0].add_role(CohdaNegotiationDirectStarterRole(target_params=None))
     controller_agent = c.register(RoleAgent())

@@ -160,7 +160,7 @@ async def test_optimize_simple_test_case():
         )
         a.add_role(cohda_role)
         agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
 
     part_id = 0
     coal_id = uuid.uuid1()
@@ -170,22 +170,18 @@ async def test_optimize_simple_test_case():
             coal_id,
             CoalitionAssignment(
                 coal_id,
-                list(
-                    filter(
-                        lambda a_t: a_t[0] != str(part_id),
-                        map(
-                            lambda ad: (ad[1], c.addr, ad[0].aid),
-                            zip(agents, range(10)),
-                        ),
-                    )
-                ),
+                [
+                    AgentAddress(c.addr, ad[0].aid)
+                    for ad in zip(agents, range(10))
+                    if str(ad[0]) != str(part_id)
+                ],
                 "cohda",
                 str(part_id),
                 AgentAddress("agent_0", '1'),
             ),
         )
         part_id += 1
-    async with activate(c) as c:
+    async with activate(c):
         agents[0].add_role(
             CohdaNegotiationDirectStarterRole(
                 target_params=([110, 110, 110, 110, 110], [1, 1, 1, 1, 1])
@@ -302,7 +298,7 @@ async def test_optimize_simple_test_case_multi_coal():
         )
         a.add_role(cohda_role)
         agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
 
     part_id = 0
     coal_id = uuid.uuid1()
@@ -312,20 +308,16 @@ async def test_optimize_simple_test_case_multi_coal():
         coalition_model.add(
             coal_id,
             CoalitionAssignment(coal_id, [], "cohda", str(part_id), AgentAddress("agent_0", '1'),
-        ))
+                                ))
         coalition_model.add(
             coal_id2,
             CoalitionAssignment(
                 coal_id2,
-                list(
-                    filter(
-                        lambda a_t: a_t[0] != part_id,
-                        map(
-                            lambda ad: (ad[1], c.addr, ad[0].aid),
-                            zip(agents, range(10)),
-                        ),
-                    )
-                ),
+                [
+                    AgentAddress(c.addr, ad[0].aid)
+                    for ad in zip(agents, range(10))
+                    if str(ad[0]) != str(part_id)
+                ],
                 "cohda",
                 str(part_id),
                 AgentAddress("agent_0", '1'),
@@ -470,15 +462,11 @@ async def test_optimize_hinrichs_test_case():
             coal_id,
             CoalitionAssignment(
                 coal_id,
-                list(
-                    filter(
-                        lambda a_t: a_t[0] != str(part_id),
-                        map(
-                            lambda ad: (ad[1], c.addr, ad[0].aid),
-                            zip(agents, range(10)),
-                        ),
-                    )
-                ),
+                [
+                    AgentAddress(c.addr, ad[0].aid)
+                    for ad in zip(agents, range(10))
+                    if str(ad[0]) != str(part_id)
+                ],
                 "cohda",
                 str(part_id),
                 AgentAddress("agent_0", '1'),

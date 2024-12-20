@@ -78,7 +78,6 @@ class MoCohdaSolutionAggregationRole(Role):
         :param content: The InformAboutTerminationMessage
         :param _: Meta dict
         """
-        # rint("Aggregator receives InformAboutTerminationMessage")
         # we have a new terminated COHDA negotiation.
         # check if it is really new
         if content.negotiation_id in self.cohda_solutions.keys():

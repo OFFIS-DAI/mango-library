@@ -59,7 +59,6 @@ async def test_coalition_to_cohda_with_termination():
         a = c.register(RoleAgent())
 
         def schedules_provider(candidate):
-            # print('This is the candidate', #candidate)
             return s_array[0]
 
         cohda_role = COHDANegotiationRole(
@@ -84,7 +83,7 @@ async def test_coalition_to_cohda_with_termination():
                     )
                 )
             )
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
 
     async with activate(c):
@@ -167,7 +166,7 @@ async def test_coalition_to_cohda_with_termination_different_container():
                     )
                 )
             )
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
 
     async with activate([c_1, c_2]):
@@ -222,7 +221,7 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         cohda_agents.append(a)
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
     async with activate(c):
         controller_agent.add_role(
             CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")

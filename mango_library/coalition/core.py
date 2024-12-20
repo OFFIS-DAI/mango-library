@@ -45,7 +45,7 @@ class CoalitionAssignment:
     def __init__(
             self,
             coalition_id: UUID,
-            neighbors: List[ParticipantKey],
+            neighbors: List[AgentAddress],
             topic: str,
             part_id: str,
             controller_agent_addr: AgentAddress,
@@ -93,7 +93,7 @@ class CoalitionAssignment:
     def controller_agent_addr(self) -> AgentAddress:
         """Adress of the controller agent
 
-        :return: adress as tuple
+        :return: address as AgentAddress object, containing address and agent id
         """
         return self._controller_agent_addr
 
@@ -286,7 +286,7 @@ class CoalitionInitiatorRole(Role):
 
     def __init__(
             self,
-            participants: List[Tuple[ContainerAddress, str]],
+            participants: List[AgentAddress],
             topic: str,
             details: str,
             topology_creator=small_world_creator,
@@ -321,7 +321,8 @@ class CoalitionInitiatorRole(Role):
             lambda c, m: isinstance(c, CoalitionAssignmentConfirm),
         )
 
-        # tasks
+    def on_ready(self):
+        """If container is ready, start to send invitations for coalition"""
         self.context.schedule_task(
             InstantScheduledTask(self.send_invitiations(self.context))
         )
@@ -336,7 +337,7 @@ class CoalitionInitiatorRole(Role):
         for participant in self._participants:
             await agent_context.send_message(
                 content=CoalitionInvite(self._coal_id, self._topic),
-                receiver_addr=AgentAddress(protocol_addr=participant[0], aid=participant[1]))
+                receiver_addr=participant)
 
     def handle_coalition_response_msg(
             self, content: CoalitionResponse, meta: Dict[str, Any]
@@ -350,8 +351,6 @@ class CoalitionInitiatorRole(Role):
         if isinstance(sender_addr, list):
             sender_addr = tuple(sender_addr)
 
-        sender_addr: ContainerAddress
-
         self._part_to_state[(sender_addr, sender_id)] = content.accept
 
         if (
@@ -364,24 +363,26 @@ class CoalitionInitiatorRole(Role):
     async def _send_assignments(self, agent_context: RoleContext):
         part_id = 0
         accepted_participants = []
-        for agent_addr, agent_id in self._participants:
-            if (agent_addr, agent_id) in self._part_to_state and self._part_to_state[
-                (agent_addr, agent_id)
+        for agent_addr in self._participants:
+            if (agent_addr.protocol_addr, agent_addr.aid) in self._part_to_state and self._part_to_state[
+                (agent_addr.protocol_addr, agent_addr.aid)
             ]:
                 part_id += 1
-                accepted_participants.append((str(part_id), agent_addr, agent_id))
+                accepted_participants.append((str(part_id), agent_addr.protocol_addr, agent_addr.aid))
 
         part_to_neighbors = self._topology_creator(
             accepted_participants, **self._topology_creator_kwargs
         )
         controller_addr = agent_context.addr
         for part in accepted_participants:
+            part_id = part[0]
+            neighbors = [AgentAddress(x[1], x[2]) for x in part_to_neighbors[part]]
             agent_context.schedule_instant_message(
                 content=CoalitionAssignment(
                     coalition_id=self._coal_id,
-                    neighbors=part_to_neighbors[part],
+                    neighbors=neighbors,
                     topic=self._topic,
-                    part_id=part[0],
+                    part_id=part_id,
                     controller_agent_addr=controller_addr,
                 ), receiver_addr=AgentAddress(part[1], part[2]))
             self._assignments_confirmed[(part[1], part[2])] = asyncio.Future()
