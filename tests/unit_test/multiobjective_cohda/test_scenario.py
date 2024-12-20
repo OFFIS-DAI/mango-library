@@ -95,20 +95,17 @@ async def test_minimize_scenario():
     controller_agent = c.register(RoleAgent())
     controller_agent.add_role(NegotiationTerminationDetectorRole())
 
-    async with activate(c):
-
-        controller_agent.add_role(
-            CoalitionInitiatorRole(participants=addrs, details="", topic="")
+    controller_agent.add_role(
+        CoalitionInitiatorRole(participants=addrs, details="", topic="")
+    )
+    agents[0].add_role(
+        MoCohdaNegotiationDirectStarterRole(
+            num_solution_points=NUM_CANDIDATES, target_params=None
         )
-
+    )
+    async with activate(c):
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         print("Coalition build done")
-        agents[0].add_role(
-            MoCohdaNegotiationDirectStarterRole(
-                num_solution_points=NUM_CANDIDATES, target_params=None
-            )
-        )
-
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=20)
 
     solution_dict = get_solution(agents).schedules
@@ -128,17 +125,17 @@ async def test_maximize_scenario():
     goal is to maximize the objectives.
     """
     c = create_tcp_container(addr=("127.0.0.2", 5555))
-    async with activate(c) as c:
-        agents, addrs, controller_agent = await create_agents(
-            container=c,
-            targets=MAXIMIZE_TARGETS,
-            possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-            num_iterations=NUM_ITERATIONS,
-            num_candidates=NUM_CANDIDATES,
-            check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-            num_agents=NUM_AGENTS,
-        )
-
+    agents, addrs, controller_agent = await create_agents(
+        container=c,
+        targets=MAXIMIZE_TARGETS,
+        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+        num_iterations=NUM_ITERATIONS,
+        num_candidates=NUM_CANDIDATES,
+        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+        num_agents=NUM_AGENTS,
+    )
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
@@ -159,20 +156,19 @@ async def test_maximize_scenario_without_fixed_reference_point():
     goal is to maximize the objectives.
     """
     c = create_tcp_container(addr=("127.0.0.2", 5555))
-
-    async with activate(c) as c:
-        agents, addrs, controller_agent = await create_agents(
-            container=c,
-            targets=MAXIMIZE_TARGETS,
-            possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-            num_iterations=NUM_ITERATIONS,
-            num_candidates=NUM_CANDIDATES,
-            check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-            num_agents=NUM_AGENTS,
-            use_fixed_ref_point=False,
-            offsets=None,
-        )
-
+    agents, addrs, controller_agent = await create_agents(
+        container=c,
+        targets=MAXIMIZE_TARGETS,
+        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+        num_iterations=NUM_ITERATIONS,
+        num_candidates=NUM_CANDIDATES,
+        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+        num_agents=NUM_AGENTS,
+        use_fixed_ref_point=False,
+        offsets=None,
+    )
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
@@ -217,20 +213,20 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
     """
     c = create_tcp_container(addr=("127.0.0.2", 5555))
     offsets = [2.0, 2.0]
+    agents, addrs, controller_agent = await create_agents(
+        container=c,
+        targets=MAXIMIZE_TARGETS,
+        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
+        num_iterations=NUM_ITERATIONS,
+        num_candidates=NUM_CANDIDATES,
+        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+        num_agents=NUM_AGENTS,
+        use_fixed_ref_point=False,
+        offsets=offsets,
+    )
 
-    async with activate(c) as c:
-        agents, addrs, controller_agent = await create_agents(
-            container=c,
-            targets=MAXIMIZE_TARGETS,
-            possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-            num_iterations=NUM_ITERATIONS,
-            num_candidates=NUM_CANDIDATES,
-            check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-            num_agents=NUM_AGENTS,
-            use_fixed_ref_point=False,
-            offsets=offsets,
-        )
-
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
@@ -294,8 +290,9 @@ async def _test_maximize_different_container():
         check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
         num_agents=NUM_AGENTS,
     )
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=30)
+    async with activate([c_1, c_2, c_3]):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=30)
 
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
@@ -313,7 +310,6 @@ async def test_complex_scenario():
     """
     Now we are going to test more complex scenarios
     """
-
     c_1 = create_tcp_container(addr=("127.0.0.2", 5555))
 
     def minimize_first(cs):
@@ -330,27 +326,26 @@ async def test_complex_scenario():
     # pick_fkt = COHDA.pick_random_point
     mutate_fkt = MoCohdaNegotiation.mutate_with_all_possible
     # mutate_fkt = COHDA.mutate_with_one_random
+    agents, addrs, controller_agent = await create_agents(
+        container=c_1,
+        targets=[target_first, target_second],
+        possible_schedules=SCHEDULES_FOR_AGENTS_COMPLEX,
+        num_iterations=NUM_ITERATIONS,
+        num_candidates=5,
+        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
+        num_agents=5,
+        pick_fkt=pick_fkt,
+        mutate_fkt=mutate_fkt,
+    )
 
     async with activate(c_1):
-        agents, addrs, controller_agent = await create_agents(
-            container=c_1,
-            targets=[target_first, target_second],
-            possible_schedules=SCHEDULES_FOR_AGENTS_COMPLEX,
-            num_iterations=NUM_ITERATIONS,
-            num_candidates=5,
-            check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-            num_agents=5,
-            pick_fkt=pick_fkt,
-            mutate_fkt=mutate_fkt,
-        )
-
         for a in agents:
             if a._check_inbox_task.done():
                 if a._check_inbox_task.exception() is not None:
                     raise a._check_inbox_task.exception()
                 else:
                     assert False, f"check_inbox terminated unexpectedly."
-
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=60)
 
         solution = get_solution(agents)

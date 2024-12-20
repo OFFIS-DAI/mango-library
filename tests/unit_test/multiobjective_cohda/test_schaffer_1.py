@@ -39,21 +39,19 @@ async def test_schaffer_1():
         )
 
     c_1 = create_tcp_container(addr=("127.0.0.2", 5555))
-
+    agents, addrs, controller_agent = await create_agents(
+        container=c_1,
+        targets=targets,
+        possible_schedules=possible_schedules,
+        num_iterations=1,
+        num_candidates=NUM_SOLUTION_POINTS,
+        check_msg_queue_interval=0.1,
+        num_agents=NUM_AGENTS,
+        pick_fkt=PICK_FKT,
+        mutate_fkt=MUTATE_FKT,
+        schedules_all_equal=True,
+    )
     async with activate(c_1):
-        agents, addrs, controller_agent = await create_agents(
-            container=c_1,
-            targets=targets,
-            possible_schedules=possible_schedules,
-            num_iterations=1,
-            num_candidates=NUM_SOLUTION_POINTS,
-            check_msg_queue_interval=0.1,
-            num_agents=NUM_AGENTS,
-            pick_fkt=PICK_FKT,
-            mutate_fkt=MUTATE_FKT,
-            schedules_all_equal=True,
-        )
-
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
         print("End time", round(time.time(), 2))
 
