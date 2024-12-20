@@ -122,13 +122,12 @@ async def test_coalition_to_mocohda_with_termination():
         )
         addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
+    coalition_initiator_role = CoalitionInitiatorRole(
+        addrs, "mocohda", "mocohda-negotiation"
+    )
+    controller_agent.add_role(coalition_initiator_role)
 
     async with activate(c):
-        coalition_initiator_role = CoalitionInitiatorRole(
-            addrs, "mocohda", "mocohda-negotiation"
-        )
-        controller_agent.add_role(coalition_initiator_role)
-
         await wait_for_assignments_sent(coalition_initiator_role)
         await asyncio.sleep(0.5)
 
