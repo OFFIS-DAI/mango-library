@@ -1,11 +1,17 @@
 import asyncio
-import pytest
-import numpy as np
-from mango import create_tcp_container, AgentAddress
-from mango import RoleAgent
-import mango.messages.codecs
-from mango import activate
 
+import mango.messages.codecs
+import numpy as np
+import pytest
+from mango import RoleAgent
+from mango import activate
+from mango import create_tcp_container, AgentAddress
+
+import mango_library.negotiation.util as util
+from mango_library.coalition.core import (
+    CoalitionParticipantRole,
+    CoalitionInitiatorRole,
+)
 from mango_library.negotiation.cohda.cohda_negotiation import (
     COHDANegotiationRole,
     CohdaNegotiationModel,
@@ -21,11 +27,6 @@ from mango_library.negotiation.termination import (
     NegotiationTerminationParticipantRole,
     NegotiationTerminationDetectorRole,
 )
-from mango_library.coalition.core import (
-    CoalitionParticipantRole,
-    CoalitionInitiatorRole,
-)
-import mango_library.negotiation.util as util
 from tests.unit_test.cohda.coalition_test import wait_for_coalition_built
 
 
@@ -51,6 +52,9 @@ async def test_coalition_to_cohda_with_termination():
         NegotiationTerminationDetectorRole(
             aggregator_addr=AgentAddress(c.addr, controller_agent.aid)
         )
+    )
+    controller_agent.add_role(
+        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
     )
     aggregation_role = CohdaSolutionAggregationRole()
     controller_agent.add_role(aggregation_role)
@@ -87,10 +91,6 @@ async def test_coalition_to_cohda_with_termination():
         cohda_agents.append(a)
 
     async with activate(c):
-        controller_agent.add_role(
-            CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
-        )
-
         for a in cohda_agents + [controller_agent]:
             if a._check_inbox_task.done():
                 if a._check_inbox_task.exception() is not None:
@@ -143,6 +143,9 @@ async def test_coalition_to_cohda_with_termination_different_container():
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     aggregation_role = CohdaSolutionAggregationRole()
     controller_agent.add_role(aggregation_role)
+    controller_agent.add_role(
+        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
+    )
 
     for i in range(5):
         c = c_2 if i % 2 == 0 else c_1
@@ -170,10 +173,6 @@ async def test_coalition_to_cohda_with_termination_different_container():
         cohda_agents.append(a)
 
     async with activate([c_1, c_2]):
-        controller_agent.add_role(
-            CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
-        )
-
         for a in cohda_agents + [controller_agent]:
             if a._check_inbox_task.done():
                 if a._check_inbox_task.exception() is not None:
@@ -222,12 +221,12 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
         a.add_role(NegotiationTerminationParticipantRole())
         cohda_agents.append(a)
         addrs.append(AgentAddress(c.addr, a.aid))
-    async with activate(c):
-        controller_agent.add_role(
-            CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
-        )
-        cohda_agents[0].add_role(CohdaNegotiationDirectStarterRole(([n_agents // 2], [1])))
+    controller_agent.add_role(
+        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
+    )
+    cohda_agents[0].add_role(CohdaNegotiationDirectStarterRole(([n_agents // 2], [1])))
 
+    async with activate(c):
         for a in cohda_agents:
             if a._check_inbox_task.done():
                 if a._check_inbox_task.exception() is not None:
