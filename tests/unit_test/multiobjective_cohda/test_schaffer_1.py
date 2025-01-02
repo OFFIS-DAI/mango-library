@@ -8,7 +8,7 @@ from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import 
     MoCohdaNegotiation,
 )
 from util import create_agents, get_solution
-from mango import create_tcp_container
+from mango import create_tcp_container, activate
 
 A = 10
 NUM_AGENTS = 10
@@ -17,17 +17,15 @@ NUM_SOLUTION_POINTS = 5
 TIMEOUT = 100
 
 PICK_FKT = MoCohdaNegotiation.pick_all_points
-# PICK_FKT = COHDA.pick_random_point
+# PICK_FKT = MoCohdaNegotiation.pick_random_point
 MUTATE_FKT = MoCohdaNegotiation.mutate_with_all_possible
-
-
-# MUTATE_FKT = COHDA.mutate_with_one_random
+# MUTATE_FKT = MoCohdaNegotiation.mutate_with_one_random
 
 
 @pytest.mark.asyncio
 async def test_schaffer_1():
     targets = [
-        Target(target_function=lambda cs: cs.sum() ** 2, ref_point=A**2 * 1.1),
+        Target(target_function=lambda cs: cs.sum() ** 2, ref_point=A ** 2 * 1.1),
         Target(
             target_function=lambda cs: (cs.sum() - 2) ** 2, ref_point=(A + 2) ** 2 * 1.1
         ),
@@ -40,8 +38,7 @@ async def test_schaffer_1():
             np.array([-schedule_threshold + i * schedule_step_size])
         )
 
-    c_1 = await create_container(addr=("127.0.0.2", 5555))
-
+    c_1 = create_tcp_container(addr=("127.0.0.2", 5555))
     agents, addrs, controller_agent = await create_agents(
         container=c_1,
         targets=targets,
@@ -54,9 +51,9 @@ async def test_schaffer_1():
         mutate_fkt=MUTATE_FKT,
         schedules_all_equal=True,
     )
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
-    print("End time", round(time.time(), 2))
+    async with activate(c_1):
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
+        print("End time", round(time.time(), 2))
 
     solution = get_solution(agents)
     rounded_perfs = []
@@ -65,14 +62,11 @@ async def test_schaffer_1():
 
     print("performances:", rounded_perfs)
     print("hypervolume", round(solution.hypervolume, 2))
-    await c_1.shutdown()
 
 
 async def wait_for_term(controller_agent):
     while (
-        len(controller_agent.roles[0]._weight_map.values()) != 1
-        or list(controller_agent.roles[0]._weight_map.values())[0] != 1
+            len(controller_agent.roles[0]._weight_map.values()) != 1
+            or list(controller_agent.roles[0]._weight_map.values())[0] != 1
     ):
         await asyncio.sleep(0.1)
-    print("Terminated!")
-    # await asyncio.sleep(10)

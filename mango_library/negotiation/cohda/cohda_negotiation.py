@@ -7,8 +7,8 @@ from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
 
 import numpy as np
-from mango import Role
 
+from mango import Role, AgentAddress, sender_addr
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import (
     CohdaNegotiationMessage,
@@ -107,7 +107,7 @@ class COHDANegotiationRole(Role):
 
     async def on_stop(self) -> None:
         """
-        Will be called once the agent is shutdown
+        Will be called once the agent is stopped
         """
         # cancel all cohda tasks
         for task in self._cohda_tasks.values():
@@ -125,7 +125,7 @@ class COHDANegotiationRole(Role):
         """
         # check if there is a Coalition with the coalition_ID
         if not self.context.get_or_create_model(CoalitionModel).exists(
-                content.coalition_id
+            content.coalition_id
         ):
             logger.warning(
                 f"Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}"
@@ -211,30 +211,14 @@ class COHDANegotiationRole(Role):
                 if wm_to_send is not None:
                     # send message to all neighbors
                     for neighbor in coalition_assignment.neighbors:
-                        self.context.schedule_instant_acl_message(
+                        self.context.schedule_instant_message(
                             content=CohdaNegotiationMessage(
                                 negotiation_id=negotiation_id,
                                 coalition_id=coalition_assignment.coalition_id,
                                 working_memory=wm_to_send,
                             ),
-                            receiver_addr=neighbor[1],
-                            receiver_id=neighbor[2],
-                            acl_metadata={
-                                "sender_addr": self.context.addr,
-                                "sender_id": self.context.aid,
-                            },
+                            receiver_addr=neighbor,
                         )
-                    # negid_wm_dict={'time':str(self.timestamp), 'neg_id': str(negotiation_id), 'w_mem': wm_to_send}
-                    # if(self.timestamp == 0):
-                    #     #print('w mode opening')
-                    #     fwriter= open ('working_mem_log_agent_'+str(self.context.aid)+'.txt', 'w')
-                    # else: fwriter= open ('working_mem_log_agent_'+str(self.context.aid)+'.txt', 'a')
-                    # #fwriter.write(negid_wm_dict['time']+" "+np.array2string(negid_wm_dict['w_mem'].solution_candidate.cluster_schedule)+"\n")
-                    # fwriter.write('\n'+negid_wm_dict['time']+" "+np.array2string(negid_wm_dict['w_mem']._system_config.cluster_schedule)+"\n")
-                    # self.timestamp += 1
-                    # print('WrITTEN...')
-
-
             else:
                 # set the negotiation as inactive as no message has arrived
                 cohda_negotiation.active = False
@@ -299,14 +283,12 @@ class COHDANegotiationRole(Role):
         # get current solution candidate
         final_solution = cohda_negotiation._memory.solution_candidate
         # send CohdaProposedSolutionMessage
-        self.context.schedule_instant_acl_message(
+        self.context.schedule_instant_message(
             content=CohdaProposedSolutionMessage(
                 solution_candidate=final_solution,
                 negotiation_id=content.negotiation_id,
             ),
-            receiver_addr=meta["sender_addr"],
-            receiver_id=meta["sender_id"],
-            acl_metadata={"sender_id": self.context.aid},
+            receiver_addr=sender_addr(meta)
         )
 
     def handle_cohda_solution_msg(self, content: CohdaFinalSolutionMessage, meta):
@@ -329,11 +311,9 @@ class COHDANegotiationRole(Role):
         # add final schedule to CohdaSolutionModel
         self.context.get_or_create_model(CohdaSolutionModel).add(neg_id, final_schedule)
         # reply with a confirmation
-        self.context.schedule_instant_acl_message(
-            content=ConfirmCohdaSolutionMessage(neg_id, final_candidate),
-            receiver_addr=meta["sender_addr"],
-            receiver_id=meta["sender_id"],
-            acl_metadata={"sender_id": self.context.aid}
+        self.context.schedule_instant_message(
+            content=ConfirmCohdaSolutionMessage(neg_id),
+            receiver_addr=sender_addr(meta),
         )
 
 

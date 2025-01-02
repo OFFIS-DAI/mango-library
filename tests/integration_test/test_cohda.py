@@ -1,9 +1,17 @@
 import asyncio
-import pytest
-import numpy as np
-from mango import create_tcp_container
-from mango import RoleAgent
+
 import mango.messages.codecs
+import numpy as np
+import pytest
+from mango import RoleAgent
+from mango import activate
+from mango import create_tcp_container, AgentAddress
+
+import mango_library.negotiation.util as util
+from mango_library.coalition.core import (
+    CoalitionParticipantRole,
+    CoalitionInitiatorRole,
+)
 from mango_library.negotiation.cohda.cohda_negotiation import (
     COHDANegotiationRole,
     CohdaNegotiationModel,
@@ -19,17 +27,13 @@ from mango_library.negotiation.termination import (
     NegotiationTerminationParticipantRole,
     NegotiationTerminationDetectorRole,
 )
-from mango_library.coalition.core import (
-    CoalitionParticipantRole,
-    CoalitionInitiatorRole,
-)
-import mango_library.negotiation.util as util
+from tests.unit_test.cohda.coalition_test import wait_for_coalition_built
 
 
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination():
     # create container
-    c = await create_container(addr=("127.0.0.3", 5555))
+    c = create_tcp_container(addr=("127.0.0.3", 5555))
     s_array = [
         [
             [1, 1, 1, 1, 1],
@@ -43,20 +47,22 @@ async def test_coalition_to_cohda_with_termination():
     # create cohda_agents
     cohda_agents = []
     addrs = []
-    controller_agent = RoleAgent(c)
+    controller_agent = c.register(RoleAgent())
     controller_agent.add_role(
         NegotiationTerminationDetectorRole(
-            aggregator_addr=c.addr, aggregator_id=controller_agent.aid
+            aggregator_addr=AgentAddress(c.addr, controller_agent.aid)
         )
+    )
+    controller_agent.add_role(
+        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
     )
     aggregation_role = CohdaSolutionAggregationRole()
     controller_agent.add_role(aggregation_role)
 
     for i in range(10):
-        a = RoleAgent(c)
+        a = c.register(RoleAgent())
 
         def schedules_provider(candidate):
-            # print('This is the candidate', #candidate)
             return s_array[0]
 
         cohda_role = COHDANegotiationRole(
@@ -65,6 +71,7 @@ async def test_coalition_to_cohda_with_termination():
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
+
         if i == 0:
             a.add_role(
                 CohdaNegotiationDirectStarterRole(
@@ -80,29 +87,21 @@ async def test_coalition_to_cohda_with_termination():
                     )
                 )
             )
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
 
-    controller_agent.add_role(
-        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
-    )
-
-    for a in cohda_agents + [controller_agent]:
-        if a._check_inbox_task.done():
-            if a._check_inbox_task.exception() is not None:
-                raise a._check_inbox_task.exception()
-            else:
-                assert False, f"check_inbox terminated unexpectedly."
-
-    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=5)
-
-    # gracefully shutdown
-    for a in cohda_agents + [controller_agent]:
-        await a.shutdown()
-    await c.shutdown()
+    async with activate(c):
+        for a in cohda_agents + [controller_agent]:
+            if a._check_inbox_task.done():
+                if a._check_inbox_task.exception() is not None:
+                    raise a._check_inbox_task.exception()
+                else:
+                    assert False, f"check_inbox terminated unexpectedly."
+        await asyncio.wait_for(wait_for_coalition_built(cohda_agents), timeout=10)
+        await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=5)
 
     assert (
-        len(asyncio.all_tasks()) == 1
+            len(asyncio.all_tasks()) == 1
     ), f"Too many Tasks are running{asyncio.all_tasks()}"
     cohda_negotiation = list(
         cohda_agents[0]
@@ -124,8 +123,8 @@ async def test_coalition_to_cohda_with_termination_different_container():
     for serializer in util.cohda_serializers:
         codec.add_serializer(*serializer())
         codec2.add_serializer(*serializer())
-    c_1 = await create_container(addr=("127.0.0.3", 5555), codec=codec)
-    c_2 = await create_container(addr=("127.0.0.3", 5556), codec=codec2)
+    c_1 = create_tcp_container(addr=("127.0.0.3", 5555), codec=codec)
+    c_2 = create_tcp_container(addr=("127.0.0.3", 5556), codec=codec2)
 
     s_array = [
         [
@@ -140,14 +139,17 @@ async def test_coalition_to_cohda_with_termination_different_container():
     # create cohda_agents
     cohda_agents = []
     addrs = []
-    controller_agent = RoleAgent(c_1)
+    controller_agent = c_1.register(RoleAgent())
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     aggregation_role = CohdaSolutionAggregationRole()
     controller_agent.add_role(aggregation_role)
+    controller_agent.add_role(
+        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
+    )
 
     for i in range(5):
         c = c_2 if i % 2 == 0 else c_1
-        a = RoleAgent(c)
+        a = c.register(RoleAgent())
         cohda_role = COHDANegotiationRole(lambda: s_array[0], lambda s: True)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
@@ -167,30 +169,22 @@ async def test_coalition_to_cohda_with_termination_different_container():
                     )
                 )
             )
-        addrs.append((c.addr, a.aid))
+        addrs.append(AgentAddress(c.addr, a.aid))
         cohda_agents.append(a)
 
-    controller_agent.add_role(
-        CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
-    )
+    async with activate([c_1, c_2]):
+        for a in cohda_agents + [controller_agent]:
+            if a._check_inbox_task.done():
+                if a._check_inbox_task.exception() is not None:
+                    raise a._check_inbox_task.exception()
+                else:
+                    assert False, f"check_inbox terminated unexpectedly."
 
-    for a in cohda_agents + [controller_agent]:
-        if a._check_inbox_task.done():
-            if a._check_inbox_task.exception() is not None:
-                raise a._check_inbox_task.exception()
-            else:
-                assert False, f"check_inbox terminated unexpectedly."
-
-    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=5)
-
-    # gracefully shutdown
-    for a in cohda_agents + [controller_agent]:
-        await a.shutdown()
-    await c_1.shutdown()
-    await c_2.shutdown()
+        await asyncio.wait_for(wait_for_coalition_built(cohda_agents), timeout=10)
+        await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=10)
 
     assert (
-        len(asyncio.all_tasks()) == 1
+            len(asyncio.all_tasks()) == 1
     ), f"Too many Tasks are running{asyncio.all_tasks()}"
     cohda_negotiation = list(
         cohda_agents[1]
@@ -207,8 +201,8 @@ async def test_coalition_to_cohda_with_termination_different_container():
 @pytest.mark.asyncio
 async def test_coalition_to_cohda_with_termination_long_scenario():
     # create containers
-    c = await create_container(addr=("127.0.0.2", 5555))
-    controller_agent = RoleAgent(c)
+    c = create_tcp_container(addr=("127.0.0.2", 5555))
+    controller_agent = c.register(RoleAgent())
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     aggregation_role = CohdaSolutionAggregationRole()
     controller_agent.add_role(aggregation_role)
@@ -220,36 +214,31 @@ async def test_coalition_to_cohda_with_termination_long_scenario():
 
     # create cohda_agents
     for i in range(n_agents):
-        a = RoleAgent(c)
+        a = c.register(RoleAgent())
         cohda_role = COHDANegotiationRole(lambda: s_array)
         a.add_role(cohda_role)
         a.add_role(CoalitionParticipantRole())
         a.add_role(NegotiationTerminationParticipantRole())
         cohda_agents.append(a)
-        addrs.append((c.addr, a.aid))
-
+        addrs.append(AgentAddress(c.addr, a.aid))
     controller_agent.add_role(
         CoalitionInitiatorRole(addrs, "cohda", "cohda-negotiation")
     )
     cohda_agents[0].add_role(CohdaNegotiationDirectStarterRole(([n_agents // 2], [1])))
 
-    for a in cohda_agents:
-        if a._check_inbox_task.done():
-            if a._check_inbox_task.exception() is not None:
-                raise a._check_inbox_task.exception()
-            else:
-                assert False, f"check_inbox terminated unexpectedly."
+    async with activate(c):
+        for a in cohda_agents:
+            if a._check_inbox_task.done():
+                if a._check_inbox_task.exception() is not None:
+                    raise a._check_inbox_task.exception()
+                else:
+                    assert False, f"check_inbox terminated unexpectedly."
 
-    await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=30)
+        await asyncio.wait_for(wait_for_solution_confirmed(aggregation_role), timeout=30)
 
     for agent in cohda_agents:
         if list(agent.roles[2]._weight_map.values())[0] != 0:
             print("Final weight:", agent.roles[2]._weight_map)
-
-    # gracefully shutdown
-    for a in cohda_agents:
-        await a.shutdown()
-    await c.shutdown()
 
     assert len(asyncio.all_tasks()) == 1
     cohda_negotiation = list(

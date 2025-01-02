@@ -1,10 +1,7 @@
-import time
 import uuid
 from fractions import Fraction
 
-import h5py
-import numpy as np
-from mango import Role
+from mango import Role, AgentAddress
 
 from mango_library.coalition.core import CoalitionModel, CoalitionBuildConfirm
 from mango_library.negotiation.cohda.cohda_messages import (
@@ -125,14 +122,9 @@ class CohdaNegotiationInteractiveStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 content=neg_msg,
-                receiver_addr=neighbor[1],
-                receiver_id=neighbor[2],
-                acl_metadata={
-                    "sender_addr": self.context.addr,
-                    "sender_id": self.context.aid,
-                },
+                receiver_addr=AgentAddress(neighbor[1], neighbor[2]),
             )
 
 
@@ -210,7 +202,6 @@ class CohdaNegotiationDirectStarterRole(Role):
 
     async def start(self):
         """Start a negotiation. Send all neighbors a starting negotiation message."""
-
         coalition_model = self.context.get_or_create_model(CoalitionModel)
 
         # Find any matching coalition assignment
@@ -239,25 +230,7 @@ class CohdaNegotiationDirectStarterRole(Role):
             if self._send_weight:
                 # relevant for termination detection
                 neg_msg.message_weight = Fraction(1, len(matched_assignment.neighbors))
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 content=neg_msg,
-                receiver_addr=neighbor[1],
-                receiver_id=neighbor[2],
-                acl_metadata={
-                    "sender_addr": self.context.addr,
-                    "sender_id": self.context.aid,
-                },
+                receiver_addr=neighbor,
             )
-        hf = h5py.File(f'{self.context.aid}.h5', 'a')
-        current_time = time.time()
-        try:
-            general_group = hf.create_group(f'Update_{current_time}')
-        except ValueError:
-            raise ValueError(
-                'Group cannot be created. Make sure to delete old h5-Files before restarting optimization.')
-        general_group.create_dataset('performance', data=-np.inf)
-        general_group.create_dataset('cluster_schedule', data=np.array(empty_wm.solution_candidate.cluster_schedule))
-        general_group.create_dataset('time', data=np.float64(current_time))
-        general_group.attrs["aid"] = self.context.aid
-        general_group.attrs['negotiation_id'] = str(negotiation_uuid)
-        hf.close()

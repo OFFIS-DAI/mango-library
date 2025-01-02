@@ -2,16 +2,23 @@ import asyncio
 
 import numpy as np
 import pytest
-from mango import create_tcp_container
+from mango import create_tcp_container, activate, RoleAgent, AgentAddress
 from mango.messages.codecs import JSON
 
+from mango_library.coalition.core import CoalitionParticipantRole, CoalitionInitiatorRole
+from mango_library.negotiation.multiobjective_cohda.cohda_messages import MoCohdaNegotiationMessage
 from mango_library.negotiation.multiobjective_cohda.data_classes import Target
+from mango_library.negotiation.multiobjective_cohda.examples.Zitzler_3_pymoo_version_1 import PICK_FKT
+from mango_library.negotiation.multiobjective_cohda.examples.Zitzler_3_pymoo_version_2 import MUTATE_FKT
+from mango_library.negotiation.multiobjective_cohda.mocohda_starting import MoCohdaNegotiationDirectStarterRole
 from mango_library.negotiation.multiobjective_cohda.multiobjective_cohda import (
     MoCohdaNegotiation,
-    MoCohdaNegotiationModel,
+    MoCohdaNegotiationModel, MultiObjectiveCOHDARole,
 )
+from mango_library.negotiation.termination import NegotiationTerminationParticipantRole, \
+    NegotiationTerminationDetectorRole
 from mango_library.negotiation.util import multi_objective_serializers
-from util import MINIMIZE_TARGETS, MAXIMIZE_TARGETS, create_agents, get_solution
+from util import MINIMIZE_TARGETS, MAXIMIZE_TARGETS, create_agents, get_solution, wait_for_coalition_built
 
 NUM_ITERATIONS = 1
 NUM_AGENTS = 3
@@ -52,30 +59,63 @@ async def test_minimize_scenario():
     solution of the negotiation is actually the best possible because all
     options were considered.
     """
-    c = await create_container(addr=("127.0.0.2", 5555))
+    c = create_tcp_container(addr=("127.0.0.2", 5555))
+    agents = []
+    addrs = []
 
-    agents, addrs, controller_agent = await create_agents(
-        container=c,
-        targets=MINIMIZE_TARGETS,
-        possible_schedules=SCHEDULES_FOR_AGENTS_SIMPEL,
-        num_iterations=NUM_ITERATIONS,
-        num_candidates=NUM_CANDIDATES,
-        check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
-        num_agents=NUM_AGENTS,
+    for i in range(NUM_AGENTS):
+        a = c.register(RoleAgent())
+
+        def provide_schedules(index):
+            return lambda: SCHEDULES_FOR_AGENTS_SIMPEL[index]
+
+        cohda_role = MultiObjectiveCOHDARole(
+            schedule_provider=provide_schedules(i % len(SCHEDULES_FOR_AGENTS_SIMPEL)),
+            targets=MINIMIZE_TARGETS,
+            local_acceptable_func=lambda s: True,
+            num_solution_points=NUM_CANDIDATES,
+            num_iterations=NUM_ITERATIONS,
+            check_inbox_interval=CHECK_MSG_QUEUE_INTERVAL,
+            pick_func=PICK_FKT,
+            mutate_func=MUTATE_FKT,
+            use_fixed_ref_point=True,
+            offsets=None,
+        )
+        a.add_role(cohda_role)
+        a.add_role(CoalitionParticipantRole())
+        a.add_role(
+            NegotiationTerminationParticipantRole(
+                negotiation_model_class=MoCohdaNegotiationModel,
+                negotiation_message_class=MoCohdaNegotiationMessage,
+            )
+        )
+        agents.append(a)
+        addrs.append(AgentAddress(c.addr, a.aid))
+
+    controller_agent = c.register(RoleAgent())
+    controller_agent.add_role(NegotiationTerminationDetectorRole())
+
+    controller_agent.add_role(
+        CoalitionInitiatorRole(participants=addrs, details="", topic="")
     )
+    agents[0].add_role(
+        MoCohdaNegotiationDirectStarterRole(
+            num_solution_points=NUM_CANDIDATES, target_params=None
+        )
+    )
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        print("Coalition build done")
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=20)
 
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
     for aid, chosen_schedules in solution_dict.items():
         # for minimizing, every second schedule is the better because
         # sum and deviations are minimized
         chosen_schedule = chosen_schedules[0]
-        print(f"[{aid}] chosen schedule: {chosen_schedule}.")
         idx = int(aid[-1]) - 1
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
-
-    await c.shutdown()
 
 
 @pytest.mark.asyncio
@@ -84,8 +124,7 @@ async def test_maximize_scenario():
     This method follows the same principle as the other test, but the
     goal is to maximize the objectives.
     """
-    c = await create_container(addr=("127.0.0.2", 5555))
-
+    c = create_tcp_container(addr=("127.0.0.2", 5555))
     agents, addrs, controller_agent = await create_agents(
         container=c,
         targets=MAXIMIZE_TARGETS,
@@ -95,8 +134,9 @@ async def test_maximize_scenario():
         check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
         num_agents=NUM_AGENTS,
     )
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
@@ -108,9 +148,6 @@ async def test_maximize_scenario():
         idx = int(aid[-1]) - 1
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
-    # gracefully shutdown
-    await c.shutdown()
-
 
 @pytest.mark.asyncio
 async def test_maximize_scenario_without_fixed_reference_point():
@@ -118,8 +155,7 @@ async def test_maximize_scenario_without_fixed_reference_point():
     This method follows the same principle as the other test, but the
     goal is to maximize the objectives.
     """
-    c = await create_container(addr=("127.0.0.2", 5555))
-
+    c = create_tcp_container(addr=("127.0.0.2", 5555))
     agents, addrs, controller_agent = await create_agents(
         container=c,
         targets=MAXIMIZE_TARGETS,
@@ -131,8 +167,9 @@ async def test_maximize_scenario_without_fixed_reference_point():
         use_fixed_ref_point=False,
         offsets=None,
     )
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
@@ -155,20 +192,17 @@ async def test_maximize_scenario_without_fixed_reference_point():
             ._negotiations.values()
         )[0]
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            is not None
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                is not None
         )
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            != MAXIMIZE_TARGETS[0].ref_point
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                != MAXIMIZE_TARGETS[0].ref_point
         )
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            != MAXIMIZE_TARGETS[1].ref_point
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                != MAXIMIZE_TARGETS[1].ref_point
         )
-
-    # gracefully shutdown
-    await c.shutdown()
 
 
 @pytest.mark.asyncio
@@ -177,9 +211,8 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
     This method follows the same principle as the other test, but the
     goal is to maximize the objectives.
     """
-    c = await create_container(addr=("127.0.0.2", 5555))
+    c = create_tcp_container(addr=("127.0.0.2", 5555))
     offsets = [2.0, 2.0]
-
     agents, addrs, controller_agent = await create_agents(
         container=c,
         targets=MAXIMIZE_TARGETS,
@@ -192,7 +225,9 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
         offsets=offsets,
     )
 
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
+    async with activate(c):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
@@ -215,20 +250,17 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
             ._negotiations.values()
         )[0]
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            is not None
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                is not None
         )
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            != MAXIMIZE_TARGETS[0].ref_point
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                != MAXIMIZE_TARGETS[0].ref_point
         )
         assert (
-            cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-            != MAXIMIZE_TARGETS[1].ref_point
+                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                != MAXIMIZE_TARGETS[1].ref_point
         )
-
-    # gracefully shutdown
-    await c.shutdown()
 
 
 @pytest.mark.asyncio
@@ -245,9 +277,9 @@ async def _test_maximize_different_container():
         codec2.add_serializer(*serializer())
         codec3.add_serializer(*serializer())
 
-    c_1 = await create_container(addr=("127.0.0.2", 5555), codec=codec)
-    c_2 = await create_container(addr=("127.0.0.2", 5556), codec=codec2)
-    c_3 = await create_container(addr=("127.0.0.2", 5557), codec=codec3)
+    c_1 = create_tcp_container(addr=("127.0.0.2", 5555), codec=codec)
+    c_2 = create_tcp_container(addr=("127.0.0.2", 5556), codec=codec2)
+    c_3 = create_tcp_container(addr=("127.0.0.2", 5557), codec=codec3)
 
     agents, addrs, controller_agent = await create_agents(
         container=[c_1, c_2, c_3],
@@ -258,8 +290,9 @@ async def _test_maximize_different_container():
         check_msg_queue_interval=CHECK_MSG_QUEUE_INTERVAL,
         num_agents=NUM_AGENTS,
     )
-
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=30)
+    async with activate([c_1, c_2, c_3]):
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=30)
 
     solution_dict = get_solution(agents).schedules
     print("solution:", solution_dict, "\n")
@@ -271,18 +304,13 @@ async def _test_maximize_different_container():
         idx = int(aid[-1]) - 1
         assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
-    # gracefully shutdown
-    await c_1.shutdown()
-    await c_2.shutdown()
-
 
 @pytest.mark.asyncio
 async def test_complex_scenario():
     """
     Now we are going to test more complex scenarios
     """
-
-    c_1 = await create_container(addr=("127.0.0.2", 5555))
+    c_1 = create_tcp_container(addr=("127.0.0.2", 5555))
 
     def minimize_first(cs):
         return float(np.mean(cs, axis=0)[0])
@@ -298,7 +326,6 @@ async def test_complex_scenario():
     # pick_fkt = COHDA.pick_random_point
     mutate_fkt = MoCohdaNegotiation.mutate_with_all_possible
     # mutate_fkt = COHDA.mutate_with_one_random
-
     agents, addrs, controller_agent = await create_agents(
         container=c_1,
         targets=[target_first, target_second],
@@ -311,37 +338,34 @@ async def test_complex_scenario():
         mutate_fkt=mutate_fkt,
     )
 
-    for a in agents:
-        if a._check_inbox_task.done():
-            if a._check_inbox_task.exception() is not None:
-                raise a._check_inbox_task.exception()
-            else:
-                assert False, f"check_inbox terminated unexpectedly."
+    async with activate(c_1):
+        for a in agents:
+            if a._check_inbox_task.done():
+                if a._check_inbox_task.exception() is not None:
+                    raise a._check_inbox_task.exception()
+                else:
+                    assert False, f"check_inbox terminated unexpectedly."
+        await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
+        await asyncio.wait_for(wait_for_term(controller_agent), timeout=60)
 
-    await asyncio.wait_for(wait_for_term(controller_agent), timeout=60)
-
-    solution = get_solution(agents)
-    print("cluster schedules:", solution.cluster_schedules)
-    print("performances:", [(round(s[0], 2), round(s[1], 2)) for s in solution.perf])
-    print("hypervolume:", round(solution.hypervolume, 4))
-    for aid, chosen_schedules in solution.schedules.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        for schedule in chosen_schedules:
-            if np.sum(schedule) != 1:
-                assert (
-                    pick_fkt == MoCohdaNegotiation.pick_random_point
-                    or mutate_fkt == MoCohdaNegotiation.mutate_with_one_random
-                )
-
-        # gracefully shutdown
-        await c_1.shutdown()
+        solution = get_solution(agents)
+        print("cluster schedules:", solution.cluster_schedules)
+        print("performances:", [(round(s[0], 2), round(s[1], 2)) for s in solution.perf])
+        print("hypervolume:", round(solution.hypervolume, 4))
+        for aid, chosen_schedules in solution.schedules.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            for schedule in chosen_schedules:
+                if np.sum(schedule) != 1:
+                    assert (
+                            pick_fkt == MoCohdaNegotiation.pick_random_point
+                            or mutate_fkt == MoCohdaNegotiation.mutate_with_one_random
+                    )
 
 
 async def wait_for_term(controller_agent):
     while (
-        len(controller_agent.roles[0]._weight_map.values()) != 1
-        or list(controller_agent.roles[0]._weight_map.values())[0] != 1
+            len(controller_agent.roles[0]._weight_map.values()) != 1
+            or list(controller_agent.roles[0]._weight_map.values())[0] != 1
     ):
         await asyncio.sleep(0.1)
-    print("Terminated!")
