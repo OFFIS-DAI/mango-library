@@ -2,7 +2,7 @@ import asyncio
 from copy import deepcopy
 
 import numpy as np
-from mango import RoleAgent
+from mango import RoleAgent, AgentAddress
 
 from mango_library.coalition.core import (
     CoalitionParticipantRole,
@@ -35,7 +35,6 @@ def get_solution(agents):
                 cohda_objs = role.context.get_or_create_model(
                     MoCohdaNegotiationModel
                 )._negotiations
-                print("cohda_objs", cohda_objs)
                 for key, value in cohda_objs.items():
                     resulting_candidates[
                         value._part_id
@@ -72,7 +71,7 @@ async def create_agents(
             this_container = container[i % len(container)]
         else:
             this_container = container
-        a = RoleAgent(this_container)
+        a = this_container.register(RoleAgent())
 
         def provide_schedules(index):
             if not schedules_all_equal:
@@ -101,26 +100,22 @@ async def create_agents(
             )
         )
         agents.append(a)
-        addrs.append((this_container.addr, a.aid))
+        addrs.append(AgentAddress(this_container.addr, a.aid))
 
     if isinstance(container, list):
-        controller_agent = RoleAgent(container[-1])
+        controller_agent = container[-1].register(RoleAgent())
     else:
-        controller_agent = RoleAgent(container)
+        controller_agent = container.register(RoleAgent())
     controller_agent.add_role(NegotiationTerminationDetectorRole())
     controller_agent.add_role(
         CoalitionInitiatorRole(participants=addrs, details="", topic="")
     )
 
-    await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
-    print("Coalition build done")
     agents[0].add_role(
         MoCohdaNegotiationDirectStarterRole(
             num_solution_points=num_candidates, target_params=None
         )
     )
-
-    print("Negotiation started")
 
     return agents, addrs, controller_agent
 

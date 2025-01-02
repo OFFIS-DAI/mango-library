@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from typing import List, Tuple, Dict, Optional, Callable, Any, Union
 
+import numpy
 import numpy as np
 from mango.messages.codecs import json_serializable
 

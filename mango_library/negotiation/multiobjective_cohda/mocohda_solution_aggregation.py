@@ -4,7 +4,7 @@ import random
 from typing import Dict, Tuple, Optional, List
 from uuid import UUID
 
-from mango import Role
+from mango import Role, AgentAddress
 
 from mango_library.negotiation.multiobjective_cohda.cohda_messages import (
     MoCohdaSolutionRequestMessage,
@@ -78,7 +78,6 @@ class MoCohdaSolutionAggregationRole(Role):
         :param content: The InformAboutTerminationMessage
         :param _: Meta dict
         """
-        # rint("Aggregator receives InformAboutTerminationMessage")
         # we have a new terminated COHDA negotiation.
         # check if it is really new
         if content.negotiation_id in self.cohda_solutions.keys():
@@ -108,13 +107,11 @@ class MoCohdaSolutionAggregationRole(Role):
 
         # Ask for all solutions from the participating agents
         for agent_addr, agent_id in content.participants:
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 content=MoCohdaSolutionRequestMessage(
                     negotiation_id=content.negotiation_id
                 ),
-                receiver_addr=agent_addr,
-                receiver_id=agent_id,
-                acl_metadata={"sender_id": self.context.aid},
+                receiver_addr=AgentAddress(agent_addr, agent_id),
             )
 
     def handle_cohda_solution(self, content: MoCohdaProposedSolutionMessage, meta):
@@ -170,20 +167,18 @@ class MoCohdaSolutionAggregationRole(Role):
             for agent_addr, agent_id in self._open_solution_requests[
                 negotiation_id
             ].keys():
-                self.context.schedule_instant_acl_message(
+                self.context.schedule_instant_message(
                     content=MoCohdaFinalSolutionMessage(
                         solution_point=final_solution, negotiation_id=negotiation_id
                     ),
-                    receiver_addr=agent_addr,
-                    receiver_id=agent_id,
-                    acl_metadata={"sender_id": self.context.aid},
+                    receiver_addr=AgentAddress(agent_addr, agent_id),
                 )
             # delete negotiation_id from open requests dict
             del self._open_solution_requests[negotiation_id]
 
     @staticmethod
     def choose_random_solution_point(
-        solution_front: SolutionCandidate,
+            solution_front: SolutionCandidate,
     ) -> SolutionPoint:
         """
         Chooses a SolutionPoint from the pareto front
@@ -223,7 +218,7 @@ class MoCohdaSolutionAggregationRole(Role):
         return current_best_candidate
 
     def handle_solution_confirmation(
-        self, content: ConfirmMoCohdaSolutionMessage, meta
+            self, content: ConfirmMoCohdaSolutionMessage, meta
     ):
         neg_id = content.negotiation_id
 
@@ -259,12 +254,10 @@ class MoCohdaSolutionAggregationRole(Role):
             self._confirmed_cohda_solutions.append(neg_id)
 
             # send final solution to controller after confirmation
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 MoCohdaFinalSolutionMessage(
                     solution_point=content.solution_point,
                     negotiation_id=content.negotiation_id,
                 ),
-                receiver_addr=self._context.addr,
-                receiver_id=self._context.aid,
-                acl_metadata={"sender_id": self.context.aid},
+                receiver_addr=AgentAddress(self._context.addr, self._context.aid),
             )

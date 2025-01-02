@@ -3,8 +3,8 @@ Module that holds the data classes necessary for a COHDA negotiation
 """
 
 from typing import Dict, Optional
-import numpy as np
 
+import numpy as np
 from mango.messages.codecs import json_serializable
 
 
@@ -107,7 +107,7 @@ class ScheduleSelection:
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, ScheduleSelection) and self.counter == o.counter \
-               and np.array_equal(self.schedule, o.schedule)
+            and np.array_equal(self.schedule, o.schedule)
 
     @property
     def counter(self) -> int:
@@ -216,4 +216,4 @@ class WorkingMemory:
 
     def __eq__(self, o: object) -> bool:
         return isinstance(o, WorkingMemory) and self.solution_candidate == o.solution_candidate \
-               and self.system_config == o.system_config and self.target_params == o.target_params
+            and self.system_config == o.system_config and self.target_params == o.target_params

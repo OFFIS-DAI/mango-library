@@ -2,7 +2,7 @@ import logging
 from uuid import UUID
 from typing import Dict, Tuple, Optional, List
 
-from mango import Role
+from mango import Role, AgentAddress
 
 from mango_library.negotiation.cohda.cohda_messages import (
     CohdaSolutionRequestMessage,
@@ -94,13 +94,11 @@ class CohdaSolutionAggregationRole(Role):
 
         # Ask for all solutions from the participating agents
         for agent_addr, agent_id in content.participants:
-            self.context.schedule_instant_acl_message(
+            self.context.schedule_instant_message(
                 content=CohdaSolutionRequestMessage(
                     negotiation_id=content.negotiation_id
                 ),
-                receiver_addr=agent_addr,
-                receiver_id=agent_id,
-                acl_metadata={"sender_id": self.context.aid},
+                receiver_addr=AgentAddress(agent_addr, agent_id)
             )
 
     def handle_cohda_solution(self, content: CohdaProposedSolutionMessage, meta):
@@ -156,14 +154,12 @@ class CohdaSolutionAggregationRole(Role):
             for agent_addr, agent_id in self._open_solution_requests[
                 negotiation_id
             ].keys():
-                self.context.schedule_instant_acl_message(
+                self.context.schedule_instant_message(
                     content=CohdaFinalSolutionMessage(
                         solution_candidate=final_solution,
                         negotiation_id=negotiation_id,
                     ),
-                    receiver_addr=agent_addr,
-                    receiver_id=agent_id,
-                    acl_metadata={"sender_id": self.context.aid},
+                    receiver_addr=AgentAddress(agent_addr, agent_id),
                 )
 
             # delete negotiation_id from open requests dict
