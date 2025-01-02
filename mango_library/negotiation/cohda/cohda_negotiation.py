@@ -227,7 +227,6 @@ class COHDANegotiationRole(Role):
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """Is called once a StopNegotiationMessage arrived"""
-        print('negotiation stops now')
         if content.negotiation_id in self._cohda_tasks.keys():
             # get negotiation
             cohda_negotiation_model: CohdaNegotiationModel = (
