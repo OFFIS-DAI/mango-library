@@ -7,8 +7,8 @@ from typing import List, Dict, Optional, Tuple, Callable
 from uuid import UUID
 
 import numpy as np
+from mango import Role, sender_addr
 
-from mango import Role, AgentAddress, sender_addr
 from mango_library.coalition.core import CoalitionAssignment, CoalitionModel
 from mango_library.negotiation.cohda.cohda_messages import (
     CohdaNegotiationMessage,
@@ -125,7 +125,7 @@ class COHDANegotiationRole(Role):
         """
         # check if there is a Coalition with the coalition_ID
         if not self.context.get_or_create_model(CoalitionModel).exists(
-            content.coalition_id
+                content.coalition_id
         ):
             logger.warning(
                 f"Received a CohdaNegotiationMessage with the coalition_id {content.coalition_id}"
@@ -227,6 +227,7 @@ class COHDANegotiationRole(Role):
 
     def handle_neg_stop(self, content: StopNegotiationMessage, _):
         """Is called once a StopNegotiationMessage arrived"""
+        print('negotiation stops now')
         if content.negotiation_id in self._cohda_tasks.keys():
             # get negotiation
             cohda_negotiation_model: CohdaNegotiationModel = (
@@ -527,18 +528,6 @@ class COHDANegotiation:
             new_sysconf = new_wm.system_config
             new_candidate = new_wm.solution_candidate
 
-            # sanity check for attack scenario 2,3-- starts
-            true_perf = self._perf_func(new_candidate.cluster_schedule, self._memory.target_params)
-
-            if (true_perf != float("-inf") and true_perf != new_candidate.perf):
-                print(
-                    f'---Malicious Agent detected---\nMalicious Agent ID:{new_candidate.agent_id}\nDetected by Agent:{self._part_id}\nProble: Target function mismatch')
-            # sanity check for attack scenario 2,3-- ends
-
-            # new agent added?--> below code doesn't work. neighbours of malicious agents also get detected as mal.
-            # if(len(new_sysconf.schedule_choices) > len(current_sysconfig.schedule_choices)):
-            #    print(f'New agent added by agent: {new_candidate.agent_id}')
-
             # Merge new information into current_sysconfig and current_candidate
             current_sysconfig = self._merge_sysconfigs(
                 sysconfig_i=current_sysconfig, sysconfig_j=new_sysconf
@@ -595,16 +584,6 @@ class COHDANegotiation:
                 manipulated_schedule.append(value * random.choice([-100, -500, -1000]))
             possible_schedules = [manipulated_schedule]
         current_best_candidate = candidate
-        # #sanity check for attack scenario 2,3
-        # true_perf= self._perf_func(current_best_candidate.cluster_schedule,self._memory.target_params)
-        # flagChangeCurrentBestCandidate = 0
-        # if (true_perf != current_best_candidate.perf):
-        #     flagChangeCurrentBestCandidate= 1
-        #     if(current_best_candidate.agent_id != '15'):
-        #         #print(f'{true_perf},,,,,,{current_best_candidate.perf}')
-        #         print(f'---Malicious Agent detected---\nMalicious Agent ID:{current_best_candidate.agent_id}\nDetected by Agent:{self._part_id}\nAttack: Misleading Performance (increased value)')
-
-        # #sanity check for attack scenario 2,3
 
         for schedule in possible_schedules:
             if self._is_local_acceptable(schedule):
@@ -621,14 +600,6 @@ class COHDANegotiation:
                     new_performance = self._last_perf
                     self._last_perf *= 5
 
-                # sanity check action
-                # if (flagChangeCurrentBestCandidate == 1):
-                #     #forget the current best candidate cause it's suspicious.
-                #     flagChangeCurrentBestCandidate = 0
-                #     new_candidate.perf = new_performance
-                #     current_best_candidate = new_candidate
-
-                # sanity check action
                 # only keep new candidates that perform better than the current one
                 if new_performance > current_best_candidate.perf:
                     new_candidate.perf = new_performance
