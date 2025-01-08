@@ -220,7 +220,7 @@ class COHDANegotiationRole(Role):
                     self._cohda_msg_queues[negotiation_id],
                     [],
                 )
-                start = time.time()  # self.container.clock.time
+                start = self.container.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
                 duration = time.time() - start  # self.container.clock.time - start
                 if wm_to_send is not None:
