@@ -222,7 +222,7 @@ class COHDANegotiationRole(Role):
                 )
                 start = self.container.clock.time
                 wm_to_send = cohda_negotiation.handle_cohda_msgs(cohda_message_queue)
-                duration = time.time() - start  # self.container.clock.time - start
+                duration = self.container.clock.time - start
                 if wm_to_send is not None:
                     # send message to all neighbors
                     if self._store_updates_to_db:
