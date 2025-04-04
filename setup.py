@@ -21,7 +21,7 @@ REQUIRES_PYTHON = ">=3.10"
 VERSION = "1.1.0"
 
 # What packages are required for this module to be executed?
-REQUIRED = ["numpy", "mango-agents==2.1.3"]
+REQUIRED = ["numpy", "mango-agents>=2.1.3"]
 
 # What packages are optional?
 EXTRAS = {
