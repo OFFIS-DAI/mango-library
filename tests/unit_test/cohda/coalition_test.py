@@ -224,12 +224,12 @@ async def test_build_coalition(num_part):
                     raise a._check_inbox_task.exception()
                 else:
                     assert False, f"check_inbox terminated unexpectedly."
-    for a in agents[0:num_part]:
-        assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
-        assert list(assignments.values())[0].coalition_id is not None
-        assert list(assignments.values())[0].controller_agent_addr.aid == controller_agent.aid
-        assert list(assignments.values())[0].controller_agent_addr.protocol_addr == c.addr
-        assert len(list(assignments.values())[0].neighbors) == num_part - 1
+        for a in agents[0:num_part]:
+            assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
+            assert list(assignments.values())[0].coalition_id is not None
+            assert list(assignments.values())[0].controller_agent_addr.aid == controller_agent.aid
+            assert list(assignments.values())[0].controller_agent_addr.protocol_addr == c.addr
+            assert len(list(assignments.values())[0].neighbors) == num_part - 1
 
 
 @pytest.mark.asyncio
@@ -282,16 +282,16 @@ async def test_build_coalition_with_negotiation_starter(num_part):
         for agent_addr, fut in controller_agent.roles[0]._assignments_confirmed.items():
             assert fut.done()
 
-    # The coalition ID stored by the agent with the NegotiationStarterRole equals the coalition ID
-    # of the CoalitionInitiator
-    assert agents[0].roles[1]._coalitions[0] == controller_agent.roles[0]._coal_id
+        # The coalition ID stored by the agent with the NegotiationStarterRole equals the coalition ID
+        # of the CoalitionInitiator
+        assert agents[0].roles[1]._coalitions[0] == controller_agent.roles[0]._coal_id
 
-    for a in agents[0:num_part]:
-        assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
-        assert list(assignments.values())[0].coalition_id is not None
-        assert list(assignments.values())[0].controller_agent_addr.aid == controller_agent.aid
-        assert list(assignments.values())[0].controller_agent_addr.protocol_addr == c.addr
-        assert len(list(assignments.values())[0].neighbors) == num_part - 1
+        for a in agents[0:num_part]:
+            assignments = a.roles[0].context.get_or_create_model(CoalitionModel).assignments
+            assert list(assignments.values())[0].coalition_id is not None
+            assert list(assignments.values())[0].controller_agent_addr.aid == controller_agent.aid
+            assert list(assignments.values())[0].controller_agent_addr.protocol_addr == c.addr
+            assert len(list(assignments.values())[0].neighbors) == num_part - 1
 
 
 async def wait_for_coalition_built(agents):
