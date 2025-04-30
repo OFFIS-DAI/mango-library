@@ -55,13 +55,13 @@ async def test_schaffer_1():
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=TIMEOUT)
         print("End time", round(time.time(), 2))
 
-    solution = get_solution(agents)
-    rounded_perfs = []
-    for sp in sorted(solution.solution_points):
-        rounded_perfs.append([round(p, 2) for p in sp.performance])
+        solution = get_solution(agents)
+        rounded_perfs = []
+        for sp in sorted(solution.solution_points):
+            rounded_perfs.append([round(p, 2) for p in sp.performance])
 
-    print("performances:", rounded_perfs)
-    print("hypervolume", round(solution.hypervolume, 2))
+        print("performances:", rounded_perfs)
+        print("hypervolume", round(solution.hypervolume, 2))
 
 
 async def wait_for_term(controller_agent):

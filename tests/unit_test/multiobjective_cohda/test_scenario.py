@@ -108,14 +108,14 @@ async def test_minimize_scenario():
         print("Coalition build done")
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=20)
 
-    solution_dict = get_solution(agents).schedules
-    print("solution:", solution_dict, "\n")
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
+        solution_dict = get_solution(agents).schedules
+        print("solution:", solution_dict, "\n")
+        for aid, chosen_schedules in solution_dict.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            chosen_schedule = chosen_schedules[0]
+            idx = int(aid[-1]) - 1
+            assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][1])
 
 
 @pytest.mark.asyncio
@@ -138,15 +138,15 @@ async def test_maximize_scenario():
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
-    solution_dict = get_solution(agents).schedules
-    print("solution:", solution_dict, "\n")
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f"[{aid}] chosen schedule: {chosen_schedule}.")
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+        solution_dict = get_solution(agents).schedules
+        print("solution:", solution_dict, "\n")
+        for aid, chosen_schedules in solution_dict.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            chosen_schedule = chosen_schedules[0]
+            print(f"[{aid}] chosen schedule: {chosen_schedule}.")
+            idx = int(aid[-1]) - 1
+            assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
 
 @pytest.mark.asyncio
@@ -171,38 +171,38 @@ async def test_maximize_scenario_without_fixed_reference_point():
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
-    solution_dict = get_solution(agents).schedules
-    print("solution:", solution_dict, "\n")
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f"[{aid}] chosen schedule: {chosen_schedule}.")
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+        solution_dict = get_solution(agents).schedules
+        print("solution:", solution_dict, "\n")
+        for aid, chosen_schedules in solution_dict.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            chosen_schedule = chosen_schedules[0]
+            print(f"[{aid}] chosen schedule: {chosen_schedule}.")
+            idx = int(aid[-1]) - 1
+            assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
-    for agent in agents:
-        # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
-        # there has to be a reference point, since there were calculations of it during the negotiation. This
-        # reference point has to be different than the default ones given in the targets to make sure there has been
-        # a calculation
-        cohda_negotiation = list(
-            agent.roles[0]
-            .context.get_or_create_model(MoCohdaNegotiationModel)
-            ._negotiations.values()
-        )[0]
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                is not None
-        )
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                != MAXIMIZE_TARGETS[0].ref_point
-        )
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                != MAXIMIZE_TARGETS[1].ref_point
-        )
+        for agent in agents:
+            # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
+            # there has to be a reference point, since there were calculations of it during the negotiation. This
+            # reference point has to be different than the default ones given in the targets to make sure there has been
+            # a calculation
+            cohda_negotiation = list(
+                agent.roles[0]
+                .context.get_or_create_model(MoCohdaNegotiationModel)
+                ._negotiations.values()
+            )[0]
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    is not None
+            )
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    != MAXIMIZE_TARGETS[0].ref_point
+            )
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    != MAXIMIZE_TARGETS[1].ref_point
+            )
 
 
 @pytest.mark.asyncio
@@ -229,38 +229,38 @@ async def test_maximize_scenario_without_fixed_reference_point_and_with_offsets(
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=15)
 
-    solution_dict = get_solution(agents).schedules
-    print("solution:", solution_dict, "\n")
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f"[{aid}] chosen schedule: {chosen_schedule}.")
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+        solution_dict = get_solution(agents).schedules
+        print("solution:", solution_dict, "\n")
+        for aid, chosen_schedules in solution_dict.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            chosen_schedule = chosen_schedules[0]
+            print(f"[{aid}] chosen schedule: {chosen_schedule}.")
+            idx = int(aid[-1]) - 1
+            assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
-    for agent in agents:
-        # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
-        # there has to be a reference point, since there were calculations of it during the negotiation. This
-        # reference point has to be different than the default ones given in the targets to make sure there has been
-        # a calculation
-        cohda_negotiation = list(
-            agent.roles[0]
-            .context.get_or_create_model(MoCohdaNegotiationModel)
-            ._negotiations.values()
-        )[0]
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                is not None
-        )
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                != MAXIMIZE_TARGETS[0].ref_point
-        )
-        assert (
-                cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
-                != MAXIMIZE_TARGETS[1].ref_point
-        )
+        for agent in agents:
+            # use_fixed_ref_point was set to False, therefore, no reference point was given. After the negotiation is done,
+            # there has to be a reference point, since there were calculations of it during the negotiation. This
+            # reference point has to be different than the default ones given in the targets to make sure there has been
+            # a calculation
+            cohda_negotiation = list(
+                agent.roles[0]
+                .context.get_or_create_model(MoCohdaNegotiationModel)
+                ._negotiations.values()
+            )[0]
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    is not None
+            )
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    != MAXIMIZE_TARGETS[0].ref_point
+            )
+            assert (
+                    cohda_negotiation._selection.sorting_component.hypervolume_indicator.reference_point
+                    != MAXIMIZE_TARGETS[1].ref_point
+            )
 
 
 @pytest.mark.asyncio
@@ -294,15 +294,15 @@ async def _test_maximize_different_container():
         await asyncio.wait_for(wait_for_coalition_built(agents), timeout=5)
         await asyncio.wait_for(wait_for_term(controller_agent), timeout=30)
 
-    solution_dict = get_solution(agents).schedules
-    print("solution:", solution_dict, "\n")
-    for aid, chosen_schedules in solution_dict.items():
-        # for minimizing, every second schedule is the better because
-        # sum and deviations are minimized
-        chosen_schedule = chosen_schedules[0]
-        print(f"[{aid}] chosen schedule: {chosen_schedule}.")
-        idx = int(aid[-1]) - 1
-        assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
+        solution_dict = get_solution(agents).schedules
+        print("solution:", solution_dict, "\n")
+        for aid, chosen_schedules in solution_dict.items():
+            # for minimizing, every second schedule is the better because
+            # sum and deviations are minimized
+            chosen_schedule = chosen_schedules[0]
+            print(f"[{aid}] chosen schedule: {chosen_schedule}.")
+            idx = int(aid[-1]) - 1
+            assert np.array_equal(chosen_schedule, SCHEDULES_FOR_AGENTS_SIMPEL[idx][0])
 
 
 @pytest.mark.asyncio
