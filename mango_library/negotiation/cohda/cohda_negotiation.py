@@ -377,6 +377,11 @@ class COHDANegotiation:
         self._last_perf = 100
         self._additional_agent_id = 500
         self._manipulated_agent = manipulated_agent
+        self._manipulating = False
+
+    @property
+    def manipulating(self):
+        return self._manipulating
 
     @staticmethod
     def deviation_to_target_schedule(
@@ -466,6 +471,7 @@ class COHDANegotiation:
         :param working_memories: The List of received WorkingMemories
         :return: a tuple of SystemConfig, Candidate as a result of perceive
         """
+        self._manipulating = False
         current_sysconfig = None
         current_candidate = None
         for new_wm in working_memories:
@@ -487,6 +493,7 @@ class COHDANegotiation:
                     )
                     self._counter += 1
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
+                        self._manipulating = True
                         chosen_schedule = schedule_choices[self._part_id]._schedule
                         manipulated_schedule = []
                         for value in chosen_schedule:
@@ -505,6 +512,7 @@ class COHDANegotiation:
                         system_config=self._memory.system_config,
                     )[0]
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
+                        self._manipulating = True
                         chosen_schedule = schedules[self._part_id]
                         manipulated_schedule = []
                         for value in chosen_schedule:
@@ -519,6 +527,7 @@ class COHDANegotiation:
                         current_candidate.cluster_schedule, self._memory.target_params
                     )
                     if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                        self._manipulating = True
                         current_candidate.perf = self._last_perf
                         self._last_perf *= 5
                 else:
@@ -539,10 +548,12 @@ class COHDANegotiation:
                 target_params=self._memory.target_params,
             )
             if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                self._manipulating = True
                 current_candidate.perf = self._last_perf
                 self._last_perf *= 5
         if self._part_id == self._manipulated_agent and self._attack_scenario == 4:
             # manipulation: in each iteration, add another agent to candidate
+            self._manipulating = True
             schedules = current_candidate.schedules  # .copy()
             schedules[str(self._additional_agent_id)] = deepcopy(schedules[self._part_id])
 
@@ -572,11 +583,12 @@ class COHDANegotiation:
         :return: Tuple of SystemConfig, SolutionCandidate. Unchanged to parameters if no new SolutionCandidate was
         found. Else it consists of the new SolutionCandidate and an updated SystemConfig
         """
-
+        self._manipulating = False
         possible_schedules = self._schedule_provider(
             candidate=candidate, system_config=sysconfig
         )
         if self._part_id == self._manipulated_agent and self._attack_scenario == 1:
+            self._manipulating = True
             chosen_schedule = possible_schedules[random.choice([0, len(possible_schedules) - 1])]
             manipulated_schedule = []
             for value in chosen_schedule:
@@ -596,6 +608,7 @@ class COHDANegotiation:
                     new_candidate.cluster_schedule, self._memory.target_params
                 )
                 if self._part_id == self._manipulated_agent and self._attack_scenario == 3:
+                    self._manipulating = True
                     new_performance = self._last_perf
                     self._last_perf *= 5
 
